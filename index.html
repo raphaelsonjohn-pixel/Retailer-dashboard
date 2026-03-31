@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retailer Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="supabase.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Retailer Login</h1>
+
+    <!-- Name -->
+    <div class="input-group">
+      <input type="text" id="name" placeholder=" " required />
+      <label for="name">Name</label>
+    </div>
+
+    <!-- Email -->
+    <div class="input-group">
+      <input type="email" id="email" placeholder=" " required />
+      <label for="email">Email</label>
+    </div>
+
+    <!-- Location -->
+    <div class="input-group">
+      <input type="text" id="location" placeholder=" " />
+      <label for="location">Location</label>
+    </div>
+
+    <div class="button-group">
+      <button id="sendOtp">Send Login Link</button>
+      <button id="loadProducts">Load Dashboard</button>
+    </div>
+
+    <div class="dashboard" id="dashboard">
+      <h2>Products</h2>
+      <ul id="productList"></ul>
+    </div>
+  </div>
+</body>
+</html>
