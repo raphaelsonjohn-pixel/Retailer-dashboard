@@ -21,7 +21,7 @@ sendOtpBtn.addEventListener('click', async () => {
 
   const { error } = await supabase.auth.signInWithOtp({
     email: email,
-    options: { emailRedirectTo:'http://127.0.0.1:5500' }
+    options: { emailRedirectTo:'https://retailer-dashboard-gilt.vercel.app' }
   })
 
   if (error) return alert('Error sending login link: ' + error.message)
