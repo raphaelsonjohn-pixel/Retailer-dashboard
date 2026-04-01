@@ -10,18 +10,27 @@ const loadProductsBtn = document.getElementById('loadProducts')
 const productList = document.getElementById('productList')
 const dashboard = document.getElementById('dashboard')
 
+// ---------- 0️⃣ Handle login after magic link ----------
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    console.log("User logged in:", session.user)
+    await loadDashboard()
+  }
+})
+
 // ---------- 1️⃣ Send Email Magic Link ----------
 sendOtpBtn.addEventListener('click', async () => {
   const email = emailInput.value.trim()
   if (!email) return alert('Enter your email')
 
-  // Optional: simple email validation
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailPattern.test(email)) return alert('Enter a valid email address')
 
   const { error } = await supabase.auth.signInWithOtp({
     email: email,
-    options: { emailRedirectTo: "https://retailer-dashboard-gilt.vercel.app" }
+    options: {
+      emailRedirectTo: "https://retailer-dashboard-gilt.vercel.app"
+    }
   })
 
   if (error) return alert('Error sending login link: ' + error.message)
@@ -29,27 +38,31 @@ sendOtpBtn.addEventListener('click', async () => {
   alert('Check your email for the login link!')
 })
 
-// ---------- 2️⃣ Load Dashboard ----------
-loadProductsBtn.addEventListener('click', async () => {
+// ---------- 2️⃣ Load Dashboard (auto after login) ----------
+async function loadDashboard() {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return alert('Please login first via the email link!')
+  if (userError || !user) return
 
   // ---------- 2a. Save retailer if not exists ----------
-  const { data: retailer } = await supabase
+  const { data: retailer, error: retailerError } = await supabase
     .from('retailers')
     .select('*')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   if (!retailer) {
     const { error: insertError } = await supabase.from('retailers').insert([{
       id: user.id,
       email: user.email,
-      name: nameInput.value || 'Unknown',
-      location: locationInput.value || 'Not set',
+      name: nameInput?.value || 'Unknown',
+      location: locationInput?.value || 'Not set',
       created_at: new Date()
     }])
-    if (insertError) return alert('Error saving retailer: ' + insertError.message)
+
+    if (insertError) {
+      alert('Error saving retailer: ' + insertError.message)
+      return
+    }
   }
 
   // ---------- 2b. Load products ----------
@@ -58,10 +71,14 @@ loadProductsBtn.addEventListener('click', async () => {
     .select('*')
     .eq('retailer_id', user.id)
 
-  if (productsError) return alert('Error loading products: ' + productsError.message)
+  if (productsError) {
+    alert('Error loading products: ' + productsError.message)
+    return
+  }
 
   // ---------- 2c. Display products ----------
   productList.innerHTML = ''
+
   if (!products || products.length === 0) {
     productList.innerHTML = '<li>No products found</li>'
   } else {
@@ -73,5 +90,7 @@ loadProductsBtn.addEventListener('click', async () => {
   }
 
   // ---------- 2d. Show dashboard ----------
-  dashboard.style.display = 'block'
-})
+  if (dashboard) {
+    dashboard.style.display = 'block'
+  }
+}
