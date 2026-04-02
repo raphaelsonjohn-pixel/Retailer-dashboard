@@ -3,186 +3,281 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>FMCG Platform - Order FMCG Products</title>
-  <link rel="stylesheet" href="style.css">
+  <title>BomaWave FMCG Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#10B981',
+            secondary: '#3B82F6',
+            white: '#FFFFFF',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom animations - Tailwind doesn't have these by default */
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slide-in { animation: slideInRight 0.3s ease; }
+    .animate-fade-in { animation: fadeIn 0.3s ease; }
+    .modal-overlay {
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+    }
+  </style>
   <script type="module" src="supabase.js"></script>
   <script type="module" src="app.js"></script>
 </head>
-<body>
-  <!-- Loading Spinner -->
-  <div id="loading" class="loading hidden">
-    <div class="spinner"></div>
-    <p>Loading...</p>
-  </div>
+<body class="bg-gradient-to-br from-green-50 via-white to-blue-50 min-h-screen">
 
-  <!-- Language Selector -->
-  <div class="language-selector" id="languageSelector">
-    <button onclick="window.switchLanguage('en')">🇬🇧 English</button>
-    <button onclick="window.switchLanguage('sw')">🇹🇿 Kiswahili</button>
-  </div>
-
-  <!-- Login Section -->
-  <div id="loginSection" class="container">
-    <h1 id="loginTitle">Karibu - FMCG Platform</h1>
-    
-    <div class="input-group">
-      <input type="text" id="name" placeholder=" " required />
-      <label id="nameLabel">Jina / Name</label>
-    </div>
-
-    <div class="input-group">
-      <input type="email" id="email" placeholder=" " required />
-      <label id="emailLabel">Barua pepe / Email</label>
-    </div>
-
-    <div class="input-group">
-      <input type="tel" id="phone" placeholder=" " />
-      <label id="phoneLabel">Nambari ya simu / Phone (optional)</label>
-    </div>
-
-    <div class="input-group">
-      <input type="text" id="location" placeholder=" " />
-      <label id="locationLabel">Eneo / Location</label>
-    </div>
-
-    <div class="role-selector">
-      <label id="roleLabel">Mimi ni / I am a:</label>
-      <div class="role-buttons">
-        <button type="button" id="roleRetailer" class="role-btn active">🏪 Muuzaji / Retailer</button>
-        <button type="button" id="roleDistributor" class="role-btn">📦 Msambazaji / Distributor</button>
+  <!-- Language Selection Screen (First Screen) -->
+  <div id="languageScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-green-600 to-blue-600">
+    <div class="text-center p-8 animate-fade-in">
+      <h1 class="text-5xl font-bold text-white mb-4">BomaWave</h1>
+      <p class="text-white text-opacity-90 mb-12 text-lg">FMCG Distribution Platform</p>
+      <div class="space-y-4">
+        <button onclick="window.selectLanguage('en')" class="w-64 py-4 bg-white text-green-600 font-bold rounded-xl hover:shadow-lg transition-all text-lg">
+          English
+        </button>
+        <button onclick="window.selectLanguage('sw')" class="w-64 py-4 bg-white text-blue-600 font-bold rounded-xl hover:shadow-lg transition-all text-lg">
+          Kiswahili
+        </button>
       </div>
     </div>
+  </div>
 
-    <div class="button-group">
-      <button id="sendOtp" class="primary-btn">📧 Tuma kiungo / Send Login Link</button>
+  <!-- Loading Spinner -->
+  <div id="loading" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900 bg-opacity-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center shadow-xl">
+      <div class="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+      <p id="loadingText" class="mt-4 text-gray-600">Loading...</p>
+    </div>
+  </div>
+
+  <!-- Login Section (Hidden until language selected) -->
+  <div id="loginSection" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 animate-fade-in">
+      <h1 id="loginTitle" class="text-3xl font-bold text-center text-green-600 mb-8">BomaWave</h1>
+      
+      <div class="space-y-5">
+        <div>
+          <input type="text" id="name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder=" " />
+          <label id="nameLabel" class="block text-sm text-gray-600 mt-1">Full Name</label>
+        </div>
+
+        <div>
+          <input type="email" id="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder=" " />
+          <label id="emailLabel" class="block text-sm text-gray-600 mt-1">Email Address</label>
+        </div>
+
+        <div>
+          <input type="tel" id="phone" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder=" " />
+          <label id="phoneLabel" class="block text-sm text-gray-600 mt-1">Phone Number (Optional)</label>
+        </div>
+
+        <div>
+          <input type="text" id="location" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder=" " />
+          <label id="locationLabel" class="block text-sm text-gray-600 mt-1">Location / Area</label>
+        </div>
+
+        <div>
+          <label id="roleLabel" class="block text-sm font-medium text-gray-700 mb-2">I am a:</label>
+          <div class="flex gap-3">
+            <button type="button" id="roleRetailer" class="flex-1 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">Retailer</button>
+            <button type="button" id="roleDistributor" class="flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition">Distributor</button>
+          </div>
+        </div>
+
+        <button id="sendOtp" class="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-md mt-4">
+          Send Login Link
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Distributor Dashboard -->
-  <div id="distributorDashboard" class="dashboard hidden">
-    <div class="dashboard-header">
-      <h2 id="distributorTitle">📦 Dashboard ya Msambazaji</h2>
-      <div class="header-buttons">
-        <button id="showReportsBtn" class="icon-btn">📊</button>
-        <button id="logoutBtn" class="icon-btn">🚪</button>
+  <div id="distributorDashboard" class="hidden min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+      <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <h2 id="distributorTitle" class="text-xl font-bold text-green-600">Distributor Dashboard</h2>
+        <div class="flex gap-2">
+          <button id="showReportsBtn" class="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">Reports</button>
+          <button id="logoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">Logout</button>
+        </div>
       </div>
     </div>
 
     <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="productsTab">📦 Bidhaa / Products</button>
-      <button class="tab-btn" data-tab="ordersTab">🛒 Maagizo / Orders</button>
-      <button class="tab-btn" data-tab="alertsTab">⚠️ Tahadhari / Alerts</button>
-    </div>
-
-    <!-- Products Tab -->
-    <div id="productsTab" class="tab-content active">
-      <div class="add-product-form">
-        <h3 id="addProductTitle">➕ Ongeza Bidhaa / Add Product</h3>
-        <input type="text" id="productName" placeholder="Product Name (English)" />
-        <input type="text" id="productNameSw" placeholder="Jina la Bidhaa (Kiswahili)" />
-        <input type="number" id="productPrice" placeholder="Bei / Price (TZS)" />
-        <input type="number" id="productStock" placeholder="Kiasi / Quantity" />
-        <input type="number" id="minOrderQty" placeholder="Minimum Order Quantity" value="1" />
-        <input type="text" id="productCategory" placeholder="Aina / Category" />
-        <button id="addProductBtn" class="primary-btn">➕ Ongeza / Add</button>
+    <div class="border-b border-gray-200 bg-white sticky top-[73px] z-10">
+      <div class="max-w-6xl mx-auto px-4 flex gap-1">
+        <button class="tab-btn-distributor px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition" data-tab="productsTabDist">Products</button>
+        <button class="tab-btn-distributor px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition" data-tab="ordersTabDist">Orders</button>
+        <button class="tab-btn-distributor px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition" data-tab="alertsTabDist">Stock Alerts</button>
       </div>
-      
-      <div id="distributorProducts" class="products-grid"></div>
     </div>
 
-    <!-- Orders Tab -->
-    <div id="ordersTab" class="tab-content hidden">
-      <div id="distributorOrders" class="orders-list"></div>
-    </div>
+    <div class="max-w-6xl mx-auto px-4 py-6">
+      <!-- Products Tab -->
+      <div id="productsTabDist" class="tab-content-distributor">
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h3 class="text-lg font-bold text-gray-800 mb-4">Add New Product</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input type="text" id="productName" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Product Name" />
+            <input type="text" id="productNameSw" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Jina la Bidhaa (Kiswahili)" />
+            <input type="number" id="productPrice" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Price (TZS)" />
+            <input type="number" id="productStock" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Stock Quantity" />
+            <input type="number" id="minOrderQty" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Min Order Quantity" value="1" />
+            <input type="text" id="productCategory" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Category (Beverages, Food, etc.)" />
+          </div>
+          <button id="addProductBtn" class="mt-4 px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">Add Product</button>
+        </div>
+        
+        <div id="distributorProducts" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
 
-    <!-- Alerts Tab -->
-    <div id="alertsTab" class="tab-content hidden">
-      <div id="stockAlerts" class="alerts-list"></div>
+      <!-- Orders Tab -->
+      <div id="ordersTabDist" class="tab-content-distributor hidden">
+        <div id="distributorOrders" class="space-y-4"></div>
+      </div>
+
+      <!-- Alerts Tab -->
+      <div id="alertsTabDist" class="tab-content-distributor hidden">
+        <div id="stockAlerts" class="space-y-4"></div>
+      </div>
     </div>
   </div>
 
   <!-- Retailer Dashboard -->
-  <div id="retailerDashboard" class="dashboard hidden">
-    <div class="dashboard-header">
-      <h2 id="retailerTitle">🏪 Dashboard ya Muuzaji</h2>
-      <div class="header-buttons">
-        <button id="showCartBtn" class="icon-btn">🛒 <span id="cartCount" class="badge">0</span></button>
-        <button id="logoutBtn2" class="icon-btn">🚪</button>
+  <div id="retailerDashboard" class="hidden min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+      <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <h2 id="retailerTitle" class="text-xl font-bold text-green-600">Retailer Dashboard</h2>
+        <div class="flex gap-2">
+          <button id="showCartBtn" class="relative px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
+            Cart
+            <span id="cartCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">0</span>
+          </button>
+          <button id="logoutBtn2" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">Logout</button>
+        </div>
       </div>
     </div>
 
     <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="browseTab">🛍️ Bidhaa / Products</button>
-      <button class="tab-btn" data-tab="retailerOrdersTab">📦 Maagizo yangu / My Orders</button>
-    </div>
-
-    <!-- Browse Products Tab -->
-    <div id="browseTab" class="tab-content active">
-      <div class="search-bar">
-        <input type="text" id="searchProducts" placeholder="🔍 Tafuta bidhaa / Search products..." />
-        <select id="categoryFilter">
-          <option value="all">Aina zote / All Categories</option>
-        </select>
+    <div class="border-b border-gray-200 bg-white sticky top-[73px] z-10">
+      <div class="max-w-6xl mx-auto px-4 flex gap-1">
+        <button class="tab-btn-retailer px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition" data-tab="browseTabRet">Products</button>
+        <button class="tab-btn-retailer px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition" data-tab="retailerOrdersTabRet">My Orders</button>
       </div>
-      <div id="retailerProducts" class="products-grid"></div>
     </div>
 
-    <!-- My Orders Tab -->
-    <div id="retailerOrdersTab" class="tab-content hidden">
-      <div id="retailerOrders" class="orders-list"></div>
+    <div class="max-w-6xl mx-auto px-4 py-6">
+      <!-- Browse Products Tab -->
+      <div id="browseTabRet" class="tab-content-retailer">
+        <div class="flex flex-col md:flex-row gap-3 mb-6">
+          <input type="text" id="searchProducts" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Search products..." />
+          <select id="categoryFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+            <option value="all">All Categories</option>
+          </select>
+        </div>
+        <div id="retailerProducts" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- My Orders Tab -->
+      <div id="retailerOrdersTabRet" class="tab-content-retailer hidden">
+        <div id="retailerOrders" class="space-y-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="adminDashboard" class="hidden min-h-screen bg-gray-50">
+    <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+      <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <h2 class="text-xl font-bold text-green-600">Admin Dashboard</h2>
+        <button id="adminLogoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">Logout</button>
+      </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4 py-6">
+      <!-- Pending Approvals -->
+      <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Pending Distributor Approvals</h3>
+        <div id="pendingDistributors" class="space-y-3"></div>
+      </div>
+
+      <!-- All Orders -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">All Orders (Platform Wide)</h3>
+        <div id="adminOrders" class="space-y-3"></div>
+      </div>
     </div>
   </div>
 
   <!-- Cart Modal -->
-  <div id="cartModal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="cartTitle">🛒 Rukwama / Cart</h3>
-        <button class="close-modal">&times;</button>
+  <div id="cartModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 modal-overlay" onclick="closeModal('cartModal')"></div>
+    <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-auto animate-fade-in">
+      <div class="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-gray-800">Your Cart</h3>
+        <button onclick="closeModal('cartModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
       </div>
-      <div id="cartItems" class="cart-items"></div>
-      <div class="cart-summary">
-        <p><strong id="totalLabel">Jumla / Total:</strong> <span id="cartTotal">0</span> TZS</p>
-        <p><strong id="minOrderLabel">Kiwango cha chini / Min Order:</strong> <span id="minOrderWarning"></span></p>
-        <textarea id="deliveryAddress" placeholder="Anwani ya utoaji / Delivery address..."></textarea>
-        <select id="paymentMethod">
-          <option value="cash">💵 Cash / Pesa taslimu</option>
-          <option value="card">💳 Card / Kadi</option>
-          <option value="mobile_money">📱 Mobile Money / M-Pesa, Tigo Pesa</option>
+      <div id="cartItems" class="p-4 space-y-3"></div>
+      <div class="border-t border-gray-200 p-4 space-y-3">
+        <p class="flex justify-between font-bold"><span>Total:</span> <span id="cartTotal">0</span> TZS</p>
+        <p id="minOrderWarning" class="text-sm text-yellow-600"></p>
+        <textarea id="deliveryAddress" class="w-full px-3 py-2 border border-gray-300 rounded-lg" rows="2" placeholder="Delivery Address"></textarea>
+        <select id="paymentMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+          <option value="cash">Cash</option>
+          <option value="card">Card</option>
+          <option value="mobile_money">Mobile Money</option>
         </select>
-        <button id="checkoutBtn" class="primary-btn">✅ Weka Agizo / Place Order</button>
+        <button id="checkoutBtn" class="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">Place Order</button>
       </div>
     </div>
   </div>
 
   <!-- Order Status Modal -->
-  <div id="orderStatusModal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>📦 Hali ya Agizo / Order Status</h3>
-        <button class="close-status">&times;</button>
+  <div id="orderStatusModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 modal-overlay" onclick="closeModal('orderStatusModal')"></div>
+    <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full animate-fade-in">
+      <div class="border-b border-gray-200 p-4 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-gray-800">Order Status</h3>
+        <button onclick="closeModal('orderStatusModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
       </div>
-      <div id="orderStatusContent"></div>
+      <div id="orderStatusContent" class="p-4"></div>
     </div>
   </div>
 
   <!-- Reports Modal -->
-  <div id="reportsModal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>📊 Ripoti / Reports</h3>
-        <button class="close-reports">&times;</button>
+  <div id="reportsModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 modal-overlay" onclick="closeModal('reportsModal')"></div>
+    <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full animate-fade-in">
+      <div class="border-b border-gray-200 p-4 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-gray-800">Sales Reports</h3>
+        <button onclick="closeModal('reportsModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
       </div>
-      <div class="report-buttons">
-        <button id="dailyReportBtn">📅 Leo / Daily</button>
-        <button id="weeklyReportBtn">📆 Wiki hii / Weekly</button>
-        <button id="monthlyReportBtn">📆 Mwezi huu / Monthly</button>
+      <div class="p-4">
+        <div class="flex gap-2 mb-4">
+          <button id="dailyReportBtn" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Daily</button>
+          <button id="weeklyReportBtn" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Weekly</button>
+          <button id="monthlyReportBtn" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Monthly</button>
+        </div>
+        <div id="reportContent" class="text-gray-600"></div>
       </div>
-      <div id="reportContent"></div>
     </div>
   </div>
+
 </body>
-</html>
 </html>
