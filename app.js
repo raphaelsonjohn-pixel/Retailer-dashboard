@@ -1,4 +1,4 @@
-// app.js - Complete FMCG Platform
+// app.js - Complete FMCG Platform (FIXED - No Duplicates)
 import { supabase } from './supabase.js'
 
 // ============================================
@@ -154,74 +154,157 @@ function updateUIText() {
     const el = document.getElementById(id)
     if (el) el.textContent = t(id)
   })
-  document.getElementById('roleRetailer').textContent = 'Retailer'
-  document.getElementById('roleDistributor').textContent = 'Distributor'
+  const roleRetailer = document.getElementById('roleRetailer')
+  const roleDistributor = document.getElementById('roleDistributor')
+  if (roleRetailer) roleRetailer.textContent = 'Retailer'
+  if (roleDistributor) roleDistributor.textContent = 'Distributor'
 }
 
 // ============================================
 // ROLE SELECTION UI
 // ============================================
 let selectedRole = 'retailer'
-document.getElementById('roleRetailer').addEventListener('click', () => {
-  selectedRole = 'retailer'
-  document.getElementById('roleRetailer').className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-lg'
-  document.getElementById('roleDistributor').className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg'
-})
-document.getElementById('roleDistributor').addEventListener('click', () => {
-  selectedRole = 'distributor'
-  document.getElementById('roleDistributor').className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-lg'
-  document.getElementById('roleRetailer').className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg'
-})
+const roleRetailerBtn = document.getElementById('roleRetailer')
+const roleDistributorBtn = document.getElementById('roleDistributor')
+
+if (roleRetailerBtn) {
+  roleRetailerBtn.addEventListener('click', () => {
+    selectedRole = 'retailer'
+    roleRetailerBtn.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-lg'
+    roleDistributorBtn.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg'
+  })
+}
+
+if (roleDistributorBtn) {
+  roleDistributorBtn.addEventListener('click', () => {
+    selectedRole = 'distributor'
+    roleDistributorBtn.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-lg'
+    roleRetailerBtn.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg'
+  })
+}
 
 // ============================================
 // AUTHENTICATION
 // ============================================
-document.getElementById('sendOtp').addEventListener('click', async () => {
-  const email = document.getElementById('email').value.trim()
-  if (!email) return alert('Enter your email')
+const sendOtpBtn = document.getElementById('sendOtp')
+if (sendOtpBtn) {
+  sendOtpBtn.addEventListener('click', async () => {
+    const email = document.getElementById('email').value.trim()
+    if (!email) return alert('Enter your email')
 
-  showLoading(true)
-  
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email,
-    options: {
-      emailRedirectTo: window.location.origin + window.location.pathname,
-      data: {
-        name: document.getElementById('name').value.trim() || email.split('@')[0],
-        role: selectedRole,
-        phone: document.getElementById('phone').value.trim(),
-        location: document.getElementById('location').value.trim()
+    showLoading(true)
+    
+    const redirectUrl = window.location.origin + window.location.pathname
+    console.log('Sending magic link to:', email)
+    console.log('Redirect URL:', redirectUrl)
+    
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          name: document.getElementById('name').value.trim() || email.split('@')[0],
+          role: selectedRole,
+          phone: document.getElementById('phone').value.trim(),
+          location: document.getElementById('location').value.trim()
+        }
       }
+    })
+
+    showLoading(false)
+    
+    if (error) {
+      console.error('Send link error:', error)
+      alert('Error: ' + error.message)
+    } else {
+      alert(`Login link sent to ${email}. Check your inbox (and spam folder).`)
     }
   })
-
-  showLoading(false)
-  
-  if (error) {
-    alert('Error: ' + error.message)
-  } else {
-    alert(`Login link sent to ${email}. Check your inbox.`)
-  }
-})
+}
 
 // ============================================
-// SESSION MANAGEMENT (Persistent Login)
+// MAGIC LINK REDIRECT HANDLER
+// ============================================
+async function handleMagicLinkRedirect() {
+  const hash = window.location.hash
+  console.log('Checking for magic link hash:', hash)
+  
+  if (hash && (hash.includes('access_token') || hash.includes('#access_token'))) {
+    console.log('Magic link detected! Processing session...')
+    showLoading(true)
+    
+    // Wait a moment for Supabase to process
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    const { data, error } = await supabase.auth.getSession()
+    
+    if (error) {
+      console.error('Session error:', error)
+      showLoading(false)
+      return
+    }
+    
+    if (data.session) {
+      console.log('Session found! User:', data.session.user.email)
+      await loadUserData(data.session.user)
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } else {
+      console.log('No session found, retrying...')
+      setTimeout(async () => {
+        const { data: retryData } = await supabase.auth.getSession()
+        if (retryData.session) {
+          console.log('Session found on retry!')
+          await loadUserData(retryData.session.user)
+        } else {
+          console.log('Still no session after retry')
+          showLoading(false)
+        }
+      }, 2000)
+    }
+    showLoading(false)
+  }
+}
+
+// ============================================
+// SESSION MANAGEMENT (Single Definition)
 // ============================================
 supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth event:', event, session?.user?.email)
+  
   if (event === 'SIGNED_IN' && session) {
+    console.log('User signed in:', session.user.email)
     await loadUserData(session.user)
+    window.history.replaceState({}, document.title, window.location.pathname)
   } else if (event === 'SIGNED_OUT') {
+    console.log('User signed out')
     resetToLogin()
   }
 })
 
 async function checkSession() {
-  const { data: { session } } = await supabase.auth.getSession()
+  console.log('Checking existing session...')
+  const { data: { session }, error } = await supabase.auth.getSession()
+  
+  if (error) {
+    console.error('Get session error:', error)
+  }
+  
   if (session) {
+    console.log('Existing session found:', session.user.email)
     await loadUserData(session.user)
+  } else {
+    console.log('No existing session')
+    // Only show login if no magic link is being processed
+    if (!window.location.hash || !window.location.hash.includes('access_token')) {
+      document.getElementById('loginSection').classList.remove('hidden')
+    }
   }
 }
 
+// ============================================
+// LOAD USER DATA
+// ============================================
 async function loadUserData(user) {
   currentUser = user
   showLoading(true)
@@ -273,10 +356,15 @@ async function loadUserData(user) {
 // ADMIN DASHBOARD
 // ============================================
 async function loadAdminDashboard() {
-  document.getElementById('loginSection').classList.add('hidden')
-  document.getElementById('distributorDashboard').classList.add('hidden')
-  document.getElementById('retailerDashboard').classList.add('hidden')
-  document.getElementById('adminDashboard').classList.remove('hidden')
+  const loginSection = document.getElementById('loginSection')
+  const distributorDashboard = document.getElementById('distributorDashboard')
+  const retailerDashboard = document.getElementById('retailerDashboard')
+  const adminDashboard = document.getElementById('adminDashboard')
+  
+  if (loginSection) loginSection.classList.add('hidden')
+  if (distributorDashboard) distributorDashboard.classList.add('hidden')
+  if (retailerDashboard) retailerDashboard.classList.add('hidden')
+  if (adminDashboard) adminDashboard.classList.remove('hidden')
 
   await loadPendingDistributors()
   await loadAdminOrders()
@@ -289,6 +377,8 @@ async function loadPendingDistributors() {
     .eq('is_approved', false)
 
   const container = document.getElementById('pendingDistributors')
+  if (!container) return
+  
   if (!distributors || distributors.length === 0) {
     container.innerHTML = '<div class="text-gray-500 text-center py-4">No pending approvals</div>'
     return
@@ -333,6 +423,8 @@ async function loadAdminOrders() {
     .limit(50)
 
   const container = document.getElementById('adminOrders')
+  if (!container) return
+  
   if (!orders || orders.length === 0) {
     container.innerHTML = '<div class="text-gray-500 text-center py-4">No orders yet</div>'
     return
@@ -382,20 +474,31 @@ async function loadDistributorData(userId) {
     distributor = newDistributor
   }
 
+  const loginSection = document.getElementById('loginSection')
+  const distributorDashboard = document.getElementById('distributorDashboard')
+  const retailerDashboard = document.getElementById('retailerDashboard')
+  const adminDashboard = document.getElementById('adminDashboard')
+  
   if (!distributor.is_approved) {
-    document.getElementById('loginSection').classList.add('hidden')
-    document.getElementById('distributorDashboard').classList.remove('hidden')
-    document.getElementById('distributorProducts').innerHTML = `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-      <p class="text-yellow-800">${t('pendingApproval')}</p>
-    </div>`
+    if (loginSection) loginSection.classList.add('hidden')
+    if (distributorDashboard) distributorDashboard.classList.remove('hidden')
+    if (retailerDashboard) retailerDashboard.classList.add('hidden')
+    if (adminDashboard) adminDashboard.classList.add('hidden')
+    
+    const productsContainer = document.getElementById('distributorProducts')
+    if (productsContainer) {
+      productsContainer.innerHTML = `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+        <p class="text-yellow-800">${t('pendingApproval')}</p>
+      </div>`
+    }
     return
   }
 
   currentDistributorId = distributor.id
-  document.getElementById('loginSection').classList.add('hidden')
-  document.getElementById('retailerDashboard').classList.add('hidden')
-  document.getElementById('adminDashboard').classList.add('hidden')
-  document.getElementById('distributorDashboard').classList.remove('hidden')
+  if (loginSection) loginSection.classList.add('hidden')
+  if (retailerDashboard) retailerDashboard.classList.add('hidden')
+  if (adminDashboard) adminDashboard.classList.add('hidden')
+  if (distributorDashboard) distributorDashboard.classList.remove('hidden')
 
   await loadDistributorProducts()
   await loadDistributorOrders()
@@ -411,6 +514,8 @@ async function loadDistributorProducts() {
     .order('created_at', { ascending: false })
 
   const container = document.getElementById('distributorProducts')
+  if (!container) return
+  
   if (!products || products.length === 0) {
     container.innerHTML = `<div class="text-gray-500 text-center py-8">${t('noProducts')}</div>`
     return
@@ -435,33 +540,43 @@ async function loadDistributorProducts() {
   }
 }
 
-document.getElementById('addProductBtn').addEventListener('click', async () => {
-  const name = document.getElementById('productName').value
-  const nameSw = document.getElementById('productNameSw').value
-  const price = parseFloat(document.getElementById('productPrice').value)
-  const stock = parseInt(document.getElementById('productStock').value)
-  const minOrderQty = parseInt(document.getElementById('minOrderQty').value)
-  const category = document.getElementById('productCategory').value
+const addProductBtn = document.getElementById('addProductBtn')
+if (addProductBtn) {
+  addProductBtn.addEventListener('click', async () => {
+    const name = document.getElementById('productName')?.value
+    const nameSw = document.getElementById('productNameSw')?.value
+    const price = parseFloat(document.getElementById('productPrice')?.value)
+    const stock = parseInt(document.getElementById('productStock')?.value)
+    const minOrderQty = parseInt(document.getElementById('minOrderQty')?.value)
+    const category = document.getElementById('productCategory')?.value
 
-  if (!name || !price) return alert('Product name and price required')
+    if (!name || !price) return alert('Product name and price required')
 
-  await supabase.from('products').insert([{
-    distributor_id: currentDistributorId,
-    product_name: name,
-    product_name_sw: nameSw,
-    price: price,
-    stock_quantity: stock || 0,
-    min_order_quantity: minOrderQty || 1,
-    category: category || 'General'
-  }])
+    await supabase.from('products').insert([{
+      distributor_id: currentDistributorId,
+      product_name: name,
+      product_name_sw: nameSw,
+      price: price,
+      stock_quantity: stock || 0,
+      min_order_quantity: minOrderQty || 1,
+      category: category || 'General'
+    }])
 
-  document.getElementById('productName').value = ''
-  document.getElementById('productNameSw').value = ''
-  document.getElementById('productPrice').value = ''
-  document.getElementById('productStock').value = ''
-  document.getElementById('productCategory').value = ''
-  await loadDistributorProducts()
-})
+    const productNameInput = document.getElementById('productName')
+    const productNameSwInput = document.getElementById('productNameSw')
+    const productPriceInput = document.getElementById('productPrice')
+    const productStockInput = document.getElementById('productStock')
+    const productCategoryInput = document.getElementById('productCategory')
+    
+    if (productNameInput) productNameInput.value = ''
+    if (productNameSwInput) productNameSwInput.value = ''
+    if (productPriceInput) productPriceInput.value = ''
+    if (productStockInput) productStockInput.value = ''
+    if (productCategoryInput) productCategoryInput.value = ''
+    
+    await loadDistributorProducts()
+  })
+}
 
 window.updateStock = async (productId) => {
   const newStock = prompt('Enter new stock quantity:')
@@ -481,8 +596,11 @@ window.deleteProduct = async (productId) => {
 
 async function loadDistributorOrders() {
   const { data: products } = await supabase.from('products').select('id').eq('distributor_id', currentDistributorId)
+  const container = document.getElementById('distributorOrders')
+  if (!container) return
+  
   if (!products || products.length === 0) {
-    document.getElementById('distributorOrders').innerHTML = `<div class="text-gray-500 text-center py-8">${t('noOrders')}</div>`
+    container.innerHTML = `<div class="text-gray-500 text-center py-8">${t('noOrders')}</div>`
     return
   }
 
@@ -500,7 +618,6 @@ async function loadDistributorOrders() {
     ordersMap.get(item.order_id).items.push(item)
   })
 
-  const container = document.getElementById('distributorOrders')
   if (ordersMap.size === 0) {
     container.innerHTML = `<div class="text-gray-500 text-center py-8">${t('noOrders')}</div>`
     return
@@ -544,6 +661,8 @@ async function loadStockAlerts() {
     .lt('stock_quantity', 10)
 
   const container = document.getElementById('stockAlerts')
+  if (!container) return
+  
   if (!products || products.length === 0) {
     container.innerHTML = '<div class="text-green-600 text-center py-8">No low stock alerts</div>'
     return
@@ -597,10 +716,16 @@ async function loadRetailerData(userId) {
   }
 
   currentRetailerId = retailer.id
-  document.getElementById('loginSection').classList.add('hidden')
-  document.getElementById('distributorDashboard').classList.add('hidden')
-  document.getElementById('adminDashboard').classList.add('hidden')
-  document.getElementById('retailerDashboard').classList.remove('hidden')
+  
+  const loginSection = document.getElementById('loginSection')
+  const distributorDashboard = document.getElementById('distributorDashboard')
+  const retailerDashboard = document.getElementById('retailerDashboard')
+  const adminDashboard = document.getElementById('adminDashboard')
+  
+  if (loginSection) loginSection.classList.add('hidden')
+  if (distributorDashboard) distributorDashboard.classList.add('hidden')
+  if (adminDashboard) adminDashboard.classList.add('hidden')
+  if (retailerDashboard) retailerDashboard.classList.remove('hidden')
 
   await loadAvailableProducts()
   await loadRetailerOrders()
@@ -616,6 +741,8 @@ async function loadAvailableProducts() {
     .gt('stock_quantity', 0)
 
   const container = document.getElementById('retailerProducts')
+  if (!container) return
+  
   if (!products || products.length === 0) {
     container.innerHTML = `<div class="text-gray-500 text-center py-8">${t('noProducts')}</div>`
     return
@@ -624,10 +751,12 @@ async function loadAvailableProducts() {
   // Populate categories
   const categories = [...new Set(products.map(p => p.category).filter(c => c))]
   const categoryFilter = document.getElementById('categoryFilter')
-  categoryFilter.innerHTML = '<option value="all">All Categories</option>'
-  categories.forEach(cat => {
-    categoryFilter.innerHTML += `<option value="${cat}">${cat}</option>`
-  })
+  if (categoryFilter) {
+    categoryFilter.innerHTML = '<option value="all">All Categories</option>'
+    categories.forEach(cat => {
+      categoryFilter.innerHTML += `<option value="${cat}">${cat}</option>`
+    })
+  }
 
   container.innerHTML = ''
   for (const product of products) {
@@ -647,15 +776,21 @@ async function loadAvailableProducts() {
   }
 
   // Search functionality
-  document.getElementById('searchProducts').addEventListener('input', filterProducts)
-  categoryFilter.addEventListener('change', filterProducts)
+  const searchInput = document.getElementById('searchProducts')
+  if (searchInput) {
+    searchInput.addEventListener('input', filterProducts)
+  }
+  if (categoryFilter) {
+    categoryFilter.addEventListener('change', filterProducts)
+  }
 
   function filterProducts() {
-    const searchTerm = document.getElementById('searchProducts').value.toLowerCase()
-    const category = categoryFilter.value
+    const searchTerm = document.getElementById('searchProducts')?.value.toLowerCase() || ''
+    const category = document.getElementById('categoryFilter')?.value || 'all'
     const cards = document.querySelectorAll('#retailerProducts > div')
     cards.forEach((card, index) => {
       const product = products[index]
+      if (!product) return
       const matchesSearch = product.product_name.toLowerCase().includes(searchTerm) ||
                            (product.product_name_sw || '').toLowerCase().includes(searchTerm)
       const matchesCategory = category === 'all' || product.category === category
@@ -666,6 +801,7 @@ async function loadAvailableProducts() {
 
 window.addToCart = async (productId) => {
   const qtyInput = document.getElementById(`qty_${productId}`)
+  if (!qtyInput) return
   const quantity = parseInt(qtyInput.value)
 
   const { data: existing } = await supabase
@@ -691,12 +827,16 @@ async function loadCart() {
     .eq('retailer_id', currentRetailerId)
 
   cart = cartItems || []
-  document.getElementById('cartCount').textContent = cart.reduce((sum, i) => sum + i.quantity, 0)
+  const cartCount = document.getElementById('cartCount')
+  if (cartCount) cartCount.textContent = cart.reduce((sum, i) => sum + i.quantity, 0)
 
   const container = document.getElementById('cartItems')
+  if (!container) return
+  
   if (!cart || cart.length === 0) {
     container.innerHTML = `<div class="text-gray-500 text-center py-4">${t('emptyCart')}</div>`
-    document.getElementById('cartTotal').textContent = '0'
+    const cartTotal = document.getElementById('cartTotal')
+    if (cartTotal) cartTotal.textContent = '0'
     return
   }
 
@@ -719,16 +859,20 @@ async function loadCart() {
     `
     container.appendChild(div)
   }
-  document.getElementById('cartTotal').textContent = formatMoney(total)
+  
+  const cartTotal = document.getElementById('cartTotal')
+  if (cartTotal) cartTotal.textContent = formatMoney(total)
 
   const minOrderAmount = 50000
   const warning = document.getElementById('minOrderWarning')
-  if (total < minOrderAmount) {
-    warning.innerHTML = `Minimum order is ${formatMoney(minOrderAmount)} TZS`
-    warning.className = 'text-sm text-yellow-600'
-  } else {
-    warning.innerHTML = 'Ready to place order'
-    warning.className = 'text-sm text-green-600'
+  if (warning) {
+    if (total < minOrderAmount) {
+      warning.innerHTML = `Minimum order is ${formatMoney(minOrderAmount)} TZS`
+      warning.className = 'text-sm text-yellow-600'
+    } else {
+      warning.innerHTML = 'Ready to place order'
+      warning.className = 'text-sm text-green-600'
+    }
   }
 }
 
@@ -737,54 +881,57 @@ window.removeFromCart = async (cartId) => {
   await loadCart()
 }
 
-document.getElementById('checkoutBtn').addEventListener('click', async () => {
-  if (!cart.length) return alert(t('emptyCart'))
+const checkoutBtn = document.getElementById('checkoutBtn')
+if (checkoutBtn) {
+  checkoutBtn.addEventListener('click', async () => {
+    if (!cart.length) return alert(t('emptyCart'))
 
-  const totalAmount = cart.reduce((sum, i) => sum + (i.products.price * i.quantity), 0)
-  const deliveryAddress = document.getElementById('deliveryAddress').value
-  if (!deliveryAddress) return alert('Enter delivery address')
+    const totalAmount = cart.reduce((sum, i) => sum + (i.products.price * i.quantity), 0)
+    const deliveryAddress = document.getElementById('deliveryAddress')?.value
+    if (!deliveryAddress) return alert('Enter delivery address')
 
-  showLoading(true)
+    showLoading(true)
 
-  const orderNumber = 'ORD-' + Date.now()
-  const { data: order } = await supabase
-    .from('orders')
-    .insert([{
-      retailer_id: currentRetailerId,
-      order_number: orderNumber,
-      total_amount: totalAmount,
-      delivery_address: deliveryAddress,
-      payment_method: document.getElementById('paymentMethod').value
-    }])
-    .select()
-    .single()
+    const orderNumber = 'ORD-' + Date.now()
+    const { data: order } = await supabase
+      .from('orders')
+      .insert([{
+        retailer_id: currentRetailerId,
+        order_number: orderNumber,
+        total_amount: totalAmount,
+        delivery_address: deliveryAddress,
+        payment_method: document.getElementById('paymentMethod')?.value || 'cash'
+      }])
+      .select()
+      .single()
 
-  const orderItems = cart.map(item => ({
-    order_id: order.id,
-    product_id: item.product_id,
-    quantity: item.quantity,
-    unit_price: item.products.price,
-    total_price: item.products.price * item.quantity
-  }))
-  await supabase.from('order_items').insert(orderItems)
+    const orderItems = cart.map(item => ({
+      order_id: order.id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: item.products.price,
+      total_price: item.products.price * item.quantity
+    }))
+    await supabase.from('order_items').insert(orderItems)
 
-  // Update stock
-  for (const item of cart) {
-    await supabase
-      .from('products')
-      .update({ stock_quantity: item.products.stock_quantity - item.quantity })
-      .eq('id', item.product_id)
-  }
+    // Update stock
+    for (const item of cart) {
+      await supabase
+        .from('products')
+        .update({ stock_quantity: item.products.stock_quantity - item.quantity })
+        .eq('id', item.product_id)
+    }
 
-  await supabase.from('cart').delete().eq('retailer_id', currentRetailerId)
+    await supabase.from('cart').delete().eq('retailer_id', currentRetailerId)
 
-  showLoading(false)
-  alert(`${t('orderPlaced')} ${t('orderNumber')}${orderNumber}`)
-  closeModal('cartModal')
-  await loadCart()
-  await loadAvailableProducts()
-  await loadRetailerOrders()
-})
+    showLoading(false)
+    alert(`${t('orderPlaced')} ${t('orderNumber')}${orderNumber}`)
+    closeModal('cartModal')
+    await loadCart()
+    await loadAvailableProducts()
+    await loadRetailerOrders()
+  })
+}
 
 async function loadRetailerOrders() {
   const { data: orders } = await supabase
@@ -794,6 +941,8 @@ async function loadRetailerOrders() {
     .order('created_at', { ascending: false })
 
   const container = document.getElementById('retailerOrders')
+  if (!container) return
+  
   if (!orders || orders.length === 0) {
     container.innerHTML = `<div class="text-gray-500 text-center py-8">${t('noOrders')}</div>`
     return
@@ -821,6 +970,8 @@ async function loadRetailerOrders() {
 function showOrderStatus(order) {
   const modal = document.getElementById('orderStatusModal')
   const content = document.getElementById('orderStatusContent')
+  if (!modal || !content) return
+  
   content.innerHTML = `
     <p class="font-bold">${t('orderNumber')}${order.order_number}</p>
     <p class="mt-2">${t('orderStatus')}: <span class="px-2 py-0.5 rounded-full text-xs ${getStatusColor(order.status)}">${t(order.status)}</span></p>
@@ -835,42 +986,58 @@ function showOrderStatus(order) {
 // ============================================
 // REPORTS
 // ============================================
-document.getElementById('showReportsBtn')?.addEventListener('click', () => {
-  document.getElementById('reportsModal').classList.remove('hidden')
-})
+const showReportsBtn = document.getElementById('showReportsBtn')
+if (showReportsBtn) {
+  showReportsBtn.addEventListener('click', () => {
+    document.getElementById('reportsModal')?.classList.remove('hidden')
+  })
+}
 
-document.getElementById('dailyReportBtn')?.addEventListener('click', async () => {
-  const today = new Date().toISOString().split('T')[0]
-  const { data: orders } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('distributor_id', currentDistributorId)
-    .gte('created_at', today)
-  const total = orders?.reduce((s, o) => s + o.total_amount, 0) || 0
-  document.getElementById('reportContent').innerHTML = `<p class="text-center text-lg">${t('totalSales')}: ${formatMoney(total)} TZS</p>`
-})
+const dailyReportBtn = document.getElementById('dailyReportBtn')
+const weeklyReportBtn = document.getElementById('weeklyReportBtn')
+const monthlyReportBtn = document.getElementById('monthlyReportBtn')
 
-document.getElementById('weeklyReportBtn')?.addEventListener('click', async () => {
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
-  const { data: orders } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('distributor_id', currentDistributorId)
-    .gte('created_at', weekAgo.toISOString())
-  const total = orders?.reduce((s, o) => s + o.total_amount, 0) || 0
-  document.getElementById('reportContent').innerHTML = `<p class="text-center text-lg">${t('totalSales')}: ${formatMoney(total)} TZS</p>`
-})
+if (dailyReportBtn) {
+  dailyReportBtn.addEventListener('click', async () => {
+    const today = new Date().toISOString().split('T')[0]
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('distributor_id', currentDistributorId)
+      .gte('created_at', today)
+    const total = orders?.reduce((s, o) => s + o.total_amount, 0) || 0
+    const reportContent = document.getElementById('reportContent')
+    if (reportContent) reportContent.innerHTML = `<p class="text-center text-lg">${t('totalSales')}: ${formatMoney(total)} TZS</p>`
+  })
+}
 
-document.getElementById('monthlyReportBtn')?.addEventListener('click', async () => {
-  const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1)
-  const { data: orders } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('distributor_id', currentDistributorId)
-    .gte('created_at', monthAgo.toISOString())
-  const total = orders?.reduce((s, o) => s + o.total_amount, 0) || 0
-  document.getElementById('reportContent').innerHTML = `<p class="text-center text-lg">${t('totalSales')}: ${formatMoney(total)} TZS</p>`
-})
+if (weeklyReportBtn) {
+  weeklyReportBtn.addEventListener('click', async () => {
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('distributor_id', currentDistributorId)
+      .gte('created_at', weekAgo.toISOString())
+    const total = orders?.reduce((s, o) => s + o.total_amount, 0) || 0
+    const reportContent = document.getElementById('reportContent')
+    if (reportContent) reportContent.innerHTML = `<p class="text-center text-lg">${t('totalSales')}: ${formatMoney(total)} TZS</p>`
+  })
+}
+
+if (monthlyReportBtn) {
+  monthlyReportBtn.addEventListener('click', async () => {
+    const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1)
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('distributor_id', currentDistributorId)
+      .gte('created_at', monthAgo.toISOString())
+    const total = orders?.reduce((s, o) => s + o.total_amount, 0) || 0
+    const reportContent = document.getElementById('reportContent')
+    if (reportContent) reportContent.innerHTML = `<p class="text-center text-lg">${t('totalSales')}: ${formatMoney(total)} TZS</p>`
+  })
+}
 
 // ============================================
 // UTILITIES
@@ -893,6 +1060,7 @@ function getStatusColor(status) {
 
 function showLoading(show) {
   const loadingEl = document.getElementById('loading')
+  if (!loadingEl) return
   if (show) {
     loadingEl.classList.remove('hidden')
     loadingEl.classList.add('flex')
@@ -903,17 +1071,24 @@ function showLoading(show) {
 }
 
 function closeModal(modalId) {
-  document.getElementById(modalId).classList.add('hidden')
+  const modal = document.getElementById(modalId)
+  if (modal) modal.classList.add('hidden')
 }
 
 window.closeModal = closeModal
 
 function resetToLogin() {
-  document.getElementById('loginSection').classList.remove('hidden')
-  document.getElementById('distributorDashboard').classList.add('hidden')
-  document.getElementById('retailerDashboard').classList.add('hidden')
-  document.getElementById('adminDashboard').classList.add('hidden')
-  document.getElementById('languageScreen').classList.remove('hidden')
+  const loginSection = document.getElementById('loginSection')
+  const distributorDashboard = document.getElementById('distributorDashboard')
+  const retailerDashboard = document.getElementById('retailerDashboard')
+  const adminDashboard = document.getElementById('adminDashboard')
+  const languageScreen = document.getElementById('languageScreen')
+  
+  if (loginSection) loginSection.classList.remove('hidden')
+  if (distributorDashboard) distributorDashboard.classList.add('hidden')
+  if (retailerDashboard) retailerDashboard.classList.add('hidden')
+  if (adminDashboard) adminDashboard.classList.add('hidden')
+  if (languageScreen) languageScreen.classList.remove('hidden')
 }
 
 function setupDistributorTabs() {
@@ -924,7 +1099,8 @@ function setupDistributorTabs() {
       tabs.forEach(t => t.classList.remove('border-green-600', 'text-green-600'))
       tab.classList.add('border-green-600', 'text-green-600')
       contents.forEach(c => c.classList.add('hidden'))
-      document.getElementById(tab.dataset.tab).classList.remove('hidden')
+      const target = document.getElementById(tab.dataset.tab)
+      if (target) target.classList.remove('hidden')
     })
   })
 }
@@ -937,20 +1113,28 @@ function setupRetailerTabs() {
       tabs.forEach(t => t.classList.remove('border-green-600', 'text-green-600'))
       tab.classList.add('border-green-600', 'text-green-600')
       contents.forEach(c => c.classList.add('hidden'))
-      document.getElementById(tab.dataset.tab).classList.remove('hidden')
+      const target = document.getElementById(tab.dataset.tab)
+      if (target) target.classList.remove('hidden')
     })
   })
 }
 
 // Logout handlers
-document.getElementById('logoutBtn')?.addEventListener('click', () => supabase.auth.signOut())
-document.getElementById('logoutBtn2')?.addEventListener('click', () => supabase.auth.signOut())
-document.getElementById('adminLogoutBtn')?.addEventListener('click', () => supabase.auth.signOut())
+const logoutBtn = document.getElementById('logoutBtn')
+const logoutBtn2 = document.getElementById('logoutBtn2')
+const adminLogoutBtn = document.getElementById('adminLogoutBtn')
+
+if (logoutBtn) logoutBtn.addEventListener('click', () => supabase.auth.signOut())
+if (logoutBtn2) logoutBtn2.addEventListener('click', () => supabase.auth.signOut())
+if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', () => supabase.auth.signOut())
 
 // Cart modal
-document.getElementById('showCartBtn')?.addEventListener('click', () => {
-  document.getElementById('cartModal').classList.remove('hidden')
-})
+const showCartBtnEl = document.getElementById('showCartBtn')
+if (showCartBtnEl) {
+  showCartBtnEl.addEventListener('click', () => {
+    document.getElementById('cartModal')?.classList.remove('hidden')
+  })
+}
 
 // Make functions global
 window.addToCart = addToCart
@@ -962,5 +1146,10 @@ window.restockProduct = restockProduct
 window.approveDistributor = approveDistributor
 window.rejectDistributor = rejectDistributor
 
-// Initialize
-checkSession()
+// ============================================
+// INITIALIZE
+// ============================================
+// Handle magic link redirect first
+await handleMagicLinkRedirect()
+// Then check for existing session
+await checkSession()
