@@ -172,7 +172,28 @@ document.getElementById('roleDistributor').addEventListener('click', () => {
   document.getElementById('roleDistributor').className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-lg'
   document.getElementById('roleRetailer').className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg'
 })
+// ============================================
+// DEBUG - Check what's happening
+// ============================================
+console.log('App started')
+console.log('Current URL:', window.location.href)
+console.log('URL hash:', window.location.hash)
 
+// ============================================
+// SESSION MANAGEMENT (Persistent Login)
+// ============================================
+supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth event triggered:', event)
+  console.log('Session:', session?.user?.email)
+  
+  if (event === 'SIGNED_IN' && session) {
+    console.log('SIGNED_IN - loading user data')
+    await loadUserData(session.user)
+  } else if (event === 'SIGNED_OUT') {
+    console.log('SIGNED_OUT - resetting to login')
+    resetToLogin()
+  }
+})
 // ============================================
 // AUTHENTICATION
 // ============================================
