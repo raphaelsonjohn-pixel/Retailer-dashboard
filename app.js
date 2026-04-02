@@ -1,4 +1,4 @@
-// app.js - Complete FMCG Platform with English/Swahili
+// app.js - Complete FMCG Platform with English/Swahili & Real-time Notifications
 import { supabase } from './supabase.js'
 
 // ============================================
@@ -15,7 +15,44 @@ const translations = {
     retailer: 'Retailer',
     distributor: 'Distributor',
     sendLink: 'Send Login Link',
-    // Add more translations as needed
+    loading: 'Loading...',
+    addProduct: 'Add Product',
+    productName: 'Product Name (English)',
+    productNameSw: 'Jina la Bidhaa (Kiswahili)',
+    price: 'Price (TZS)',
+    quantity: 'Quantity',
+    minOrderQty: 'Minimum Order Quantity',
+    category: 'Category',
+    search: 'Search products...',
+    allCategories: 'All Categories',
+    addToCart: 'Add to Cart',
+    cart: 'Cart',
+    checkout: 'Checkout',
+    total: 'Total',
+    minOrderWarning: 'Minimum order met',
+    orderPlaced: 'Order placed successfully!',
+    orderNumber: 'Order #',
+    noProducts: 'No products available',
+    noOrders: 'No orders yet',
+    emptyCart: 'Your cart is empty',
+    deliveryAddress: 'Delivery address...',
+    paymentMethod: 'Payment Method',
+    cash: 'Cash',
+    card: 'Card',
+    mobileMoney: 'Mobile Money',
+    myOrders: 'My Orders',
+    products: 'Products',
+    orders: 'Orders',
+    alerts: 'Alerts',
+    newOrder: 'New Order!',
+    from: 'from',
+    orderStatus: 'Order Status',
+    pending: 'pending',
+    confirmed: 'confirmed',
+    processing: 'processing',
+    shipped: 'shipped',
+    delivered: 'delivered',
+    cancelled: 'cancelled'
   },
   sw: {
     loginTitle: 'Karibu - Jukwaa la FMCG',
@@ -27,6 +64,44 @@ const translations = {
     retailer: 'Muuzaji',
     distributor: 'Msambazaji',
     sendLink: 'Tuma Kiungo cha Kuingia',
+    loading: 'Inapakia...',
+    addProduct: 'Ongeza Bidhaa',
+    productName: 'Jina la Bidhaa (Kiingereza)',
+    productNameSw: 'Jina la Bidhaa (Kiswahili)',
+    price: 'Bei (TZS)',
+    quantity: 'Kiasi',
+    minOrderQty: 'Kiwango cha chini cha Kuagiza',
+    category: 'Aina',
+    search: 'Tafuta bidhaa...',
+    allCategories: 'Aina zote',
+    addToCart: 'Ingiza Rukwama',
+    cart: 'Rukwama',
+    checkout: 'Maliza',
+    total: 'Jumla',
+    minOrderWarning: 'Kiwango cha chini kimefikia',
+    orderPlaced: 'Agizo limewekwa kikamilifu!',
+    orderNumber: 'Agizo #',
+    noProducts: 'Hakuna bidhaa zinazopatikana',
+    noOrders: 'Hakuna maagizo bado',
+    emptyCart: 'Rukwama yako ni tupu',
+    deliveryAddress: 'Anwani ya utoaji...',
+    paymentMethod: 'Njia ya Malipo',
+    cash: 'Pesa taslimu',
+    card: 'Kadi',
+    mobileMoney: 'M-Pesa / Tigo Pesa',
+    myOrders: 'Maagizo Yangu',
+    products: 'Bidhaa',
+    orders: 'Maagizo',
+    alerts: 'Tahadhari',
+    newOrder: 'Agizo Jipya!',
+    from: 'kutoka kwa',
+    orderStatus: 'Hali ya Agizo',
+    pending: 'inasubiri',
+    confirmed: 'imethibitishwa',
+    processing: 'inachakatwa',
+    shipped: 'imesafirishwa',
+    delivered: 'imewasilishwa',
+    cancelled: 'imeghairiwa'
   }
 };
 
@@ -36,6 +111,7 @@ let currentRole = null;
 let currentRetailerId = null;
 let currentDistributorId = null;
 let cart = [];
+let notificationSubscription = null;
 
 // ============================================
 // DOM Elements
@@ -60,67 +136,180 @@ let selectedRole = 'retailer';
 window.switchLanguage = (lang) => {
   currentLanguage = lang;
   updateUIText();
+  // Refresh current view to show translated content
+  if (currentRole === 'distributor') {
+    loadDistributorProducts();
+    loadDistributorOrders();
+  } else if (currentRole === 'retailer') {
+    loadAvailableProducts();
+    loadRetailerOrders();
+  }
 };
 
+function t(key) {
+  return translations[currentLanguage][key] || key;
+}
+
 function updateUIText() {
-  const t = translations[currentLanguage];
-  if (!t) return;
+  // Update all elements with data-i18n attribute or specific IDs
+  const elements = {
+    loginTitle: t('loginTitle'),
+    nameLabel: t('nameLabel'),
+    emailLabel: t('emailLabel'),
+    phoneLabel: t('phoneLabel'),
+    locationLabel: t('locationLabel'),
+    roleLabel: t('roleLabel'),
+    sendLink: t('sendLink')
+  };
   
-  document.getElementById('loginTitle').innerHTML = t.loginTitle;
-  document.getElementById('nameLabel').innerHTML = t.nameLabel;
-  document.getElementById('emailLabel').innerHTML = t.emailLabel;
-  document.getElementById('phoneLabel').innerHTML = t.phoneLabel;
-  document.getElementById('locationLabel').innerHTML = t.locationLabel;
-  document.getElementById('roleLabel').innerHTML = t.roleLabel;
-  roleRetailer.innerHTML = `🏪 ${t.retailer}`;
-  roleDistributor.innerHTML = `📦 ${t.distributor}`;
-  sendOtpBtn.innerHTML = `📧 ${t.sendLink}`;
+  for (const [id, text] of Object.entries(elements)) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = text;
+  }
+  
+  if (roleRetailer) roleRetailer.innerHTML = `🏪 ${t('retailer')}`;
+  if (roleDistributor) roleDistributor.innerHTML = `📦 ${t('distributor')}`;
+  if (sendOtpBtn) sendOtpBtn.innerHTML = `📧 ${t('sendLink')}`;
+  
+  // Update dashboard titles
+  const distributorTitle = document.getElementById('distributorTitle');
+  if (distributorTitle) distributorTitle.innerHTML = `📦 ${t('distributor')}`;
+  
+  const retailerTitle = document.getElementById('retailerTitle');
+  if (retailerTitle) retailerTitle.innerHTML = `🏪 ${t('retailer')}`;
+  
+  // Update tab buttons
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  tabButtons.forEach(btn => {
+    const tabId = btn.dataset.tab;
+    if (tabId === 'productsTab') btn.innerHTML = `📦 ${t('products')}`;
+    if (tabId === 'ordersTab') btn.innerHTML = `🛒 ${t('orders')}`;
+    if (tabId === 'alertsTab') btn.innerHTML = `⚠️ ${t('alerts')}`;
+    if (tabId === 'browseTab') btn.innerHTML = `🛍️ ${t('products')}`;
+    if (tabId === 'retailerOrdersTab') btn.innerHTML = `📦 ${t('myOrders')}`;
+  });
+  
+  // Update add product form
+  const addProductTitle = document.getElementById('addProductTitle');
+  if (addProductTitle) addProductTitle.innerHTML = `➕ ${t('addProduct')}`;
+  
+  const productNameInput = document.getElementById('productName');
+  if (productNameInput) productNameInput.placeholder = t('productName');
+  
+  const productNameSwInput = document.getElementById('productNameSw');
+  if (productNameSwInput) productNameSwInput.placeholder = t('productNameSw');
+  
+  const productPriceInput = document.getElementById('productPrice');
+  if (productPriceInput) productPriceInput.placeholder = t('price');
+  
+  const productStockInput = document.getElementById('productStock');
+  if (productStockInput) productStockInput.placeholder = t('quantity');
+  
+  const minOrderQtyInput = document.getElementById('minOrderQty');
+  if (minOrderQtyInput) minOrderQtyInput.placeholder = t('minOrderQty');
+  
+  const productCategoryInput = document.getElementById('productCategory');
+  if (productCategoryInput) productCategoryInput.placeholder = t('category');
+  
+  const addProductBtn = document.getElementById('addProductBtn');
+  if (addProductBtn) addProductBtn.innerHTML = `➕ ${t('addProduct')}`;
+  
+  // Update search
+  const searchInput = document.getElementById('searchProducts');
+  if (searchInput) searchInput.placeholder = t('search');
+  
+  // Update cart modal
+  const cartTitle = document.getElementById('cartTitle');
+  if (cartTitle) cartTitle.innerHTML = `🛒 ${t('cart')}`;
+  
+  const totalLabel = document.getElementById('totalLabel');
+  if (totalLabel) totalLabel.innerHTML = `${t('total')}:`;
+  
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  if (checkoutBtn) checkoutBtn.innerHTML = `✅ ${t('checkout')}`;
+  
+  const deliveryAddress = document.getElementById('deliveryAddress');
+  if (deliveryAddress) deliveryAddress.placeholder = t('deliveryAddress');
+  
+  const paymentMethod = document.getElementById('paymentMethod');
+  if (paymentMethod) {
+    paymentMethod.options[0].text = `💵 ${t('cash')}`;
+    paymentMethod.options[1].text = `💳 ${t('card')}`;
+    paymentMethod.options[2].text = `📱 ${t('mobileMoney')}`;
+  }
 }
 
 // ============================================
 // Role Selection
 // ============================================
-roleRetailer.addEventListener('click', () => {
-  selectedRole = 'retailer';
-  roleRetailer.classList.add('active');
-  roleDistributor.classList.remove('active');
-});
+if (roleRetailer) {
+  roleRetailer.addEventListener('click', () => {
+    selectedRole = 'retailer';
+    roleRetailer.classList.add('active');
+    roleDistributor.classList.remove('active');
+  });
+}
 
-roleDistributor.addEventListener('click', () => {
-  selectedRole = 'distributor';
-  roleDistributor.classList.add('active');
-  roleRetailer.classList.remove('active');
-});
+if (roleDistributor) {
+  roleDistributor.addEventListener('click', () => {
+    selectedRole = 'distributor';
+    roleDistributor.classList.add('active');
+    roleRetailer.classList.remove('active');
+  });
+}
 
 // ============================================
 // Authentication
 // ============================================
-sendOtpBtn.addEventListener('click', async () => {
-  const email = emailInput.value.trim();
-  if (!email) {
-    alert(currentLanguage === 'en' ? 'Enter your email' : 'Weka barua pepe yako');
-    return;
-  }
-  
-  const name = nameInput.value.trim() || email.split('@')[0];
-  const phone = phoneInput.value.trim();
-  const location = locationInput.value.trim();
-  
-  showLoading(true);
-  
-  // First check if user exists, if not create profile
-  const { data: existingUser } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('email', email)
-    .single();
-  
-  if (!existingUser) {
-    // Sign up the user
-    const { error: signUpError } = await supabase.auth.signUp({
+if (sendOtpBtn) {
+  sendOtpBtn.addEventListener('click', async () => {
+    const email = emailInput.value.trim();
+    if (!email) {
+      alert(currentLanguage === 'en' ? 'Enter your email' : 'Weka barua pepe yako');
+      return;
+    }
+    
+    const name = nameInput.value.trim() || email.split('@')[0];
+    const phone = phoneInput.value.trim();
+    const location = locationInput.value.trim();
+    
+    showLoading(true);
+    
+    // First check if user exists, if not create profile
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .single();
+    
+    if (!existingUser) {
+      // Sign up the user
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: email,
+        password: Math.random().toString(36).slice(-8),
+        options: {
+          data: {
+            name: name,
+            role: selectedRole,
+            phone: phone,
+            location: location
+          }
+        }
+      });
+      
+      if (signUpError && !signUpError.message.includes('already registered')) {
+        alert('Error: ' + signUpError.message);
+        showLoading(false);
+        return;
+      }
+    }
+    
+    // Send magic link
+    const redirectUrl = window.location.origin + window.location.pathname;
+    const { error } = await supabase.auth.signInWithOtp({
       email: email,
-      password: Math.random().toString(36).slice(-8), // Random password
       options: {
+        emailRedirectTo: redirectUrl,
         data: {
           name: name,
           role: selectedRole,
@@ -130,38 +319,17 @@ sendOtpBtn.addEventListener('click', async () => {
       }
     });
     
-    if (signUpError && !signUpError.message.includes('already registered')) {
-      alert('Error: ' + signUpError.message);
-      showLoading(false);
-      return;
-    }
-  }
-  
-  // Send magic link
-  const redirectUrl = window.location.origin + window.location.pathname;
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email,
-    options: {
-      emailRedirectTo: redirectUrl,
-      data: {
-        name: name,
-        role: selectedRole,
-        phone: phone,
-        location: location
-      }
+    showLoading(false);
+    
+    if (error) {
+      alert('Error: ' + error.message);
+    } else {
+      alert(currentLanguage === 'en' 
+        ? 'Check your email for the login link!' 
+        : 'Angalia barua pepe yako kwa kiungo cha kuingia!');
     }
   });
-  
-  showLoading(false);
-  
-  if (error) {
-    alert('Error: ' + error.message);
-  } else {
-    alert(currentLanguage === 'en' 
-      ? 'Check your email for the login link!' 
-      : 'Angalia barua pepe yako kwa kiungo cha kuingia!');
-  }
-});
+}
 
 // ============================================
 // Auth State Handler
@@ -186,7 +354,6 @@ async function loadUserData(user) {
     .single();
   
   if (!profile) {
-    // Create profile
     const userMeta = user.user_metadata;
     const { data: newProfile, error: insertError } = await supabase
       .from('profiles')
@@ -222,6 +389,237 @@ async function loadUserData(user) {
 }
 
 // ============================================
+// Notification System
+// ============================================
+let notificationSound = null;
+
+function playNotificationSound() {
+  try {
+    // Create a simple beep using Web Audio API (works without external files)
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    gainNode.gain.value = 0.3;
+    
+    oscillator.start();
+    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+    oscillator.stop(audioContext.currentTime + 0.5);
+    
+    // Resume audio context if suspended
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+  } catch(e) {
+    console.log('Sound not supported:', e);
+  }
+}
+
+function showNotification(title, message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification-toast notification-${type}`;
+  
+  const icon = type === 'order' ? '🛒' : (type === 'stock' ? '⚠️' : '🔔');
+  
+  notification.innerHTML = `
+    <div class="notification-content">
+      <div class="notification-icon">${icon}</div>
+      <div class="notification-text">
+        <strong>${title}</strong>
+        <p>${message}</p>
+      </div>
+      <button class="notification-close" onclick="this.parentElement.remove()">✕</button>
+    </div>
+  `;
+  
+  notification.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    left: 20px;
+    max-width: 400px;
+    margin: 0 auto;
+    background: ${type === 'order' ? '#10b981' : (type === 'stock' ? '#f59e0b' : '#2563eb')};
+    color: white;
+    padding: 16px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 10000;
+    animation: slideInRight 0.3s ease;
+    cursor: pointer;
+  `;
+  
+  // Add click handler to open orders tab
+  notification.onclick = (e) => {
+    if (e.target.classList.contains('notification-close')) return;
+    notification.remove();
+    if (type === 'order' && currentRole === 'distributor') {
+      // Switch to orders tab
+      const ordersTab = document.querySelector('#distributorDashboard .tab-btn[data-tab="ordersTab"]');
+      if (ordersTab) ordersTab.click();
+    }
+  };
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentElement) notification.remove();
+  }, 5000);
+}
+
+// Add CSS for notifications
+const notificationStyle = document.createElement('style');
+notificationStyle.textContent = `
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .notification-toast {
+    animation: slideInRight 0.3s ease;
+  }
+  
+  .notification-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .notification-icon {
+    font-size: 24px;
+  }
+  
+  .notification-text {
+    flex: 1;
+  }
+  
+  .notification-text strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+  
+  .notification-text p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+  
+  .notification-close {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .notification-close:hover {
+    background: rgba(255,255,255,0.3);
+  }
+`;
+document.head.appendChild(notificationStyle);
+
+// Subscribe to new orders for distributors
+async function subscribeToNewOrders() {
+  if (currentRole !== 'distributor') return;
+  
+  // Unsubscribe from previous subscription
+  if (notificationSubscription) {
+    await supabase.removeChannel(notificationSubscription);
+  }
+  
+  // Get distributor's product IDs
+  const { data: products } = await supabase
+    .from('products')
+    .select('id')
+    .eq('distributor_id', currentDistributorId);
+  
+  if (!products || products.length === 0) return;
+  
+  const productIds = products.map(p => p.id);
+  
+  // Create a channel for real-time notifications
+  notificationSubscription = supabase
+    .channel('new-orders-channel')
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'order_items',
+        filter: `product_id=in.(${productIds.join(',')})`
+      },
+      async (payload) => {
+        // New order detected!
+        const { data: order } = await supabase
+          .from('orders')
+          .select('*, retailers(store_name, user_id)')
+          .eq('id', payload.new.order_id)
+          .single();
+        
+        if (order) {
+          // Get retailer name
+          const retailerName = order.retailers?.store_name || t('retailer');
+          
+          // Show notification
+          showNotification(
+            `🛒 ${t('newOrder')}`,
+            `${t('from')} ${retailerName} - ${t('orderNumber')}${order.order_number} - ${formatMoney(order.total_amount)} TZS`,
+            'order'
+          );
+          
+          // Play sound
+          playNotificationSound();
+          
+          // Update orders count badge if exists
+          const ordersTab = document.querySelector('#distributorDashboard .tab-btn[data-tab="ordersTab"]');
+          if (ordersTab) {
+            const existingBadge = ordersTab.querySelector('.notification-badge');
+            if (existingBadge) {
+              const count = parseInt(existingBadge.textContent) + 1;
+              existingBadge.textContent = count;
+            } else {
+          const badge = document.createElement('span');
+              badge.className = 'notification-badge';
+              badge.textContent = '1';
+              badge.style.cssText = `
+                background: #ef4444;
+                color: white;
+                border-radius: 50%;
+                padding: 2px 6px;
+                font-size: 10px;
+                margin-left: 4px;
+              `;
+              ordersTab.appendChild(badge);
+            }
+          }
+          
+          // Refresh orders list
+          await loadDistributorOrders();
+        }
+      }
+    )
+    .subscribe();
+}
+
+// ============================================
 // Distributor Functions
 // ============================================
 async function loadDistributorData(userId) {
@@ -233,7 +631,6 @@ async function loadDistributorData(userId) {
     .single();
   
   if (!distributor) {
-    // Create distributor record
     const { data: newDistributor, error: insertError } = await supabase
       .from('distributors')
       .insert([{
@@ -263,6 +660,7 @@ async function loadDistributorData(userId) {
   await loadDistributorProducts();
   await loadDistributorOrders();
   await loadStockAlerts();
+  await subscribeToNewOrders(); // Start real-time notifications
   setupDistributorTabs();
 }
 
@@ -282,7 +680,7 @@ async function loadDistributorProducts() {
   if (!container) return;
   
   if (!products || products.length === 0) {
-    container.innerHTML = '<p>No products yet. Add your first product above!</p>';
+    container.innerHTML = `<p>${t('noProducts')}</p>`;
     return;
   }
   
@@ -294,12 +692,12 @@ async function loadDistributorProducts() {
       <h4>${product.product_name}</h4>
       ${product.product_name_sw ? `<p><small>${product.product_name_sw}</small></p>` : ''}
       <div class="price">${formatMoney(product.price)} TZS</div>
-      <div class="stock">Stock: ${product.stock_quantity} units</div>
-      <div class="stock">Min Order: ${product.min_order_quantity}</div>
+      <div class="stock">${t('quantity')}: ${product.stock_quantity}</div>
+      <div class="stock">${t('minOrderQty')}: ${product.min_order_quantity}</div>
       <div class="actions">
-        <button onclick="window.editProduct(${product.id})">✏️ Edit</button>
-        <button onclick="window.updateStock(${product.id})">📦 Update Stock</button>
-        <button onclick="window.deleteProduct(${product.id})" class="danger">🗑️ Delete</button>
+        <button onclick="window.editProduct(${product.id})">✏️ ${t('products')}</button>
+        <button onclick="window.updateStock(${product.id})">📦 ${t('quantity')}</button>
+        <button onclick="window.deleteProduct(${product.id})" class="danger">🗑️ ${t('products')}</button>
       </div>
     `;
     container.appendChild(card);
@@ -314,7 +712,8 @@ async function loadDistributorOrders() {
     .eq('distributor_id', currentDistributorId);
   
   if (!products || products.length === 0) {
-    document.getElementById('distributorOrders').innerHTML = '<p>No orders yet</p>';
+    const container = document.getElementById('distributorOrders');
+    if (container) container.innerHTML = `<p>${t('noOrders')}</p>`;
     return;
   }
   
@@ -322,7 +721,7 @@ async function loadDistributorOrders() {
   
   const { data: orderItems, error } = await supabase
     .from('order_items')
-    .select('*, orders(*), products(*)')
+    .select('*, orders(*, retailers(store_name)), products(*)')
     .in('product_id', productIds)
     .order('order_id', { ascending: false });
   
@@ -344,8 +743,10 @@ async function loadDistributorOrders() {
   });
   
   const container = document.getElementById('distributorOrders');
+  if (!container) return;
+  
   if (ordersMap.size === 0) {
-    container.innerHTML = '<p>No orders yet</p>';
+    container.innerHTML = `<p>${t('noOrders')}</p>`;
     return;
   }
   
@@ -353,22 +754,24 @@ async function loadDistributorOrders() {
   for (const [orderId, data] of ordersMap) {
     const order = data.order;
     const items = data.items;
+    const retailerName = order.retailers?.store_name || 'Retailer';
     
     const card = document.createElement('div');
     card.className = 'order-card';
     card.innerHTML = `
       <div class="order-header">
-        <strong>Order #${order.order_number}</strong>
-        <span class="status status-${order.status}">${order.status}</span>
+        <strong>${t('orderNumber')}${order.order_number}</strong>
+        <span class="status status-${order.status}">${t(order.status)}</span>
       </div>
-      <div>Items: ${items.length}</div>
-      <div>Total: ${formatMoney(order.total_amount)} TZS</div>
-      <div>Date: ${new Date(order.order_date).toLocaleDateString()}</div>
+      <div>${t('from')}: ${retailerName}</div>
+      <div>${t('products')}: ${items.length}</div>
+      <div>${t('total')}: ${formatMoney(order.total_amount)} TZS</div>
+      <div>${new Date(order.order_date).toLocaleDateString()}</div>
       <div class="actions" style="margin-top: 12px;">
-        <button onclick="window.updateOrderStatus(${order.id}, 'confirmed')">✅ Confirm</button>
-        <button onclick="window.updateOrderStatus(${order.id}, 'processing')">⚙️ Process</button>
-        <button onclick="window.updateOrderStatus(${order.id}, 'shipped')">🚚 Ship</button>
-        <button onclick="window.updateOrderStatus(${order.id}, 'delivered')">📦 Delivered</button>
+        <button onclick="window.updateOrderStatus(${order.id}, 'confirmed')">✅ ${t('confirmed')}</button>
+        <button onclick="window.updateOrderStatus(${order.id}, 'processing')">⚙️ ${t('processing')}</button>
+        <button onclick="window.updateOrderStatus(${order.id}, 'shipped')">🚚 ${t('shipped')}</button>
+        <button onclick="window.updateOrderStatus(${order.id}, 'delivered')">📦 ${t('delivered')}</button>
       </div>
     `;
     container.appendChild(card);
@@ -380,9 +783,11 @@ async function loadStockAlerts() {
     .from('products')
     .select('*')
     .eq('distributor_id', currentDistributorId)
-    .lt('stock_quantity', supabase.rpc('get_reorder_level'));
+    .lt('stock_quantity', supabase.rpc ? 5 : 10); // Simple check
   
   const container = document.getElementById('stockAlerts');
+  if (!container) return;
+  
   if (!products || products.length === 0) {
     container.innerHTML = '<p>✅ No stock alerts</p>';
     return;
@@ -460,7 +865,7 @@ async function loadAvailableProducts() {
   if (!container) return;
   
   if (!products || products.length === 0) {
-    container.innerHTML = '<p>No products available from distributors yet.</p>';
+    container.innerHTML = `<p>${t('noProducts')}</p>`;
     return;
   }
   
@@ -473,10 +878,10 @@ async function loadAvailableProducts() {
       ${product.product_name_sw ? `<p><small>${product.product_name_sw}</small></p>` : ''}
       <div class="price">${formatMoney(product.price)} TZS</div>
       <div class="stock">In Stock: ${product.stock_quantity}</div>
-      <div>Min Order: ${product.min_order_quantity}</div>
+      <div>${t('minOrderQty')}: ${product.min_order_quantity}</div>
       <div class="actions">
         <input type="number" id="qty_${product.id}" value="${product.min_order_quantity}" min="${product.min_order_quantity}" max="${product.stock_quantity}">
-        <button onclick="window.addToCart(${product.id})">🛒 Add to Cart</button>
+        <button onclick="window.addToCart(${product.id})">🛒 ${t('addToCart')}</button>
       </div>
     `;
     container.appendChild(card);
@@ -490,9 +895,11 @@ function setupSearchAndFilter(products) {
   const searchInput = document.getElementById('searchProducts');
   const categoryFilter = document.getElementById('categoryFilter');
   
+  if (!searchInput || !categoryFilter) return;
+  
   // Populate categories
   const categories = [...new Set(products.map(p => p.category).filter(c => c))];
-  categoryFilter.innerHTML = '<option value="all">All Categories</option>';
+  categoryFilter.innerHTML = `<option value="all">${t('allCategories')}</option>`;
   categories.forEach(cat => {
     categoryFilter.innerHTML += `<option value="${cat}">${cat}</option>`;
   });
@@ -504,6 +911,7 @@ function setupSearchAndFilter(products) {
     const cards = document.querySelectorAll('#retailerProducts .product-card');
     cards.forEach((card, index) => {
       const product = products[index];
+      if (!product) return;
       const matchesSearch = product.product_name.toLowerCase().includes(searchTerm) ||
                            (product.product_name_sw || '').toLowerCase().includes(searchTerm);
       const matchesCategory = category === 'all' || product.category === category;
@@ -530,8 +938,10 @@ async function loadCart() {
   updateCartCount();
   
   const container = document.getElementById('cartItems');
+  if (!container) return;
+  
   if (!cartItems || cartItems.length === 0) {
-    container.innerHTML = '<p>Your cart is empty</p>';
+    container.innerHTML = `<p>${t('emptyCart')}</p>`;
     document.getElementById('cartTotal').innerText = '0';
     return;
   }
@@ -561,11 +971,14 @@ async function loadCart() {
   document.getElementById('cartTotal').innerText = formatMoney(total);
   
   // Check minimum order
-  const minOrderAmount = 50000; // TZS 50,000 minimum for demo
-  if (total < minOrderAmount) {
-    document.getElementById('minOrderWarning').innerHTML = `⚠️ Minimum order is ${formatMoney(minOrderAmount)} TZS`;
-  } else {
-    document.getElementById('minOrderWarning').innerHTML = '✅ Minimum order met';
+  const minOrderAmount = 50000;
+  const warningEl = document.getElementById('minOrderWarning');
+  if (warningEl) {
+    if (total < minOrderAmount) {
+      warningEl.innerHTML = `⚠️ Minimum order is ${formatMoney(minOrderAmount)} TZS`;
+    } else {
+      warningEl.innerHTML = `✅ ${t('minOrderWarning')}`;
+    }
   }
 }
 
@@ -582,8 +995,10 @@ async function loadRetailerOrders() {
   }
   
   const container = document.getElementById('retailerOrders');
+  if (!container) return;
+  
   if (!orders || orders.length === 0) {
-    container.innerHTML = '<p>No orders yet. Start shopping!</p>';
+    container.innerHTML = `<p>${t('noOrders')}</p>`;
     return;
   }
   
@@ -594,12 +1009,12 @@ async function loadRetailerOrders() {
     card.onclick = () => showOrderStatus(order);
     card.innerHTML = `
       <div class="order-header">
-        <strong>Order #${order.order_number}</strong>
-        <span class="status status-${order.status}">${order.status}</span>
+        <strong>${t('orderNumber')}${order.order_number}</strong>
+        <span class="status status-${order.status}">${t(order.status)}</span>
       </div>
-      <div>Items: ${order.order_items.length}</div>
-      <div>Total: ${formatMoney(order.total_amount)} TZS</div>
-      <div>Date: ${new Date(order.order_date).toLocaleDateString()}</div>
+      <div>${t('products')}: ${order.order_items.length}</div>
+      <div>${t('total')}: ${formatMoney(order.total_amount)} TZS</div>
+      <div>${new Date(order.order_date).toLocaleDateString()}</div>
       <div>Delivery: ${order.delivery_status || 'pending'}</div>
     `;
     container.appendChild(card);
@@ -664,16 +1079,16 @@ window.removeFromCart = async (cartId) => {
 
 window.checkout = async () => {
   if (!cart || cart.length === 0) {
-    alert('Your cart is empty');
+    alert(t('emptyCart'));
     return;
   }
   
   const totalAmount = cart.reduce((sum, item) => sum + (item.products.price * item.quantity), 0);
-  const deliveryAddress = document.getElementById('deliveryAddress').value;
-  const paymentMethod = document.getElementById('paymentMethod').value;
+  const deliveryAddress = document.getElementById('deliveryAddress')?.value;
+  const paymentMethod = document.getElementById('paymentMethod')?.value;
   
   if (!deliveryAddress) {
-    alert('Please enter delivery address');
+    alert(t('deliveryAddress'));
     return;
   }
   
@@ -734,7 +1149,7 @@ window.checkout = async () => {
   }
   
   showLoading(false);
-  alert(`Order placed successfully! Order #${orderNumber}`);
+  alert(`${t('orderPlaced')} ${t('orderNumber')}${orderNumber}`);
   closeModal('cartModal');
   await loadCart();
   await loadAvailableProducts();
@@ -744,48 +1159,50 @@ window.checkout = async () => {
 // ============================================
 // Distributor Product Management
 // ============================================
-document.getElementById('addProductBtn')?.addEventListener('click', async () => {
-  const name = document.getElementById('productName').value;
-  const nameSw = document.getElementById('productNameSw').value;
-  const price = parseFloat(document.getElementById('productPrice').value);
-  const stock = parseInt(document.getElementById('productStock').value);
-  const minOrderQty = parseInt(document.getElementById('minOrderQty').value);
-  const category = document.getElementById('productCategory').value;
-  
-  if (!name || !price) {
-    alert('Product name and price are required');
-    return;
-  }
-  
-  showLoading(true);
-  
-  const { error } = await supabase
-    .from('products')
-    .insert([{
-      distributor_id: currentDistributorId,
-      product_name: name,
-      product_name_sw: nameSw,
-      price: price,
-      stock_quantity: stock || 0,
-      min_order_quantity: minOrderQty || 1,
-      category: category || 'General'
-    }]);
-  
-  showLoading(false);
-  
-  if (error) {
-    alert('Error: ' + error.message);
-  } else {
-    alert('Product added!');
-    // Clear form
-    document.getElementById('productName').value = '';
-    document.getElementById('productNameSw').value = '';
-    document.getElementById('productPrice').value = '';
-    document.getElementById('productStock').value = '';
-    document.getElementById('productCategory').value = '';
-    await loadDistributorProducts();
-  }
-});
+const addProductBtn = document.getElementById('addProductBtn');
+if (addProductBtn) {
+  addProductBtn.addEventListener('click', async () => {
+    const name = document.getElementById('productName')?.value;
+    const nameSw = document.getElementById('productNameSw')?.value;
+    const price = parseFloat(document.getElementById('productPrice')?.value);
+    const stock = parseInt(document.getElementById('productStock')?.value);
+    const minOrderQty = parseInt(document.getElementById('minOrderQty')?.value);
+    const category = document.getElementById('productCategory')?.value;
+    
+    if (!name || !price) {
+      alert('Product name and price are required');
+      return;
+    }
+    
+    showLoading(true);
+    
+    const { error } = await supabase
+      .from('products')
+      .insert([{
+        distributor_id: currentDistributorId,
+        product_name: name,
+        product_name_sw: nameSw,
+        price: price,
+        stock_quantity: stock || 0,
+        min_order_quantity: minOrderQty || 1,
+        category: category || 'General'
+      }]);
+    
+    showLoading(false);
+    
+    if (error) {
+      alert('Error: ' + error.message);
+    } else {
+      alert('Product added!');
+      if (document.getElementById('productName')) document.getElementById('productName').value = '';
+      if (document.getElementById('productNameSw')) document.getElementById('productNameSw').value = '';
+      if (document.getElementById('productPrice')) document.getElementById('productPrice').value = '';
+      if (document.getElementById('productStock')) document.getElementById('productStock').value = '';
+      if (document.getElementById('productCategory')) document.getElementById('productCategory').value = '';
+      await loadDistributorProducts();
+    }
+  });
+}
 
 window.editProduct = async (productId) => {
   const newPrice = prompt('Enter new price (TZS):');
@@ -865,6 +1282,9 @@ window.updateOrderStatus = async (orderId, status) => {
         status: status,
         notes: `Order status updated to ${status}`
       }]);
+    
+    // Show confirmation
+    showNotification(`Order Updated`, `Status changed to ${status}`, 'info');
   }
 };
 
@@ -879,10 +1299,12 @@ function formatMoney(amount) {
 }
 
 function showLoading(show) {
-  if (show) {
-    loading.classList.remove('hidden');
-  } else {
-    loading.classList.add('hidden');
+  if (loading) {
+    if (show) {
+      loading.classList.remove('hidden');
+    } else {
+      loading.classList.add('hidden');
+    }
   }
 }
 
@@ -896,14 +1318,16 @@ function showOrderStatus(order) {
   const modal = document.getElementById('orderStatusModal');
   const content = document.getElementById('orderStatusContent');
   
+  if (!modal || !content) return;
+  
   content.innerHTML = `
     <div style="padding: 16px;">
-      <p><strong>Order #${order.order_number}</strong></p>
-      <p>Status: <span class="status status-${order.status}">${order.status}</span></p>
-      <p>Total: ${formatMoney(order.total_amount)} TZS</p>
+      <p><strong>${t('orderNumber')}${order.order_number}</strong></p>
+      <p>${t('orderStatus')}: <span class="status status-${order.status}">${t(order.status)}</span></p>
+      <p>${t('total')}: ${formatMoney(order.total_amount)} TZS</p>
       <p>Payment: ${order.payment_method || 'pending'}</p>
       <p>Delivery: ${order.delivery_status || 'pending'}</p>
-      <p>Date: ${new Date(order.order_date).toLocaleString()}</p>
+      <p>${new Date(order.order_date).toLocaleString()}</p>
       ${order.estimated_delivery ? `<p>Est. Delivery: ${new Date(order.estimated_delivery).toLocaleDateString()}</p>` : ''}
     </div>
   `;
@@ -914,12 +1338,20 @@ function showOrderStatus(order) {
 // ============================================
 // Modal Functions
 // ============================================
-document.getElementById('showCartBtn')?.addEventListener('click', () => {
-  document.getElementById('cartModal').classList.remove('hidden');
-});
+const showCartBtn = document.getElementById('showCartBtn');
+if (showCartBtn) {
+  showCartBtn.addEventListener('click', () => {
+    const cartModal = document.getElementById('cartModal');
+    if (cartModal) cartModal.classList.remove('hidden');
+  });
+}
 
-document.getElementById('checkoutBtn')?.addEventListener('click', window.checkout);
+const checkoutBtn = document.getElementById('checkoutBtn');
+if (checkoutBtn) {
+  checkoutBtn.addEventListener('click', window.checkout);
+}
 
+// Close modals
 document.querySelectorAll('.close-modal, .close-status, .close-reports').forEach(btn => {
   btn?.addEventListener('click', () => {
     document.querySelectorAll('.modal').forEach(modal => {
@@ -927,6 +1359,11 @@ document.querySelectorAll('.close-modal, .close-status, .close-reports').forEach
     });
   });
 });
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.add('hidden');
+}
 
 // ============================================
 // Tab Functions
@@ -936,14 +1373,19 @@ function setupDistributorTabs() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const tabId = tab.dataset.tab;
-      // Update active tab
       tabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      // Show content
       document.querySelectorAll('#distributorDashboard .tab-content').forEach(content => {
         content.classList.add('hidden');
       });
-      document.getElementById(tabId).classList.remove('hidden');
+      const activeTab = document.getElementById(tabId);
+      if (activeTab) activeTab.classList.remove('hidden');
+      
+      // Clear notification badge when orders tab is clicked
+      if (tabId === 'ordersTab') {
+        const badge = tab.querySelector('.notification-badge');
+        if (badge) badge.remove();
+      }
     });
   });
 }
@@ -958,7 +1400,8 @@ function setupRetailerTabs() {
       document.querySelectorAll('#retailerDashboard .tab-content').forEach(content => {
         content.classList.add('hidden');
       });
-      document.getElementById(tabId).classList.remove('hidden');
+      const activeTab = document.getElementById(tabId);
+      if (activeTab) activeTab.classList.remove('hidden');
     });
   });
 }
@@ -966,13 +1409,115 @@ function setupRetailerTabs() {
 // ============================================
 // Logout
 // ============================================
-document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-  await supabase.auth.signOut();
-});
+const logoutBtn = document.getElementById('logoutBtn');
+const logoutBtn2 = document.getElementById('logoutBtn2');
 
-document.getElementById('logoutBtn2')?.addEventListener('click', async () => {
+async function handleLogout() {
   await supabase.auth.signOut();
-});
+}
+
+if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+if (logoutBtn2) logoutBtn2.addEventListener('click', handleLogout);
+
+// ============================================
+// Reports Modal (Basic)
+// ============================================
+const showReportsBtn = document.getElementById('showReportsBtn');
+if (showReportsBtn) {
+  showReportsBtn.addEventListener('click', async () => {
+    const modal = document.getElementById('reportsModal');
+    if (!modal) return;
+    
+    // Load basic report data
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('distributor_id', currentDistributorId);
+    
+    const totalSales = orders?.reduce((sum, o) => sum + o.total_amount, 0) || 0;
+    const totalOrders = orders?.length || 0;
+    
+    const reportContent = document.getElementById('reportContent');
+    if (reportContent) {
+      reportContent.innerHTML = `
+        <div style="padding: 16px;">
+          <p><strong>Total Orders:</strong> ${totalOrders}</p>
+          <p><strong>Total Sales:</strong> ${formatMoney(totalSales)} TZS</p>
+          <p><strong>Average Order:</strong> ${formatMoney(totalOrders ? totalSales / totalOrders : 0)} TZS</p>
+        </div>
+      `;
+    }
+    
+    modal.classList.remove('hidden');
+  });
+}
+
+// Daily/Weekly/Monthly report buttons
+const dailyReportBtn = document.getElementById('dailyReportBtn');
+const weeklyReportBtn = document.getElementById('weeklyReportBtn');
+const monthlyReportBtn = document.getElementById('monthlyReportBtn');
+
+if (dailyReportBtn) {
+  dailyReportBtn.addEventListener('click', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('distributor_id', currentDistributorId)
+      .gte('created_at', today);
+    
+    const total = orders?.reduce((sum, o) => sum + o.total_amount, 0) || 0;
+    const reportContent = document.getElementById('reportContent');
+    if (reportContent) {
+      reportContent.innerHTML = `<p>Daily Sales: ${formatMoney(total)} TZS</p>`;
+    }
+  });
+}
+
+if (weeklyReportBtn) {
+  weeklyReportBtn.addEventListener('click', async () => {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('distributor_id', currentDistributorId)
+      .gte('created_at', weekAgo.toISOString());
+    
+    const total = orders?.reduce((sum, o) => sum + o.total_amount, 0) || 0;
+    const reportContent = document.getElementById('reportContent');
+    if (reportContent) {
+      reportContent.innerHTML = `<p>Weekly Sales: ${formatMoney(total)} TZS</p>`;
+    }
+  });
+}
+
+if (monthlyReportBtn) {
+  monthlyReportBtn.addEventListener('click', async () => {
+    const monthAgo = new Date();
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('distributor_id', currentDistributorId)
+      .gte('created_at', monthAgo.toISOString());
+    
+    const total = orders?.reduce((sum, o) => sum + o.total_amount, 0) || 0;
+    const reportContent = document.getElementById('reportContent');
+    if (reportContent) {
+      reportContent.innerHTML = `<p>Monthly Sales: ${formatMoney(total)} TZS</p>`;
+    }
+  });
+}
+
+// Close reports modal
+const closeReportsBtn = document.querySelector('.close-reports');
+if (closeReportsBtn) {
+  closeReportsBtn.addEventListener('click', () => {
+    const modal = document.getElementById('reportsModal');
+    if (modal) modal.classList.add('hidden');
+  });
+}
 
 // ============================================
 // Initialize
