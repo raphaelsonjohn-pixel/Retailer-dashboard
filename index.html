@@ -2,43 +2,187 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Retailer Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>FMCG Platform - Order FMCG Products</title>
   <link rel="stylesheet" href="style.css">
   <script type="module" src="supabase.js"></script>
   <script type="module" src="app.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>Retailer Login</h1>
+  <!-- Loading Spinner -->
+  <div id="loading" class="loading hidden">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
 
-    <!-- Name -->
+  <!-- Language Selector -->
+  <div class="language-selector" id="languageSelector">
+    <button onclick="window.switchLanguage('en')">🇬🇧 English</button>
+    <button onclick="window.switchLanguage('sw')">🇹🇿 Kiswahili</button>
+  </div>
+
+  <!-- Login Section -->
+  <div id="loginSection" class="container">
+    <h1 id="loginTitle">Karibu - FMCG Platform</h1>
+    
     <div class="input-group">
       <input type="text" id="name" placeholder=" " required />
-      <label for="name">Name</label>
+      <label id="nameLabel">Jina / Name</label>
     </div>
 
-    <!-- Email -->
     <div class="input-group">
       <input type="email" id="email" placeholder=" " required />
-      <label for="email">Email</label>
+      <label id="emailLabel">Barua pepe / Email</label>
     </div>
 
-    <!-- Location -->
+    <div class="input-group">
+      <input type="tel" id="phone" placeholder=" " />
+      <label id="phoneLabel">Nambari ya simu / Phone (optional)</label>
+    </div>
+
     <div class="input-group">
       <input type="text" id="location" placeholder=" " />
-      <label for="location">Location</label>
+      <label id="locationLabel">Eneo / Location</label>
+    </div>
+
+    <div class="role-selector">
+      <label id="roleLabel">Mimi ni / I am a:</label>
+      <div class="role-buttons">
+        <button type="button" id="roleRetailer" class="role-btn active">🏪 Muuzaji / Retailer</button>
+        <button type="button" id="roleDistributor" class="role-btn">📦 Msambazaji / Distributor</button>
+      </div>
     </div>
 
     <div class="button-group">
-      <button id="sendOtp">Send Login Link</button>
-      <button id="loadProducts">Load Dashboard</button>
+      <button id="sendOtp" class="primary-btn">📧 Tuma kiungo / Send Login Link</button>
+    </div>
+  </div>
+
+  <!-- Distributor Dashboard -->
+  <div id="distributorDashboard" class="dashboard hidden">
+    <div class="dashboard-header">
+      <h2 id="distributorTitle">📦 Dashboard ya Msambazaji</h2>
+      <div class="header-buttons">
+        <button id="showReportsBtn" class="icon-btn">📊</button>
+        <button id="logoutBtn" class="icon-btn">🚪</button>
+      </div>
     </div>
 
-    <div class="dashboard" id="dashboard">
-      <h2>Products</h2>
-      <ul id="productList"></ul>
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="productsTab">📦 Bidhaa / Products</button>
+      <button class="tab-btn" data-tab="ordersTab">🛒 Maagizo / Orders</button>
+      <button class="tab-btn" data-tab="alertsTab">⚠️ Tahadhari / Alerts</button>
+    </div>
+
+    <!-- Products Tab -->
+    <div id="productsTab" class="tab-content active">
+      <div class="add-product-form">
+        <h3 id="addProductTitle">➕ Ongeza Bidhaa / Add Product</h3>
+        <input type="text" id="productName" placeholder="Product Name (English)" />
+        <input type="text" id="productNameSw" placeholder="Jina la Bidhaa (Kiswahili)" />
+        <input type="number" id="productPrice" placeholder="Bei / Price (TZS)" />
+        <input type="number" id="productStock" placeholder="Kiasi / Quantity" />
+        <input type="number" id="minOrderQty" placeholder="Minimum Order Quantity" value="1" />
+        <input type="text" id="productCategory" placeholder="Aina / Category" />
+        <button id="addProductBtn" class="primary-btn">➕ Ongeza / Add</button>
+      </div>
+      
+      <div id="distributorProducts" class="products-grid"></div>
+    </div>
+
+    <!-- Orders Tab -->
+    <div id="ordersTab" class="tab-content hidden">
+      <div id="distributorOrders" class="orders-list"></div>
+    </div>
+
+    <!-- Alerts Tab -->
+    <div id="alertsTab" class="tab-content hidden">
+      <div id="stockAlerts" class="alerts-list"></div>
+    </div>
+  </div>
+
+  <!-- Retailer Dashboard -->
+  <div id="retailerDashboard" class="dashboard hidden">
+    <div class="dashboard-header">
+      <h2 id="retailerTitle">🏪 Dashboard ya Muuzaji</h2>
+      <div class="header-buttons">
+        <button id="showCartBtn" class="icon-btn">🛒 <span id="cartCount" class="badge">0</span></button>
+        <button id="logoutBtn2" class="icon-btn">🚪</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="browseTab">🛍️ Bidhaa / Products</button>
+      <button class="tab-btn" data-tab="retailerOrdersTab">📦 Maagizo yangu / My Orders</button>
+    </div>
+
+    <!-- Browse Products Tab -->
+    <div id="browseTab" class="tab-content active">
+      <div class="search-bar">
+        <input type="text" id="searchProducts" placeholder="🔍 Tafuta bidhaa / Search products..." />
+        <select id="categoryFilter">
+          <option value="all">Aina zote / All Categories</option>
+        </select>
+      </div>
+      <div id="retailerProducts" class="products-grid"></div>
+    </div>
+
+    <!-- My Orders Tab -->
+    <div id="retailerOrdersTab" class="tab-content hidden">
+      <div id="retailerOrders" class="orders-list"></div>
+    </div>
+  </div>
+
+  <!-- Cart Modal -->
+  <div id="cartModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="cartTitle">🛒 Rukwama / Cart</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div id="cartItems" class="cart-items"></div>
+      <div class="cart-summary">
+        <p><strong id="totalLabel">Jumla / Total:</strong> <span id="cartTotal">0</span> TZS</p>
+        <p><strong id="minOrderLabel">Kiwango cha chini / Min Order:</strong> <span id="minOrderWarning"></span></p>
+        <textarea id="deliveryAddress" placeholder="Anwani ya utoaji / Delivery address..."></textarea>
+        <select id="paymentMethod">
+          <option value="cash">💵 Cash / Pesa taslimu</option>
+          <option value="card">💳 Card / Kadi</option>
+          <option value="mobile_money">📱 Mobile Money / M-Pesa, Tigo Pesa</option>
+        </select>
+        <button id="checkoutBtn" class="primary-btn">✅ Weka Agizo / Place Order</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Status Modal -->
+  <div id="orderStatusModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📦 Hali ya Agizo / Order Status</h3>
+        <button class="close-status">&times;</button>
+      </div>
+      <div id="orderStatusContent"></div>
+    </div>
+  </div>
+
+  <!-- Reports Modal -->
+  <div id="reportsModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📊 Ripoti / Reports</h3>
+        <button class="close-reports">&times;</button>
+      </div>
+      <div class="report-buttons">
+        <button id="dailyReportBtn">📅 Leo / Daily</button>
+        <button id="weeklyReportBtn">📆 Wiki hii / Weekly</button>
+        <button id="monthlyReportBtn">📆 Mwezi huu / Monthly</button>
+      </div>
+      <div id="reportContent"></div>
     </div>
   </div>
 </body>
+</html>
 </html>
