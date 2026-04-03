@@ -192,11 +192,10 @@ if (sendOtpBtn) {
     const email = document.getElementById('email').value.trim()
     if (!email) return alert('Enter your email')
 
-    showLoading(true)
-    
-    const redirectUrl = window.location.origin + window.location.pathname
-    console.log('Sending magic link to:', email)
-    console.log('Redirect URL:', redirectUrl)
+    // Use hardcoded URL instead of dynamic
+const redirectUrl = 'https://retailer-dashboard-gilt.vercel.app'
+console.log('Sending magic link to:', email)
+console.log('Redirect URL:', redirectUrl)
     
     const { error } = await supabase.auth.signInWithOtp({
       email: email,
