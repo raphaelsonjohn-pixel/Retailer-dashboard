@@ -4,7 +4,7 @@ import { supabase } from './supabase.js'
 // ============================================
 // FIX: Hardcoded App URL (Change this if your URL changes)
 // ============================================
-const APP_URL = 'https://retailer-dashboard-gilt.vercel.app'
+const APP_URL = 'https://retailer-dashboard-gilt.vercel.app/'
 
 // ============================================
 // FIX: Handle magic link IMMEDIATELY (runs before anything else)
