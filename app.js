@@ -1,47 +1,33 @@
-// app.js - BomaWave FMCG Platform
-// Harvard CS50 Style - Clean, Modular, Well-Documented
-// Author: BomaWave Engineering
-// Version: 2.0 (Google Login Integration)
+/**
+ * BomaWave FMCG Platform - Main Application
+ * Harvard CS50 Style - Clean, Modular, Well-Documented
+ * Version: 2.0 (Fixed Magic Link + All Features)
+ * 
+ * @author BomaWave Engineering
+ * @version 2.0.0
+ */
 
 import { supabase } from './supabase.js'
 
 // ============================================
-// GLOBAL STATE MANAGEMENT
+// CONSTANTS & CONFIGURATION
 // ============================================
 
-const State = {
-  language: null,
-  user: null,
-  role: null,
-  retailerId: null,
-  distributorId: null,
-  cart: [],
-  currentView: null
-}
+/** @constant {string} APP_URL - The base URL of the application */
+const APP_URL = window.location.origin
 
-// ============================================
-// TRANSLATIONS DATABASE
-// ============================================
-
-const I18n = {
+/** @constant {Object} I18N - Translations for English and Swahili */
+const I18N = {
   en: {
     loading: 'Loading...',
     loginTitle: 'BomaWave',
     loginSubtitle: 'Sign in to continue',
-    googleBtn: 'Continue with Google',
-    magicLinkBtn: 'Send Magic Link',
-    nameLabel: 'Full Name',
-    emailLabel: 'Email Address',
-    phoneLabel: 'Phone Number',
-    locationLabel: 'Location',
-    roleLabel: 'I am a:',
-    retailer: 'Retailer',
-    distributor: 'Distributor',
-    pendingApproval: 'Your account is pending admin approval',
-    noProducts: 'No products found',
-    noOrders: 'No orders yet',
-    emptyCart: 'Your cart is empty',
-    orderPlaced: 'Order placed successfully',
+    sendLink: 'Send Login Link',
+    pendingApproval: 'Your account is pending admin approval. You will be notified once approved.',
+    noProducts: 'No products found.',
+    noOrders: 'No orders yet.',
+    emptyCart: 'Your cart is empty.',
+    orderPlaced: 'Order placed successfully!',
     orderNumber: 'Order #',
     total: 'Total',
     checkout: 'Place Order',
@@ -71,32 +57,22 @@ const I18n = {
     approve: 'Approve',
     reject: 'Reject',
     pendingApprovals: 'Pending Approvals',
-    companyName: 'Company Name',
     products: 'Products',
     orders: 'Orders',
     myOrders: 'My Orders',
     cart: 'Cart',
-    logout: 'Logout',
-    reports: 'Reports'
+    logout: 'Logout'
   },
   sw: {
     loading: 'Inapakia...',
     loginTitle: 'BomaWave',
     loginSubtitle: 'Ingia kuendelea',
-    googleBtn: 'Endelea na Google',
-    magicLinkBtn: 'Tuma Kiungo',
-    nameLabel: 'Jina Kamili',
-    emailLabel: 'Barua Pepe',
-    phoneLabel: 'Nambari ya Simu',
-    locationLabel: 'Eneo',
-    roleLabel: 'Mimi ni:',
-    retailer: 'Muuzaji',
-    distributor: 'Msambazaji',
-    pendingApproval: 'Akaunti yako inasubiri idhini',
-    noProducts: 'Hakuna bidhaa',
-    noOrders: 'Hakuna maagizo',
-    emptyCart: 'Rukwama yako ni tupu',
-    orderPlaced: 'Agizo limewekwa',
+    sendLink: 'Tuma Kiungo cha Kuingia',
+    pendingApproval: 'Akaunti yako inasubiri idhini ya msimamizi. Utajulishwa baada ya kuidhinishwa.',
+    noProducts: 'Hakuna bidhaa zilizopatikana.',
+    noOrders: 'Hakuna maagizo bado.',
+    emptyCart: 'Rukwama yako ni tupu.',
+    orderPlaced: 'Agizo limewekwa kikamilifu!',
     orderNumber: 'Agizo #',
     total: 'Jumla',
     checkout: 'Weka Agizo',
@@ -108,13 +84,13 @@ const I18n = {
     paymentMethod: 'Njia ya Malipo',
     cash: 'Pesa Taslimu',
     card: 'Kadi',
-    mobileMoney: 'M-Pesa',
+    mobileMoney: 'M-Pesa / Tigo Pesa',
     orderStatus: 'Hali ya Agizo',
     pending: 'inasubiri',
     confirmed: 'imethibitishwa',
     shipped: 'imesafirishwa',
     delivered: 'imewasilishwa',
-    lowStockAlert: 'Tahadhari ya Upungufu',
+    lowStockAlert: 'Tahadhari ya Upungufu wa Bidhaa',
     unitsLeft: 'zimebaki',
     restock: 'Jaza tena',
     addProduct: 'Ongeza Bidhaa',
@@ -126,24 +102,46 @@ const I18n = {
     approve: 'Idhinisha',
     reject: 'Kataa',
     pendingApprovals: 'Maombi Yanayosubiri',
-    companyName: 'Jina la Kampuni',
     products: 'Bidhaa',
     orders: 'Maagizo',
     myOrders: 'Maagizo Yangu',
     cart: 'Rukwama',
-    logout: 'Toka',
-    reports: 'Ripoti'
+    logout: 'Toka'
   }
 }
 
-function t(key) {
-  return I18n[State.language]?.[key] || I18n.en[key] || key
+// ============================================
+// GLOBAL STATE
+// ============================================
+
+/** @type {Object} App state */
+const State = {
+  language: null,
+  user: null,
+  role: null,
+  retailerId: null,
+  distributorId: null,
+  cart: []
 }
 
 // ============================================
-// UI UTILITIES
+// UTILITY FUNCTIONS
 // ============================================
 
+/**
+ * Get translated text for current language
+ * @param {string} key - Translation key
+ * @returns {string} Translated text
+ */
+function t(key) {
+  return I18N[State.language]?.[key] || I18N.en[key] || key
+}
+
+/**
+ * Show or hide loading overlay
+ * @param {boolean} show - True to show, false to hide
+ * @param {string} message - Loading message
+ */
 function showLoading(show, message = 'Loading...') {
   const overlay = document.getElementById('loadingOverlay')
   const msgEl = document.getElementById('loadingMessage')
@@ -159,17 +157,29 @@ function showLoading(show, message = 'Loading...') {
   }
 }
 
-function closeModal(modalId) {
+/**
+ * Close a modal by ID
+ * @param {string} modalId - ID of modal element
+ */
+window.closeModal = function(modalId) {
   const modal = document.getElementById(modalId)
   if (modal) modal.classList.add('hidden')
 }
 
-window.closeModal = closeModal
-
+/**
+ * Format number as Tanzanian Shillings
+ * @param {number} amount - Amount to format
+ * @returns {string} Formatted amount
+ */
 function formatMoney(amount) {
   return new Intl.NumberFormat('en-TZ').format(amount)
 }
 
+/**
+ * Get status color class for order status
+ * @param {string} status - Order status
+ * @returns {string} CSS class
+ */
 function getStatusColor(status) {
   const colors = {
     pending: 'bg-yellow-100 text-yellow-800',
@@ -182,10 +192,14 @@ function getStatusColor(status) {
 }
 
 // ============================================
-// LANGUAGE SELECTION
+// LANGUAGE & UI
 // ============================================
 
-window.selectLanguage = (lang) => {
+/**
+ * Select language and show login screen
+ * @param {string} lang - 'en' or 'sw'
+ */
+window.selectLanguage = function(lang) {
   State.language = lang
   const languageScreen = document.getElementById('languageScreen')
   const loginSection = document.getElementById('loginSection')
@@ -196,29 +210,15 @@ window.selectLanguage = (lang) => {
   updateUIText()
 }
 
+/**
+ * Update UI text based on selected language
+ */
 function updateUIText() {
-  const elements = ['loginTitle', 'loginSubtitle', 'googleBtnText', 'magicLinkBtn']
+  const elements = ['loginTitle', 'loginSubtitle', 'sendOtpBtn']
   elements.forEach(id => {
     const el = document.getElementById(id)
-    if (el) el.textContent = t(id === 'googleBtnText' ? 'googleBtn' : id === 'magicLinkBtn' ? 'magicLinkBtn' : id)
+    if (el) el.textContent = t(id === 'sendOtpBtn' ? 'sendLink' : id)
   })
-  
-  const nameLabel = document.getElementById('name')?.previousElementSibling
-  const emailLabel = document.getElementById('email')?.previousElementSibling
-  const phoneLabel = document.getElementById('phone')?.previousElementSibling
-  const locationLabel = document.getElementById('location')?.previousElementSibling
-  const roleLabel = document.getElementById('roleLabel')
-  
-  if (nameLabel) nameLabel.textContent = t('nameLabel')
-  if (emailLabel) emailLabel.textContent = t('emailLabel')
-  if (phoneLabel) phoneLabel.textContent = t('phoneLabel')
-  if (locationLabel) locationLabel.textContent = t('locationLabel')
-  if (roleLabel) roleLabel.textContent = t('roleLabel')
-  
-  const retailerBtn = document.getElementById('roleRetailer')
-  const distributorBtn = document.getElementById('roleDistributor')
-  if (retailerBtn) retailerBtn.textContent = t('retailer')
-  if (distributorBtn) distributorBtn.textContent = t('distributor')
 }
 
 // ============================================
@@ -227,61 +227,44 @@ function updateUIText() {
 
 let selectedRole = 'retailer'
 
-const roleRetailer = document.getElementById('roleRetailer')
-const roleDistributor = document.getElementById('roleDistributor')
+const roleRetailerBtn = document.getElementById('roleRetailerBtn')
+const roleDistributorBtn = document.getElementById('roleDistributorBtn')
 
-if (roleRetailer) {
-  roleRetailer.addEventListener('click', () => {
+if (roleRetailerBtn) {
+  roleRetailerBtn.addEventListener('click', () => {
     selectedRole = 'retailer'
-    roleRetailer.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
-    roleDistributor.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
+    roleRetailerBtn.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
+    roleDistributorBtn.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
   })
 }
 
-if (roleDistributor) {
-  roleDistributor.addEventListener('click', () => {
+if (roleDistributorBtn) {
+  roleDistributorBtn.addEventListener('click', () => {
     selectedRole = 'distributor'
-    roleDistributor.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
-    roleRetailer.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
+    roleDistributorBtn.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
+    roleRetailerBtn.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
   })
 }
 
 // ============================================
-// GOOGLE LOGIN (Primary Authentication)
+// MAGIC LINK AUTHENTICATION
 // ============================================
 
-async function signInWithGoogle() {
-  showLoading(true, 'Connecting to Google...')
-  
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin,
-      queryParams: {
-        access_type: 'offline',
-        prompt: 'consent'
-      }
-    }
-  })
-  
-  if (error) {
-    console.error('Google sign in error:', error)
-    showLoading(false)
-    alert('Error signing in with Google: ' + error.message)
-  } else {
-    // Redirect to Google
-    window.location.href = data.url
-  }
-}
-
-// Handle Google OAuth redirect callback
-async function handleGoogleCallback() {
+/**
+ * Handle magic link redirect after user clicks email link
+ */
+async function handleMagicLinkRedirect() {
   const hash = window.location.hash
-  const urlParams = new URLSearchParams(window.location.search)
   
-  // Check if we're returning from Google OAuth
   if (hash && hash.includes('access_token')) {
-    showLoading(true, 'Completing sign in...')
+    console.log('Magic link detected, processing...')
+    showLoading(true, 'Completing login...')
+    
+    // Clear the hash from URL
+    window.history.replaceState({}, document.title, window.location.pathname)
+    
+    // Wait for Supabase to process
+    await new Promise(resolve => setTimeout(resolve, 1500))
     
     const { data, error } = await supabase.auth.getSession()
     
@@ -291,39 +274,39 @@ async function handleGoogleCallback() {
       return
     }
     
-    if (data.session) {
-      console.log('Google sign in successful:', data.session.user.email)
-      await handleUserSignIn(data.session.user)
-      window.history.replaceState({}, document.title, window.location.pathname)
+    if (data?.session) {
+      console.log('Session found for:', data.session.user.email)
+      await loadUserData(data.session.user)
+    } else {
+      console.log('No session found, showing login')
+      showLoading(false)
+      document.getElementById('languageScreen')?.classList.remove('hidden')
     }
-    
-    showLoading(false)
   }
 }
 
-// ============================================
-// MAGIC LINK (Fallback Authentication)
-// ============================================
-
-const magicLinkBtn = document.getElementById('magicLinkBtn')
-if (magicLinkBtn) {
-  magicLinkBtn.addEventListener('click', async () => {
-    const email = document.getElementById('email').value
+/**
+ * Send magic link to user's email
+ */
+const sendOtpBtn = document.getElementById('sendOtpBtn')
+if (sendOtpBtn) {
+  sendOtpBtn.addEventListener('click', async () => {
+    const email = document.getElementById('email').value.trim()
     if (!email) {
       alert('Please enter your email address')
       return
     }
     
-    const name = document.getElementById('name').value
-    const phone = document.getElementById('phone').value
-    const location = document.getElementById('location').value
+    const name = document.getElementById('name').value.trim()
+    const phone = document.getElementById('phone').value.trim()
+    const location = document.getElementById('location').value.trim()
     
-    showLoading(true, 'Sending magic link...')
+    showLoading(true, 'Sending login link...')
     
     const { error } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: APP_URL,
         data: {
           name: name || email.split('@')[0],
           role: selectedRole,
@@ -336,21 +319,62 @@ if (magicLinkBtn) {
     showLoading(false)
     
     if (error) {
+      console.error('Send link error:', error)
       alert('Error: ' + error.message)
     } else {
-      alert(`Magic link sent to ${email}! Check your inbox.`)
+      alert(`✓ Login link sent to ${email}!\n\nCheck your inbox (and spam folder).`)
     }
   })
 }
 
 // ============================================
-// USER SESSION MANAGEMENT
+// SESSION MANAGEMENT
 // ============================================
 
-async function handleUserSignIn(user) {
-  State.user = user
-  console.log('Handling user sign in:', user.email)
+/**
+ * Check for existing session on page load
+ */
+async function checkExistingSession() {
+  const { data: { session } } = await supabase.auth.getSession()
   
+  if (session) {
+    console.log('Existing session found:', session.user.email)
+    await loadUserData(session.user)
+  } else {
+    console.log('No existing session, showing language selection')
+    document.getElementById('languageScreen')?.classList.remove('hidden')
+  }
+}
+
+/**
+ * Listen for auth state changes
+ */
+supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth event:', event)
+  
+  if (event === 'SIGNED_IN' && session) {
+    await loadUserData(session.user)
+  } else if (event === 'SIGNED_OUT') {
+    // Reset state and show login
+    State.user = null
+    State.role = null
+    State.retailerId = null
+    State.distributorId = null
+    State.cart = []
+    window.location.reload()
+  }
+})
+
+// ============================================
+// USER DATA LOADING & DASHBOARD ROUTING
+// ============================================
+
+/**
+ * Load user data and show appropriate dashboard
+ * @param {Object} user - Supabase user object
+ */
+async function loadUserData(user) {
+  State.user = user
   showLoading(true, 'Loading your dashboard...')
   
   // Get or create profile
@@ -367,7 +391,7 @@ async function handleUserSignIn(user) {
       .insert([{
         id: user.id,
         email: user.email,
-        role: metadata.role || selectedRole || 'retailer',
+        role: metadata.role || selectedRole,
         name: metadata.name || user.email.split('@')[0],
         phone: metadata.phone || '',
         location: metadata.location || ''
@@ -386,11 +410,9 @@ async function handleUserSignIn(user) {
     .eq('id', user.id)
     .single()
   
-  // Hide login screens
-  const languageScreen = document.getElementById('languageScreen')
-  const loginSection = document.getElementById('loginSection')
-  if (languageScreen) languageScreen.classList.add('hidden')
-  if (loginSection) loginSection.classList.add('hidden')
+  // Hide login/language screens
+  document.getElementById('loginSection')?.classList.add('hidden')
+  document.getElementById('languageScreen')?.classList.add('hidden')
   
   // Show appropriate dashboard
   if (adminCheck) {
@@ -404,31 +426,14 @@ async function handleUserSignIn(user) {
   showLoading(false)
 }
 
-async function checkExistingSession() {
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  if (session) {
-    console.log('Existing session found:', session.user.email)
-    await handleUserSignIn(session.user)
-  } else {
-    // Show language selection
-    const languageScreen = document.getElementById('languageScreen')
-    if (languageScreen) languageScreen.classList.remove('hidden')
-  }
-}
-
 // ============================================
 // ADMIN DASHBOARD
 // ============================================
 
 async function showAdminDashboard() {
-  const adminDashboard = document.getElementById('adminDashboard')
-  const distributorDashboard = document.getElementById('distributorDashboard')
-  const retailerDashboard = document.getElementById('retailerDashboard')
-  
-  if (adminDashboard) adminDashboard.classList.remove('hidden')
-  if (distributorDashboard) distributorDashboard.classList.add('hidden')
-  if (retailerDashboard) retailerDashboard.classList.add('hidden')
+  document.getElementById('adminDashboard')?.classList.remove('hidden')
+  document.getElementById('distributorDashboard')?.classList.add('hidden')
+  document.getElementById('retailerDashboard')?.classList.add('hidden')
   
   const emailSpan = document.getElementById('adminEmail')
   if (emailSpan && State.user) emailSpan.textContent = State.user.email
@@ -519,13 +524,9 @@ async function loadAdminOrders() {
 // ============================================
 
 async function showDistributorDashboard() {
-  const adminDashboard = document.getElementById('adminDashboard')
-  const distributorDashboard = document.getElementById('distributorDashboard')
-  const retailerDashboard = document.getElementById('retailerDashboard')
-  
-  if (adminDashboard) adminDashboard.classList.add('hidden')
-  if (distributorDashboard) distributorDashboard.classList.remove('hidden')
-  if (retailerDashboard) retailerDashboard.classList.add('hidden')
+  document.getElementById('adminDashboard')?.classList.add('hidden')
+  document.getElementById('distributorDashboard')?.classList.remove('hidden')
+  document.getElementById('retailerDashboard')?.classList.add('hidden')
   
   const emailSpan = document.getElementById('distributorEmail')
   if (emailSpan && State.user) emailSpan.textContent = State.user.email
@@ -557,9 +558,9 @@ async function loadDistributorData() {
   }
   
   if (!distributor.is_approved) {
-    const productsContainer = document.getElementById('distributorProducts')
-    if (productsContainer) {
-      productsContainer.innerHTML = `
+    const container = document.getElementById('distributorProducts')
+    if (container) {
+      container.innerHTML = `
         <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center">
           <div class="text-5xl mb-4">⏳</div>
           <p class="text-yellow-800 text-lg font-medium">${t('pendingApproval')}</p>
@@ -761,18 +762,31 @@ window.restockProduct = async (productId) => {
   }
 }
 
+function setupDistributorTabs() {
+  const tabs = document.querySelectorAll('.distributorTabBtn')
+  const contents = document.querySelectorAll('.distributorTabContent')
+  
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabId = tab.dataset.tab
+      tabs.forEach(t => t.classList.remove('border-green-600', 'text-green-600'))
+      tab.classList.add('border-green-600', 'text-green-600')
+      contents.forEach(c => c.classList.add('hidden'))
+      document.getElementById(tabId)?.classList.remove('hidden')
+    })
+  })
+  
+  if (tabs[0]) tabs[0].classList.add('border-green-600', 'text-green-600')
+}
+
 // ============================================
 // RETAILER DASHBOARD
 // ============================================
 
 async function showRetailerDashboard() {
-  const adminDashboard = document.getElementById('adminDashboard')
-  const distributorDashboard = document.getElementById('distributorDashboard')
-  const retailerDashboard = document.getElementById('retailerDashboard')
-  
-  if (adminDashboard) adminDashboard.classList.add('hidden')
-  if (distributorDashboard) distributorDashboard.classList.add('hidden')
-  if (retailerDashboard) retailerDashboard.classList.remove('hidden')
+  document.getElementById('adminDashboard')?.classList.add('hidden')
+  document.getElementById('distributorDashboard')?.classList.add('hidden')
+  document.getElementById('retailerDashboard')?.classList.remove('hidden')
   
   const emailSpan = document.getElementById('retailerEmail')
   if (emailSpan && State.user) emailSpan.textContent = State.user.email
@@ -1029,7 +1043,7 @@ async function loadRetailerOrders() {
   container.innerHTML = ''
   for (const order of orders) {
     container.innerHTML += `
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" onclick='showOrderStatus(${JSON.stringify(order).replace(/'/g, "\\'")})'>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" onclick='window.showOrderStatus(${JSON.stringify(order).replace(/'/g, "\\'")})'>
         <div class="flex justify-between items-start">
           <div>
             <p class="font-bold text-gray-800">${t('orderNumber')}${order.order_number}</p>
@@ -1043,7 +1057,7 @@ async function loadRetailerOrders() {
   }
 }
 
-function showOrderStatus(order) {
+window.showOrderStatus = function(order) {
   const modal = document.getElementById('orderStatusModal')
   const content = document.getElementById('orderStatusContent')
   if (!modal || !content) return
@@ -1061,34 +1075,9 @@ function showOrderStatus(order) {
   modal.classList.remove('hidden')
 }
 
-// ============================================
-// TAB NAVIGATION
-// ============================================
-
-function setupDistributorTabs() {
-  const tabs = document.querySelectorAll('.tab-distributor')
-  const contents = document.querySelectorAll('.tab-content-distributor')
-  
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const tabId = tab.dataset.tab
-      tabs.forEach(t => t.classList.remove('border-green-600', 'text-green-600'))
-      tab.classList.add('border-green-600', 'text-green-600')
-      contents.forEach(c => c.classList.add('hidden'))
-      const activeTab = document.getElementById(tabId)
-      if (activeTab) activeTab.classList.remove('hidden')
-    })
-  })
-  
-  // Activate first tab
-  if (tabs[0]) {
-    tabs[0].classList.add('border-green-600', 'text-green-600')
-  }
-}
-
 function setupRetailerTabs() {
-  const tabs = document.querySelectorAll('.tab-retailer')
-  const contents = document.querySelectorAll('.tab-content-retailer')
+  const tabs = document.querySelectorAll('.retailerTabBtn')
+  const contents = document.querySelectorAll('.retailerTabContent')
   
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1096,15 +1085,11 @@ function setupRetailerTabs() {
       tabs.forEach(t => t.classList.remove('border-green-600', 'text-green-600'))
       tab.classList.add('border-green-600', 'text-green-600')
       contents.forEach(c => c.classList.add('hidden'))
-      const activeTab = document.getElementById(tabId)
-      if (activeTab) activeTab.classList.remove('hidden')
+      document.getElementById(tabId)?.classList.remove('hidden')
     })
   })
   
-  // Activate first tab
-  if (tabs[0]) {
-    tabs[0].classList.add('border-green-600', 'text-green-600')
-  }
+  if (tabs[0]) tabs[0].classList.add('border-green-600', 'text-green-600')
 }
 
 // ============================================
@@ -1113,7 +1098,6 @@ function setupRetailerTabs() {
 
 async function handleLogout() {
   await supabase.auth.signOut()
-  window.location.reload()
 }
 
 document.getElementById('logoutBtn')?.addEventListener('click', handleLogout)
@@ -1125,10 +1109,10 @@ document.getElementById('showCartBtn')?.addEventListener('click', () => {
   document.getElementById('cartModal')?.classList.remove('hidden')
 })
 
-// Google Sign In button
-document.getElementById('googleSignInBtn')?.addEventListener('click', signInWithGoogle)
+// ============================================
+// MAKE FUNCTIONS GLOBAL FOR HTML
+// ============================================
 
-// Make functions global for HTML onclick
 window.addToCart = addToCart
 window.removeFromCart = removeFromCart
 window.updateStock = updateStock
@@ -1137,35 +1121,21 @@ window.updateOrderStatus = updateOrderStatus
 window.restockProduct = restockProduct
 window.approveDistributor = approveDistributor
 window.rejectDistributor = rejectDistributor
-window.showOrderStatus = showOrderStatus
-
-// ============================================
-// AUTH STATE LISTENER
-// ============================================
-
-supabase.auth.onAuthStateChange(async (event, session) => {
-  console.log('Auth state change:', event)
-  
-  if (event === 'SIGNED_IN' && session) {
-    await handleUserSignIn(session.user)
-  } else if (event === 'SIGNED_OUT') {
-    State.user = null
-    State.role = null
-    State.cart = []
-  }
-})
 
 // ============================================
 // INITIALIZE APPLICATION
 // ============================================
 
+/**
+ * Initialize the application
+ */
 async function init() {
-  console.log('Initializing BomaWave Platform...')
+  console.log('🚀 BomaWave Platform Initializing...')
   
-  // Handle Google OAuth callback
-  await handleGoogleCallback()
+  // Handle magic link redirect first
+  await handleMagicLinkRedirect()
   
-  // Check for existing session
+  // Then check for existing session
   await checkExistingSession()
 }
 
