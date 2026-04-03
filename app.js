@@ -5,6 +5,73 @@ import { supabase } from './supabase.js'
 // FIX: Hardcoded App URL (Change this if your URL changes)
 // ============================================
 const APP_URL = 'https://retailer-dashboard-gilt.vercel.app/'
+  // app.js - Complete FMCG Platform (FULL VERSION with Fixes)
+import { supabase } from './supabase.js'
+
+// ============================================
+// FIX: Hardcoded App URL (Change this if your URL changes)
+// ============================================
+const APP_URL = 'https://retailer-dashboard-gilt.vercel.app/'
+
+// ============================================
+// FORCE FIX: Clear any old sessions before new login
+// ============================================
+window.addEventListener('load', async () => {
+  // Check if we have a hash in URL (means coming from magic link)
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    console.log('Magic link detected, forcing session check...')
+    
+    // Force Supabase to process the hash
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    const { data } = await supabase.auth.getSession()
+    if (data.session) {
+      console.log('Session found! Reloading...')
+      window.location.href = window.location.pathname
+    } else {
+      console.log('No session, retrying...')
+      // Manual session recovery
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (sessionData.session) {
+        window.location.reload()
+      }
+    }
+  }
+})
+
+// ============================================
+// FIX: Handle magic link IMMEDIATELY (runs before anything else)
+// ============================================
+;(async function handleImmediateRedirect() {
+  const hash = window.location.hash
+  console.log('1. Checking URL hash:', hash)
+  
+  if (hash && hash.includes('access_token')) {
+    console.log('2. Magic link detected! Processing...')
+    // Show temporary loading message
+    document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;background:white;font-family:sans-serif;"><div style="text-align:center"><div style="width:40px;height:40px;border:4px solid #10B981;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px auto;"></div><p style="color:#374151;">Logging you in...</p></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>'
+    
+    // Clean the URL
+    window.history.replaceState({}, document.title, window.location.pathname)
+    
+    // Wait for Supabase to process
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    // Get session
+    const { data, error } = await supabase.auth.getSession()
+    console.log('3. Session result:', data?.session ? 'Session found' : 'No session', error)
+    
+    if (data?.session) {
+      console.log('4. Session found! Loading user data...')
+      // Reload the page to restore full HTML then load user
+      window.location.href = window.location.pathname + '?session=restored'
+    } else {
+      console.log('4. No session found, showing login')
+      // Page will reload and show normal flow
+      window.location.reload()
+    }
+  }
+})()
 
 // ============================================
 // FIX: Handle magic link IMMEDIATELY (runs before anything else)
