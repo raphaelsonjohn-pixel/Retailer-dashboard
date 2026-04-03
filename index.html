@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>BomaWave - FMCG Distribution Platform</title>
   
-  <!-- Tailwind CSS CDN -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
   <!-- Tailwind Configuration -->
@@ -20,9 +20,6 @@
             warning: '#F59E0B',
             dark: '#1F2937',
             light: '#F3F4F6'
-          },
-          fontFamily: {
-            'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif']
           }
         }
       }
@@ -31,54 +28,21 @@
   
   <!-- Custom Styles -->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
     
-    * {
-      font-family: 'Inter', sans-serif;
-    }
-    
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    .animate-slide-in { animation: slideIn 0.3s ease; }
-    .animate-fade-in { animation: fadeIn 0.3s ease; }
     .animate-spin { animation: spin 1s linear infinite; }
+    .animate-fade-in { animation: fadeIn 0.3s ease; }
+    .animate-slide-in { animation: slideIn 0.3s ease; }
     
-    .modal-overlay {
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
-    }
+    .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
     
     /* Custom scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    
-    ::-webkit-scrollbar-track {
-      background: #F3F4F6;
-      border-radius: 10px;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-      background: #10B981;
-      border-radius: 10px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-      background: #059669;
-    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: #10B981; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #059669; }
   </style>
   
   <script type="module" src="supabase.js"></script>
@@ -90,7 +54,7 @@
   <div id="loadingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm">
     <div class="bg-white rounded-2xl p-8 flex flex-col items-center shadow-2xl animate-fade-in">
       <div class="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p id="loadingMessage" class="text-gray-700 font-medium">Loading...</p>
+      <p id="loadingMessage" class="text-gray-700 font-medium text-lg">Loading...</p>
     </div>
   </div>
 
@@ -127,54 +91,34 @@
         <p id="loginSubtitle" class="text-gray-500 mt-2">Sign in to continue</p>
       </div>
       
-      <div class="space-y-6">
-        <!-- Google Login Button -->
-        <button id="googleSignInBtn" class="w-full py-3 bg-white border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 flex items-center justify-center gap-3">
-          <svg class="w-6 h-6" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-          </svg>
-          <span id="googleBtnText">Continue with Google</span>
+      <div class="space-y-5">
+        <div>
+          <input type="text" id="name" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Full Name" />
+        </div>
+
+        <div>
+          <input type="email" id="email" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Email Address" />
+        </div>
+
+        <div>
+          <input type="tel" id="phone" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Phone Number (Optional)" />
+        </div>
+
+        <div>
+          <input type="text" id="location" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Location / Area" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">I am a:</label>
+          <div class="flex gap-3">
+            <button type="button" id="roleRetailerBtn" class="flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-300">Retailer</button>
+            <button type="button" id="roleDistributorBtn" class="flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition-all duration-300">Distributor</button>
+          </div>
+        </div>
+
+        <button id="sendOtpBtn" class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-300 shadow-md mt-4">
+          Send Login Link
         </button>
-        
-        <div class="relative">
-          <div class="absolute inset-0 flex items-center">
-            <div class="w-full border-t border-gray-200"></div>
-          </div>
-          <div class="relative flex justify-center text-sm">
-            <span class="px-4 bg-white text-gray-500">Or continue with</span>
-          </div>
-        </div>
-        
-        <!-- Email/Password Form (Fallback) -->
-        <div class="space-y-4">
-          <div>
-            <input type="email" id="email" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Email address" />
-          </div>
-          <div>
-            <input type="text" id="name" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Full name" />
-          </div>
-          <div>
-            <input type="tel" id="phone" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Phone (optional)" />
-          </div>
-          <div>
-            <input type="text" id="location" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all" placeholder="Location" />
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">I am a:</label>
-            <div class="flex gap-3">
-              <button type="button" id="roleRetailer" class="flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-300">Retailer</button>
-              <button type="button" id="roleDistributor" class="flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition-all duration-300">Distributor</button>
-            </div>
-          </div>
-          
-          <button id="magicLinkBtn" class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-300 shadow-md">
-            Send Magic Link
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -190,10 +134,10 @@
           </div>
           <h2 class="text-xl font-bold text-gray-800">Distributor Portal</h2>
         </div>
-        <div class="flex gap-3">
+        <div class="flex items-center gap-4">
           <div class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span class="text-sm text-gray-600" id="distributorEmail"></span>
+            <span id="distributorEmail" class="text-sm text-gray-600">Loading...</span>
           </div>
           <button id="logoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300 font-medium">Logout</button>
         </div>
@@ -204,16 +148,16 @@
     <div class="border-b border-gray-200 bg-white sticky top-[73px] z-10 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex gap-2">
-          <button class="tab-distributor px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="productsTab">Products</button>
-          <button class="tab-distributor px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="ordersTab">Orders</button>
-          <button class="tab-distributor px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="alertsTab">Stock Alerts</button>
+          <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="distProductsTab">Products</button>
+          <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="distOrdersTab">Orders</button>
+          <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="distAlertsTab">Stock Alerts</button>
         </div>
       </div>
     </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Products Tab -->
-      <div id="productsTab" class="tab-content-distributor">
+      <div id="distProductsTab" class="distributorTabContent">
         <div class="bg-white rounded-2xl shadow-sm p-6 mb-8">
           <h3 class="text-xl font-bold text-gray-800 mb-4">➕ Add New Product</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -231,12 +175,12 @@
       </div>
 
       <!-- Orders Tab -->
-      <div id="ordersTab" class="tab-content-distributor hidden">
+      <div id="distOrdersTab" class="distributorTabContent hidden">
         <div id="distributorOrders" class="space-y-4"></div>
       </div>
 
       <!-- Alerts Tab -->
-      <div id="alertsTab" class="tab-content-distributor hidden">
+      <div id="distAlertsTab" class="distributorTabContent hidden">
         <div id="stockAlerts" class="space-y-4"></div>
       </div>
     </div>
@@ -252,10 +196,10 @@
           </div>
           <h2 class="text-xl font-bold text-gray-800">Retailer Portal</h2>
         </div>
-        <div class="flex gap-3">
+        <div class="flex items-center gap-4">
           <div class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span class="text-sm text-gray-600" id="retailerEmail"></span>
+            <span id="retailerEmail" class="text-sm text-gray-600">Loading...</span>
           </div>
           <button id="showCartBtn" class="relative px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-300 font-medium">
             🛒 Cart
@@ -269,14 +213,14 @@
     <div class="border-b border-gray-200 bg-white sticky top-[73px] z-10 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex gap-2">
-          <button class="tab-retailer px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="browseTab">Products</button>
-          <button class="tab-retailer px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="retailerOrdersTab">My Orders</button>
+          <button class="retailerTabBtn px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="retailerProductsTab">Products</button>
+          <button class="retailerTabBtn px-6 py-3 text-gray-600 hover:text-green-600 border-b-2 border-transparent transition-all duration-300 font-medium" data-tab="retailerOrdersTab">My Orders</button>
         </div>
       </div>
     </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div id="browseTab" class="tab-content-retailer">
+      <div id="retailerProductsTab" class="retailerTabContent">
         <div class="flex flex-col md:flex-row gap-4 mb-8">
           <input type="text" id="searchProducts" class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="🔍 Search products..." />
           <select id="categoryFilter" class="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500">
@@ -286,7 +230,7 @@
         <div id="retailerProducts" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
       </div>
 
-      <div id="retailerOrdersTab" class="tab-content-retailer hidden">
+      <div id="retailerOrdersTab" class="retailerTabContent hidden">
         <div id="retailerOrders" class="space-y-4"></div>
       </div>
     </div>
@@ -302,10 +246,10 @@
           </div>
           <h2 class="text-xl font-bold text-gray-800">Admin Portal</h2>
         </div>
-        <div class="flex gap-3">
+        <div class="flex items-center gap-4">
           <div class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span class="text-sm text-gray-600" id="adminEmail"></span>
+            <span id="adminEmail" class="text-sm text-gray-600">Loading...</span>
           </div>
           <button id="adminLogoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300 font-medium">Logout</button>
         </div>
