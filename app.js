@@ -1,5 +1,57 @@
-// app.js - Complete FMCG Platform (FIXED - No Duplicates)
+// app.js - Complete FMCG Platform (FULL VERSION with Fixes)
 import { supabase } from './supabase.js'
+
+// ============================================
+// FIX: Hardcoded App URL (Change this if your URL changes)
+// ============================================
+const APP_URL = 'https://retailer-dashboard-gilt.vercel.app'
+
+// ============================================
+// FIX: Handle magic link IMMEDIATELY (runs before anything else)
+// ============================================
+;(async function handleImmediateRedirect() {
+  const hash = window.location.hash
+  console.log('1. Checking URL hash:', hash)
+  
+  if (hash && hash.includes('access_token')) {
+    console.log('2. Magic link detected! Processing...')
+    // Show temporary loading message
+    document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;background:white;font-family:sans-serif;"><div style="text-align:center"><div style="width:40px;height:40px;border:4px solid #10B981;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px auto;"></div><p style="color:#374151;">Logging you in...</p></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>'
+    
+    // Clean the URL
+    window.history.replaceState({}, document.title, window.location.pathname)
+    
+    // Wait for Supabase to process
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    // Get session
+    const { data, error } = await supabase.auth.getSession()
+    console.log('3. Session result:', data?.session ? 'Session found' : 'No session', error)
+    
+    if (data?.session) {
+      console.log('4. Session found! Loading user data...')
+      // Reload the page to restore full HTML then load user
+      window.location.href = window.location.pathname + '?session=restored'
+    } else {
+      console.log('4. No session found, showing login')
+      // Page will reload and show normal flow
+      window.location.reload()
+    }
+  }
+})()
+
+// If we have session restored parameter, reload after restoring
+if (window.location.search.includes('session=restored')) {
+  window.history.replaceState({}, document.title, window.location.pathname)
+  // Small delay then check session
+  setTimeout(async () => {
+    const { data } = await supabase.auth.getSession()
+    if (data.session) {
+      document.body.innerHTML = '' // Clear temp message
+      location.reload() // Reload to show proper UI
+    }
+  }, 500)
+}
 
 // ============================================
 // STATE
@@ -139,8 +191,10 @@ const translations = {
 // ============================================
 window.selectLanguage = (lang) => {
   currentLanguage = lang
-  document.getElementById('languageScreen').classList.add('hidden')
-  document.getElementById('loginSection').classList.remove('hidden')
+  const languageScreen = document.getElementById('languageScreen')
+  const loginSection = document.getElementById('loginSection')
+  if (languageScreen) languageScreen.classList.add('hidden')
+  if (loginSection) loginSection.classList.remove('hidden')
   updateUIText()
 }
 
@@ -184,7 +238,7 @@ if (roleDistributorBtn) {
 }
 
 // ============================================
-// AUTHENTICATION
+// AUTHENTICATION (FIXED - uses APP_URL)
 // ============================================
 const sendOtpBtn = document.getElementById('sendOtp')
 if (sendOtpBtn) {
@@ -192,15 +246,15 @@ if (sendOtpBtn) {
     const email = document.getElementById('email').value.trim()
     if (!email) return alert('Enter your email')
 
-    // Use hardcoded URL instead of dynamic
-const redirectUrl = 'https://retailer-dashboard-gilt.vercel.app'
-console.log('Sending magic link to:', email)
-console.log('Redirect URL:', redirectUrl)
+    showLoading(true)
+    
+    console.log('Sending magic link to:', email)
+    console.log('Redirect URL (hardcoded):', APP_URL)
     
     const { error } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
-        emailRedirectTo: redirectUrl,
+        emailRedirectTo: APP_URL,
         data: {
           name: document.getElementById('name').value.trim() || email.split('@')[0],
           role: selectedRole,
@@ -222,51 +276,7 @@ console.log('Redirect URL:', redirectUrl)
 }
 
 // ============================================
-// MAGIC LINK REDIRECT HANDLER
-// ============================================
-async function handleMagicLinkRedirect() {
-  const hash = window.location.hash
-  console.log('Checking for magic link hash:', hash)
-  
-  if (hash && (hash.includes('access_token') || hash.includes('#access_token'))) {
-    console.log('Magic link detected! Processing session...')
-    showLoading(true)
-    
-    // Wait a moment for Supabase to process
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const { data, error } = await supabase.auth.getSession()
-    
-    if (error) {
-      console.error('Session error:', error)
-      showLoading(false)
-      return
-    }
-    
-    if (data.session) {
-      console.log('Session found! User:', data.session.user.email)
-      await loadUserData(data.session.user)
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname)
-    } else {
-      console.log('No session found, retrying...')
-      setTimeout(async () => {
-        const { data: retryData } = await supabase.auth.getSession()
-        if (retryData.session) {
-          console.log('Session found on retry!')
-          await loadUserData(retryData.session.user)
-        } else {
-          console.log('Still no session after retry')
-          showLoading(false)
-        }
-      }, 2000)
-    }
-    showLoading(false)
-  }
-}
-
-// ============================================
-// SESSION MANAGEMENT (Single Definition)
+// SESSION MANAGEMENT
 // ============================================
 supabase.auth.onAuthStateChange(async (event, session) => {
   console.log('Auth event:', event, session?.user?.email)
@@ -294,10 +304,10 @@ async function checkSession() {
     await loadUserData(session.user)
   } else {
     console.log('No existing session')
-    // Only show login if no magic link is being processed
-    if (!window.location.hash || !window.location.hash.includes('access_token')) {
-      document.getElementById('loginSection').classList.remove('hidden')
-    }
+    const loadingEl = document.getElementById('loading')
+    const languageScreen = document.getElementById('languageScreen')
+    if (loadingEl) loadingEl.classList.add('hidden')
+    if (languageScreen) languageScreen.classList.remove('hidden')
   }
 }
 
@@ -1148,7 +1158,7 @@ window.rejectDistributor = rejectDistributor
 // ============================================
 // INITIALIZE
 // ============================================
-// Handle magic link redirect first
-await handleMagicLinkRedirect()
-// Then check for existing session
-await checkSession()
+// Small delay to ensure DOM is ready
+setTimeout(() => {
+  checkSession()
+}, 100)
