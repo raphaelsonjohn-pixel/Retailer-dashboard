@@ -1,4 +1,4 @@
-// app.js - BomaWave Frontend (Phone OTP Only - No Email)
+// app.js - BomaWave Phone OTP Version (No Email)
 import { supabase } from './supabase.js'
 
 // ============================================
@@ -129,19 +129,40 @@ const translations = {
 function t(key) { return translations[currentLanguage]?.[key] || translations.en[key] || key }
 
 // ============================================
-// UI ELEMENTS
+// UI FUNCTIONS
 // ============================================
+function showLoading(show, message = 'Loading...') {
+  const overlay = document.getElementById('loadingOverlay')
+  const msgEl = document.getElementById('loadingMessage')
+  if (!overlay) return
+  if (show) {
+    if (msgEl) msgEl.textContent = message
+    overlay.classList.remove('hidden')
+    overlay.classList.add('flex')
+  } else {
+    overlay.classList.add('hidden')
+    overlay.classList.remove('flex')
+  }
+}
+
+function formatMoney(amount) {
+  return new Intl.NumberFormat('en-TZ').format(amount)
+}
 
 // ============================================
-// SEND OTP VIA EDGE FUNCTION
+// AUTHENTICATION FUNCTIONS
 // ============================================
+
+// Send OTP via Africa's Talking Edge Function
 async function sendOTP(phoneNumber) {
   showLoading(true, 'Sending verification code...')
   
   try {
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ phone: phoneNumber })
     })
     
@@ -165,9 +186,7 @@ async function sendOTP(phoneNumber) {
   }
 }
 
-// ============================================
-// VERIFY OTP
-// ============================================
+// Verify OTP
 function verifyOTP(enteredCode) {
   if (enteredCode === pendingOTP) {
     return true
@@ -177,23 +196,19 @@ function verifyOTP(enteredCode) {
   }
 }
 
-// ============================================
-// CREATE OR SIGN IN USER (PHONE ONLY - NO EMAIL)
-// ============================================
-async function createOrSignInUser(phoneNumber, name, location, role) {
-  showLoading(true, 'Setting up your account...')
+// Create user after OTP verification
+async function createUser(phoneNumber, name, location, role) {
+  showLoading(true, 'Creating your account...')
   
   try {
-    // Check if user already exists in profiles by phone
-    let { data: existingProfile, error: profileError } = await supabase
+    // Check if user already exists
+    let { data: existingProfile } = await supabase
       .from('profiles')
       .select('*')
       .eq('phone', phoneNumber)
       .maybeSingle()
     
     if (existingProfile) {
-      console.log('User exists, signing in...')
-      
       currentUser = existingProfile
       currentRole = existingProfile.role
       await loadUserData(existingProfile)
@@ -201,11 +216,9 @@ async function createOrSignInUser(phoneNumber, name, location, role) {
       return true
     }
     
-    // Create new user - Supabase Auth requires email (placeholder only)
+    // Create placeholder email for Supabase Auth (required but not used)
     const tempEmail = `${phoneNumber.replace(/[^0-9]/g, '')}@phone.bomawave.com`
     const tempPassword = Math.random().toString(36).slice(-12)
-    
-    console.log('Creating new user for phone:', phoneNumber)
     
     const { data: authUser, error: signUpError } = await supabase.auth.signUp({
       email: tempEmail,
@@ -228,8 +241,6 @@ async function createOrSignInUser(phoneNumber, name, location, role) {
     }
     
     if (authUser?.user) {
-      console.log('User created, waiting for profile...')
-      
       // Wait for trigger to create profile
       await new Promise(resolve => setTimeout(resolve, 2000))
       
@@ -239,6 +250,10 @@ async function createOrSignInUser(phoneNumber, name, location, role) {
         .eq('id', authUser.user.id)
         .maybeSingle()
       
+      if (fetchError) {
+        console.error('Fetch profile error:', fetchError)
+      }
+      
       if (newProfile) {
         currentUser = newProfile
         currentRole = newProfile.role
@@ -246,7 +261,7 @@ async function createOrSignInUser(phoneNumber, name, location, role) {
         showLoading(false)
         return true
       } else {
-        // Manual profile creation if trigger failed
+        // Manual profile creation if trigger fails
         const { data: manualProfile, error: insertError } = await supabase
           .from('profiles')
           .insert([{
@@ -286,37 +301,23 @@ async function createOrSignInUser(phoneNumber, name, location, role) {
 }
 
 // ============================================
-// SESSION CHECK
-// ============================================
-async function checkSession() {
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  if (session) {
-    console.log('Session found:', session.user)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single()
-    
-    if (profile) {
-      currentUser = profile
-      currentRole = profile.role
-      await loadUserData(profile)
-      return true
-    }
-  }
-  return false
-}
-
-// ============================================
 // LOAD USER DATA & DASHBOARD
 // ============================================
 async function loadUserData(user) {
   currentUser = user
   showLoading(true, 'Loading dashboard...')
   
-  currentRole = user.role
+  let { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+  
+  if (!profile) {
+    profile = user
+  }
+  
+  currentRole = profile.role
   
   // Check if admin
   const { data: adminCheck } = await supabase
@@ -325,7 +326,7 @@ async function loadUserData(user) {
     .eq('id', user.id)
     .single()
   
-  // Hide login screens
+  // Hide all screens
   document.getElementById('languageScreen')?.classList.add('hidden')
   document.getElementById('loginSection')?.classList.add('hidden')
   document.getElementById('phoneLoginSection')?.classList.add('hidden')
@@ -342,7 +343,7 @@ async function loadUserData(user) {
 }
 
 // ============================================
-// LOGIN SCREEN WITH PHONE
+// LOGIN SCREEN
 // ============================================
 function showPhoneLogin() {
   document.getElementById('languageScreen')?.classList.add('hidden')
@@ -385,8 +386,8 @@ document.getElementById('sendOtpPhoneBtn')?.addEventListener('click', async () =
   
   if (success) {
     currentStep = 'otp'
-    document.getElementById('phoneStep').classList.add('hidden')
-    document.getElementById('otpStep').classList.remove('hidden')
+    document.getElementById('phoneStep')?.classList.add('hidden')
+    document.getElementById('otpStep')?.classList.remove('hidden')
   }
 })
 
@@ -405,15 +406,15 @@ document.getElementById('verifyOtpBtn')?.addEventListener('click', async () => {
     const location = sessionStorage.getItem('signupLocation') || ''
     const role = sessionStorage.getItem('signupRole') || selectedRole
     
-    await createOrSignInUser(currentPhone, name, location, role)
+    await createUser(currentPhone, name, location, role)
   }
 })
 
 // Back to phone button
 document.getElementById('backToPhoneBtn')?.addEventListener('click', () => {
   currentStep = 'phone'
-  document.getElementById('phoneStep').classList.remove('hidden')
-  document.getElementById('otpStep').classList.add('hidden')
+  document.getElementById('phoneStep')?.classList.remove('hidden')
+  document.getElementById('otpStep')?.classList.add('hidden')
   document.getElementById('otpCode').value = ''
 })
 
@@ -454,101 +455,47 @@ function updateUIText() {
 }
 
 // ============================================
-// DASHBOARD FUNCTIONS (Placeholders - Add your actual implementations)
+// SESSION CHECK
+// ============================================
+async function checkSession() {
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (session) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single()
+    
+    if (profile) {
+      currentUser = profile
+      currentRole = profile.role
+      await loadUserData(profile)
+      return true
+    }
+  }
+  return false
+}
+
+// ============================================
+// DASHBOARD FUNCTIONS (Placeholder - Add your existing implementations)
 // ============================================
 async function showAdminDashboard() {
   document.getElementById('adminDashboard')?.classList.remove('hidden')
   const emailSpan = document.getElementById('adminEmail')
   if (emailSpan) emailSpan.textContent = currentUser?.phone || 'Admin'
-  await loadPendingDistributors()
-  await loadAdminOrders()
 }
 
 async function showDistributorDashboard() {
   document.getElementById('distributorDashboard')?.classList.remove('hidden')
   const emailSpan = document.getElementById('distributorEmail')
   if (emailSpan) emailSpan.textContent = currentUser?.phone || 'Distributor'
-  await loadDistributorData()
 }
 
 async function showRetailerDashboard() {
   document.getElementById('retailerDashboard')?.classList.remove('hidden')
   const emailSpan = document.getElementById('retailerEmail')
   if (emailSpan) emailSpan.textContent = currentUser?.phone || 'Retailer'
-  await loadRetailerData()
-}
-
-// Placeholder functions - Replace with your actual implementations
-async function loadPendingDistributors() { 
-  const container = document.getElementById('pendingDistributors')
-  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">No pending approvals</div>'
-}
-
-async function loadAdminOrders() { 
-  const container = document.getElementById('adminOrders')
-  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">No orders yet</div>'
-}
-
-async function loadDistributorData() { 
-  await loadDistributorProducts()
-  await loadDistributorOrders()
-  await loadStockAlerts()
-}
-
-async function loadDistributorProducts() { 
-  const container = document.getElementById('distributorProducts')
-  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-8">No products yet. Add your first product!</div>'
-}
-
-async function loadDistributorOrders() { 
-  const container = document.getElementById('distributorOrders')
-  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-8">No orders yet</div>'
-}
-
-async function loadStockAlerts() { 
-  const container = document.getElementById('stockAlerts')
-  if (container) container.innerHTML = '<div class="text-green-600 text-center py-8">No low stock alerts</div>'
-}
-
-async function loadRetailerData() { 
-  await loadAvailableProducts()
-  await loadRetailerOrders()
-  await loadCart()
-}
-
-async function loadAvailableProducts() { 
-  const container = document.getElementById('retailerProducts')
-  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-8">No products available</div>'
-}
-
-async function loadCart() { 
-  const container = document.getElementById('cartItems')
-  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">Your cart is empty</div>'
-  document.getElementById('cartCount').textContent = '0'
-  document.getElementById('cartTotal').textContent = '0'
-}
-
-async function loadRetailerOrders() { 
-  const container = document.getElementById('retailerOrders')
-  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-8">No orders yet</div>'
-}
-
-function showLoading(show, message = 'Loading...') {
-  const overlay = document.getElementById('loadingOverlay')
-  const msgEl = document.getElementById('loadingMessage')
-  if (!overlay) return
-  if (show) {
-    if (msgEl) msgEl.textContent = message
-    overlay.classList.remove('hidden')
-    overlay.classList.add('flex')
-  } else {
-    overlay.classList.add('hidden')
-    overlay.classList.remove('flex')
-  }
-}
-
-function formatMoney(amount) {
-  return new Intl.NumberFormat('en-TZ').format(amount)
 }
 
 // Logout
