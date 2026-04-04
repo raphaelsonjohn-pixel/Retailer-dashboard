@@ -1,5 +1,10 @@
-// app.js - Phone OTP Version (WhatsApp)
+// app.js - Africa's Talking SMS OTP Version
 import { supabase } from './supabase.js'
+
+// ============================================
+// CONSTANTS
+// ============================================
+const EDGE_FUNCTION_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/send-sms-africastalking'
 
 // ============================================
 // STATE
@@ -11,6 +16,9 @@ let currentRetailerId = null
 let currentDistributorId = null
 let cart = []
 let currentStep = 'phone' // 'phone' or 'otp'
+let selectedRole = 'retailer'
+let currentPhone = ''
+let pendingOTP = null
 
 // ============================================
 // TRANSLATIONS
@@ -123,52 +131,127 @@ function t(key) { return translations[currentLanguage]?.[key] || translations.en
 // ============================================
 // UI ELEMENTS
 // ============================================
-let selectedRole = 'retailer'
-let currentPhone = ''
 
 // ============================================
-// AUTHENTICATION FUNCTIONS
+// AUTHENTICATION FUNCTIONS (Using Africa's Talking)
 // ============================================
 
-// Send OTP to phone via WhatsApp
+// Send OTP via Africa's Talking Edge Function
 async function sendOTP(phoneNumber) {
   showLoading(true, 'Sending verification code...')
   
-  const { error } = await supabase.auth.signInWithOtp({
-    phone: phoneNumber,
-  })
-  
-  showLoading(false)
-  
-  if (error) {
+  try {
+    const response = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (await supabase.auth.getSession()).data.session?.access_token || ''
+      },
+      body: JSON.stringify({ phone: phoneNumber })
+    })
+    
+    const result = await response.json()
+    showLoading(false)
+    
+    if (result.success) {
+      // Save OTP for verification
+      pendingOTP = result.otp
+      currentPhone = phoneNumber
+      alert(`Verification code sent to ${phoneNumber}!`)
+      return true
+    } else {
+      alert('Error: ' + (result.error || 'Failed to send verification code'))
+      return false
+    }
+  } catch (error) {
+    showLoading(false)
     console.error('Send OTP error:', error)
-    alert('Error: ' + error.message)
+    alert('Error: Could not send verification code. Please try again.')
     return false
   }
-  
-  alert(`Verification code sent to ${phoneNumber} via WhatsApp!`)
-  return true
 }
 
-// Verify OTP and login
-async function verifyOTP(phoneNumber, otpCode) {
-  showLoading(true, 'Verifying...')
-  
-  const { data, error } = await supabase.auth.verifyOtp({
-    phone: phoneNumber,
-    token: otpCode,
-    type: 'sms',
-  })
-  
-  showLoading(false)
-  
-  if (error) {
-    console.error('Verify OTP error:', error)
-    alert('Error: ' + error.message)
-    return null
+// Verify OTP (local verification since we're not using Supabase Auth for OTP)
+function verifyOTP(enteredCode) {
+  if (enteredCode === pendingOTP) {
+    return true
+  } else {
+    alert('Invalid verification code. Please try again.')
+    return false
   }
+}
+
+// Create or sign in user after OTP verification
+async function createOrSignInUser(phoneNumber, name, location, role) {
+  showLoading(true, 'Setting up your account...')
   
-  return data.session
+  try {
+    // Check if user already exists in profiles
+    let { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('phone', phoneNumber)
+      .single()
+    
+    if (existingProfile) {
+      // User exists - create session manually
+      currentUser = existingProfile
+      currentRole = existingProfile.role
+      await loadUserData(existingProfile)
+      showLoading(false)
+      return true
+    }
+    
+    // Create new user in auth with email as phone@temp.com
+    const tempEmail = `${phoneNumber.replace(/[^0-9]/g, '')}@bomawave.temp`
+    const tempPassword = Math.random().toString(36).slice(-12)
+    
+    const { data: authUser, error: signUpError } = await supabase.auth.signUp({
+      email: tempEmail,
+      password: tempPassword,
+      options: {
+        data: {
+          name: name,
+          role: role,
+          phone: phoneNumber,
+          location: location
+        }
+      }
+    })
+    
+    if (signUpError) {
+      console.error('Sign up error:', signUpError)
+      showLoading(false)
+      alert('Error creating account: ' + signUpError.message)
+      return false
+    }
+    
+    if (authUser?.user) {
+      // Profile will be created by database trigger
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const { data: newProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.user.id)
+        .single()
+      
+      if (newProfile) {
+        currentUser = newProfile
+        currentRole = newProfile.role
+        await loadUserData(newProfile)
+      }
+    }
+    
+    showLoading(false)
+    return true
+    
+  } catch (error) {
+    showLoading(false)
+    console.error('Create user error:', error)
+    alert('Error creating account. Please try again.')
+    return false
+  }
 }
 
 // ============================================
@@ -179,8 +262,19 @@ async function checkSession() {
   
   if (session) {
     console.log('Session found:', session.user)
-    await loadUserData(session.user)
-    return true
+    // Get profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single()
+    
+    if (profile) {
+      currentUser = profile
+      currentRole = profile.role
+      await loadUserData(profile)
+      return true
+    }
   }
   return false
 }
@@ -200,20 +294,7 @@ async function loadUserData(user) {
     .single()
   
   if (!profile) {
-    const metadata = user.user_metadata || {}
-    const { data: newProfile } = await supabase
-      .from('profiles')
-      .insert([{
-        id: user.id,
-        email: user.email || `${user.phone}@temp.com`,
-        role: metadata.role || selectedRole,
-        name: metadata.name || 'User',
-        phone: user.phone,
-        location: metadata.location || ''
-      }])
-      .select()
-      .single()
-    profile = newProfile
+    profile = user
   }
   
   currentRole = profile.role
@@ -253,8 +334,12 @@ function showPhoneLogin() {
   document.getElementById('adminDashboard')?.classList.add('hidden')
   
   currentStep = 'phone'
+  pendingOTP = null
+  currentPhone = ''
   document.getElementById('phoneStep').classList.remove('hidden')
   document.getElementById('otpStep').classList.add('hidden')
+  document.getElementById('otpCode').value = ''
+  document.getElementById('phoneNumber').value = ''
 }
 
 // Send OTP button handler
@@ -265,13 +350,21 @@ document.getElementById('sendOtpPhoneBtn')?.addEventListener('click', async () =
     return
   }
   
+  // Get name, location, role from signup fields
+  const name = document.getElementById('signupName')?.value.trim() || 'User'
+  const location = document.getElementById('signupLocation')?.value.trim() || ''
+  
+  // Store signup data for later
+  sessionStorage.setItem('signupName', name)
+  sessionStorage.setItem('signupLocation', location)
+  sessionStorage.setItem('signupRole', selectedRole)
+  
   // Format phone number to E.164 format
   let formattedPhone = phone
   if (!phone.startsWith('+')) {
     formattedPhone = '+255' + phone.replace(/^0+/, '')
   }
   
-  currentPhone = formattedPhone
   const success = await sendOTP(formattedPhone)
   
   if (success) {
@@ -289,10 +382,36 @@ document.getElementById('verifyOtpBtn')?.addEventListener('click', async () => {
     return
   }
   
-  const session = await verifyOTP(currentPhone, otp)
-  if (session) {
-    await loadUserData(session.user)
+  const isValid = verifyOTP(otp)
+  
+  if (isValid) {
+    const name = sessionStorage.getItem('signupName') || 'User'
+    const location = sessionStorage.getItem('signupLocation') || ''
+    const role = sessionStorage.getItem('signupRole') || selectedRole
+    
+    await createOrSignInUser(currentPhone, name, location, role)
   }
+})
+
+// Back to phone button
+document.getElementById('backToPhoneBtn')?.addEventListener('click', () => {
+  currentStep = 'phone'
+  document.getElementById('phoneStep').classList.remove('hidden')
+  document.getElementById('otpStep').classList.add('hidden')
+  document.getElementById('otpCode').value = ''
+})
+
+// Role selection in phone login
+document.getElementById('phoneRoleRetailer')?.addEventListener('click', () => {
+  selectedRole = 'retailer'
+  document.getElementById('phoneRoleRetailer').className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
+  document.getElementById('phoneRoleDistributor').className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
+})
+
+document.getElementById('phoneRoleDistributor')?.addEventListener('click', () => {
+  selectedRole = 'distributor'
+  document.getElementById('phoneRoleDistributor').className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
+  document.getElementById('phoneRoleRetailer').className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
 })
 
 // ============================================
@@ -311,6 +430,18 @@ function updateUIText() {
     const el = document.getElementById(id)
     if (el) el.textContent = t(id === 'sendOtpPhoneBtn' ? 'sendOTP' : id === 'verifyOtpBtn' ? 'verifyOTP' : id)
   })
+  
+  // Update role buttons
+  const retailerBtn = document.getElementById('phoneRoleRetailer')
+  const distributorBtn = document.getElementById('phoneRoleDistributor')
+  if (retailerBtn) retailerBtn.textContent = t('retailer')
+  if (distributorBtn) distributorBtn.textContent = t('distributor')
+  
+  // Update signup labels
+  const nameLabel = document.getElementById('signupName')?.previousElementSibling
+  const locationLabel = document.getElementById('signupLocation')?.previousElementSibling
+  if (nameLabel) nameLabel.textContent = t('name')
+  if (locationLabel) locationLabel.textContent = t('location')
 }
 
 // ============================================
@@ -318,54 +449,132 @@ function updateUIText() {
 // ============================================
 async function showAdminDashboard() {
   document.getElementById('adminDashboard')?.classList.remove('hidden')
-  document.getElementById('adminEmail').textContent = currentUser?.phone || 'Admin'
+  const emailSpan = document.getElementById('adminEmail')
+  if (emailSpan) emailSpan.textContent = currentUser?.phone || currentUser?.email || 'Admin'
   await loadPendingDistributors()
   await loadAdminOrders()
 }
 
 async function showDistributorDashboard() {
   document.getElementById('distributorDashboard')?.classList.remove('hidden')
-  document.getElementById('distributorEmail').textContent = currentUser?.phone || 'Distributor'
+  const emailSpan = document.getElementById('distributorEmail')
+  if (emailSpan) emailSpan.textContent = currentUser?.phone || currentUser?.email || 'Distributor'
   await loadDistributorData()
 }
 
 async function showRetailerDashboard() {
   document.getElementById('retailerDashboard')?.classList.remove('hidden')
-  document.getElementById('retailerEmail').textContent = currentUser?.phone || 'Retailer'
+  const emailSpan = document.getElementById('retailerEmail')
+  if (emailSpan) emailSpan.textContent = currentUser?.phone || currentUser?.email || 'Retailer'
   await loadRetailerData()
 }
 
-// Add these functions to your existing code (keep your existing implementations)
-async function loadPendingDistributors() { /* keep existing */ }
-async function loadAdminOrders() { /* keep existing */ }
-async function loadDistributorData() { /* keep existing */ }
-async function loadDistributorProducts() { /* keep existing */ }
-async function loadDistributorOrders() { /* keep existing */ }
-async function loadStockAlerts() { /* keep existing */ }
-async function loadRetailerData() { /* keep existing */ }
-async function loadAvailableProducts() { /* keep existing */ }
-async function loadCart() { /* keep existing */ }
-async function loadRetailerOrders() { /* keep existing */ }
+// Placeholder functions - replace with your actual implementations
+async function loadPendingDistributors() { 
+  const container = document.getElementById('pendingDistributors')
+  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">Loading...</div>'
+}
 
-function showLoading(show, msg) { /* keep existing */ }
-function formatMoney(amount) { /* keep existing */ }
+async function loadAdminOrders() { 
+  const container = document.getElementById('adminOrders')
+  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">Loading...</div>'
+}
+
+async function loadDistributorData() { 
+  await loadDistributorProducts()
+  await loadDistributorOrders()
+  await loadStockAlerts()
+}
+
+async function loadDistributorProducts() { 
+  const container = document.getElementById('distributorProducts')
+  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-8">No products yet. Add your first product!</div>'
+}
+
+async function loadDistributorOrders() { 
+  const container = document.getElementById('distributorOrders')
+  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-8">No orders yet</div>'
+}
+
+async function loadStockAlerts() { 
+  const container = document.getElementById('stockAlerts')
+  if (container) container.innerHTML = '<div class="text-green-600 text-center py-8">✅ No low stock alerts</div>'
+}
+
+async function loadRetailerData() { 
+  await loadAvailableProducts()
+  await loadRetailerOrders()
+  await loadCart()
+}
+
+async function loadAvailableProducts() { 
+  const container = document.getElementById('retailerProducts')
+  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-8">No products available</div>'
+}
+
+async function loadCart() { 
+  const container = document.getElementById('cartItems')
+  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">Your cart is empty</div>'
+  document.getElementById('cartCount').textContent = '0'
+  document.getElementById('cartTotal').textContent = '0'
+}
+
+async function loadRetailerOrders() { 
+  const container = document.getElementById('retailerOrders')
+  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-8">No orders yet</div>'
+}
+
+function showLoading(show, message = 'Loading...') {
+  const overlay = document.getElementById('loadingOverlay')
+  const msgEl = document.getElementById('loadingMessage')
+  if (!overlay) return
+  if (show) {
+    if (msgEl) msgEl.textContent = message
+    overlay.classList.remove('hidden')
+    overlay.classList.add('flex')
+  } else {
+    overlay.classList.add('hidden')
+    overlay.classList.remove('flex')
+  }
+}
+
+function formatMoney(amount) {
+  return new Intl.NumberFormat('en-TZ').format(amount)
+}
 
 // Logout
 async function logout() {
   await supabase.auth.signOut()
+  pendingOTP = null
+  currentPhone = ''
   location.reload()
 }
 
+// Logout handlers
 document.getElementById('logoutBtn')?.addEventListener('click', logout)
 document.getElementById('logoutBtn2')?.addEventListener('click', logout)
 document.getElementById('adminLogoutBtn')?.addEventListener('click', logout)
+
+// Cart modal trigger
+document.getElementById('showCartBtn')?.addEventListener('click', () => {
+  document.getElementById('cartModal')?.classList.remove('hidden')
+})
 
 // ============================================
 // INITIALIZE
 // ============================================
 supabase.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN' && session) {
-    await loadUserData(session.user)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single()
+    if (profile) {
+      currentUser = profile
+      currentRole = profile.role
+      await loadUserData(profile)
+    }
   } else if (event === 'SIGNED_OUT') {
     showPhoneLogin()
   }
