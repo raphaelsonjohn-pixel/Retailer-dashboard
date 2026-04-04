@@ -1,4 +1,4 @@
-// app.js - Africa's Talking SMS OTP Version
+// app.js - BomaWave Frontend (Phone OTP Only - No Email)
 import { supabase } from './supabase.js'
 
 // ============================================
@@ -15,7 +15,7 @@ let currentRole = null
 let currentRetailerId = null
 let currentDistributorId = null
 let cart = []
-let currentStep = 'phone' // 'phone' or 'otp'
+let currentStep = 'phone'
 let selectedRole = 'retailer'
 let currentPhone = ''
 let pendingOTP = null
@@ -133,20 +133,15 @@ function t(key) { return translations[currentLanguage]?.[key] || translations.en
 // ============================================
 
 // ============================================
-// AUTHENTICATION FUNCTIONS (Using Africa's Talking)
+// SEND OTP VIA EDGE FUNCTION
 // ============================================
-
-// Send OTP via Africa's Talking Edge Function
 async function sendOTP(phoneNumber) {
   showLoading(true, 'Sending verification code...')
   
   try {
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + (await supabase.auth.getSession()).data.session?.access_token || ''
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: phoneNumber })
     })
     
@@ -154,7 +149,6 @@ async function sendOTP(phoneNumber) {
     showLoading(false)
     
     if (result.success) {
-      // Save OTP for verification
       pendingOTP = result.otp
       currentPhone = phoneNumber
       alert(`Verification code sent to ${phoneNumber}!`)
@@ -171,7 +165,9 @@ async function sendOTP(phoneNumber) {
   }
 }
 
-// Verify OTP (local verification since we're not using Supabase Auth for OTP)
+// ============================================
+// VERIFY OTP
+// ============================================
 function verifyOTP(enteredCode) {
   if (enteredCode === pendingOTP) {
     return true
@@ -181,20 +177,23 @@ function verifyOTP(enteredCode) {
   }
 }
 
-// Create or sign in user after OTP verification
+// ============================================
+// CREATE OR SIGN IN USER (PHONE ONLY - NO EMAIL)
+// ============================================
 async function createOrSignInUser(phoneNumber, name, location, role) {
   showLoading(true, 'Setting up your account...')
   
   try {
-    // Check if user already exists in profiles
-    let { data: existingProfile } = await supabase
+    // Check if user already exists in profiles by phone
+    let { data: existingProfile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('phone', phoneNumber)
-      .single()
+      .maybeSingle()
     
     if (existingProfile) {
-      // User exists - create session manually
+      console.log('User exists, signing in...')
+      
       currentUser = existingProfile
       currentRole = existingProfile.role
       await loadUserData(existingProfile)
@@ -202,9 +201,11 @@ async function createOrSignInUser(phoneNumber, name, location, role) {
       return true
     }
     
-    // Create new user in auth with email as phone@temp.com
-    const tempEmail = `${phoneNumber.replace(/[^0-9]/g, '')}@bomawave.temp`
+    // Create new user - Supabase Auth requires email (placeholder only)
+    const tempEmail = `${phoneNumber.replace(/[^0-9]/g, '')}@phone.bomawave.com`
     const tempPassword = Math.random().toString(36).slice(-12)
+    
+    console.log('Creating new user for phone:', phoneNumber)
     
     const { data: authUser, error: signUpError } = await supabase.auth.signUp({
       email: tempEmail,
@@ -222,34 +223,64 @@ async function createOrSignInUser(phoneNumber, name, location, role) {
     if (signUpError) {
       console.error('Sign up error:', signUpError)
       showLoading(false)
-      alert('Error creating account: ' + signUpError.message)
+      alert('Error: ' + signUpError.message)
       return false
     }
     
     if (authUser?.user) {
-      // Profile will be created by database trigger
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      console.log('User created, waiting for profile...')
       
-      const { data: newProfile } = await supabase
+      // Wait for trigger to create profile
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      const { data: newProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.user.id)
-        .single()
+        .maybeSingle()
       
       if (newProfile) {
         currentUser = newProfile
         currentRole = newProfile.role
         await loadUserData(newProfile)
+        showLoading(false)
+        return true
+      } else {
+        // Manual profile creation if trigger failed
+        const { data: manualProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: authUser.user.id,
+            phone: phoneNumber,
+            name: name,
+            location: location,
+            role: role
+          }])
+          .select()
+          .single()
+        
+        if (insertError) {
+          console.error('Manual profile insert error:', insertError)
+          showLoading(false)
+          alert('Error creating profile: ' + insertError.message)
+          return false
+        }
+        
+        currentUser = manualProfile
+        currentRole = manualProfile.role
+        await loadUserData(manualProfile)
+        showLoading(false)
+        return true
       }
     }
     
     showLoading(false)
-    return true
+    return false
     
   } catch (error) {
     showLoading(false)
     console.error('Create user error:', error)
-    alert('Error creating account. Please try again.')
+    alert('Error creating account: ' + error.message)
     return false
   }
 }
@@ -262,7 +293,6 @@ async function checkSession() {
   
   if (session) {
     console.log('Session found:', session.user)
-    // Get profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
@@ -280,24 +310,13 @@ async function checkSession() {
 }
 
 // ============================================
-// LOAD USER DATA
+// LOAD USER DATA & DASHBOARD
 // ============================================
 async function loadUserData(user) {
   currentUser = user
   showLoading(true, 'Loading dashboard...')
   
-  // Get or create profile
-  let { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-  
-  if (!profile) {
-    profile = user
-  }
-  
-  currentRole = profile.role
+  currentRole = user.role
   
   // Check if admin
   const { data: adminCheck } = await supabase
@@ -336,8 +355,8 @@ function showPhoneLogin() {
   currentStep = 'phone'
   pendingOTP = null
   currentPhone = ''
-  document.getElementById('phoneStep').classList.remove('hidden')
-  document.getElementById('otpStep').classList.add('hidden')
+  document.getElementById('phoneStep')?.classList.remove('hidden')
+  document.getElementById('otpStep')?.classList.add('hidden')
   document.getElementById('otpCode').value = ''
   document.getElementById('phoneNumber').value = ''
 }
@@ -350,16 +369,13 @@ document.getElementById('sendOtpPhoneBtn')?.addEventListener('click', async () =
     return
   }
   
-  // Get name, location, role from signup fields
   const name = document.getElementById('signupName')?.value.trim() || 'User'
   const location = document.getElementById('signupLocation')?.value.trim() || ''
   
-  // Store signup data for later
   sessionStorage.setItem('signupName', name)
   sessionStorage.setItem('signupLocation', location)
   sessionStorage.setItem('signupRole', selectedRole)
   
-  // Format phone number to E.164 format
   let formattedPhone = phone
   if (!phone.startsWith('+')) {
     formattedPhone = '+255' + phone.replace(/^0+/, '')
@@ -431,26 +447,19 @@ function updateUIText() {
     if (el) el.textContent = t(id === 'sendOtpPhoneBtn' ? 'sendOTP' : id === 'verifyOtpBtn' ? 'verifyOTP' : id)
   })
   
-  // Update role buttons
   const retailerBtn = document.getElementById('phoneRoleRetailer')
   const distributorBtn = document.getElementById('phoneRoleDistributor')
   if (retailerBtn) retailerBtn.textContent = t('retailer')
   if (distributorBtn) distributorBtn.textContent = t('distributor')
-  
-  // Update signup labels
-  const nameLabel = document.getElementById('signupName')?.previousElementSibling
-  const locationLabel = document.getElementById('signupLocation')?.previousElementSibling
-  if (nameLabel) nameLabel.textContent = t('name')
-  if (locationLabel) locationLabel.textContent = t('location')
 }
 
 // ============================================
-// DASHBOARD FUNCTIONS (Keep your existing dashboard code)
+// DASHBOARD FUNCTIONS (Placeholders - Add your actual implementations)
 // ============================================
 async function showAdminDashboard() {
   document.getElementById('adminDashboard')?.classList.remove('hidden')
   const emailSpan = document.getElementById('adminEmail')
-  if (emailSpan) emailSpan.textContent = currentUser?.phone || currentUser?.email || 'Admin'
+  if (emailSpan) emailSpan.textContent = currentUser?.phone || 'Admin'
   await loadPendingDistributors()
   await loadAdminOrders()
 }
@@ -458,26 +467,26 @@ async function showAdminDashboard() {
 async function showDistributorDashboard() {
   document.getElementById('distributorDashboard')?.classList.remove('hidden')
   const emailSpan = document.getElementById('distributorEmail')
-  if (emailSpan) emailSpan.textContent = currentUser?.phone || currentUser?.email || 'Distributor'
+  if (emailSpan) emailSpan.textContent = currentUser?.phone || 'Distributor'
   await loadDistributorData()
 }
 
 async function showRetailerDashboard() {
   document.getElementById('retailerDashboard')?.classList.remove('hidden')
   const emailSpan = document.getElementById('retailerEmail')
-  if (emailSpan) emailSpan.textContent = currentUser?.phone || currentUser?.email || 'Retailer'
+  if (emailSpan) emailSpan.textContent = currentUser?.phone || 'Retailer'
   await loadRetailerData()
 }
 
-// Placeholder functions - replace with your actual implementations
+// Placeholder functions - Replace with your actual implementations
 async function loadPendingDistributors() { 
   const container = document.getElementById('pendingDistributors')
-  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">Loading...</div>'
+  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">No pending approvals</div>'
 }
 
 async function loadAdminOrders() { 
   const container = document.getElementById('adminOrders')
-  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">Loading...</div>'
+  if (container) container.innerHTML = '<div class="text-gray-500 text-center py-4">No orders yet</div>'
 }
 
 async function loadDistributorData() { 
@@ -498,7 +507,7 @@ async function loadDistributorOrders() {
 
 async function loadStockAlerts() { 
   const container = document.getElementById('stockAlerts')
-  if (container) container.innerHTML = '<div class="text-green-600 text-center py-8">✅ No low stock alerts</div>'
+  if (container) container.innerHTML = '<div class="text-green-600 text-center py-8">No low stock alerts</div>'
 }
 
 async function loadRetailerData() { 
