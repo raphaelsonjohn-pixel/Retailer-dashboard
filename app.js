@@ -186,7 +186,7 @@ function verifyOTP(enteredCode) {
   }
 }
 
-// Create user in Supabase - FIXED: Use CONSISTENT email per phone number
+// Create user in Supabase - FIXED: Valid email format (must have letters before @)
 async function createUser(phoneNumber, name, location, role) {
   showLoading(true, 'Creating your account...')
   
@@ -206,16 +206,15 @@ async function createUser(phoneNumber, name, location, role) {
       return true
     }
     
-    // Create a CONSISTENT email based on phone number (same email always)
-    // This prevents rate limit errors because we reuse the same email
+    // Create a VALID email format (must have letters before @)
     const phoneDigits = phoneNumber.replace(/[^0-9]/g, '')
-    const consistentEmail = `${phoneDigits}@phone.bomawave.com`
+    const validEmail = `user${phoneDigits}@phone.bomawave.com`
     const tempPassword = 'BomaWave2024Secure!'
     
-    console.log('Creating user with consistent email:', consistentEmail)
+    console.log('Creating user with email:', validEmail)
     
     const { data: authUser, error: signUpError } = await supabase.auth.signUp({
-      email: consistentEmail,
+      email: validEmail,
       password: tempPassword,
       options: {
         data: {
@@ -233,7 +232,7 @@ async function createUser(phoneNumber, name, location, role) {
         console.log('User already exists, signing in...')
         
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: consistentEmail,
+          email: validEmail,
           password: tempPassword
         })
         
@@ -287,7 +286,7 @@ async function createUser(phoneNumber, name, location, role) {
         return true
       } else {
         // Manual profile creation as fallback
-        const { data: manualProfile } = await supabase
+        const { data: manualProfile, error: insertError } = await supabase
           .from('profiles')
           .insert([{
             id: authUser.user.id,
@@ -298,6 +297,13 @@ async function createUser(phoneNumber, name, location, role) {
           }])
           .select()
           .single()
+        
+        if (insertError) {
+          console.error('Manual profile insert error:', insertError)
+          showLoading(false)
+          alert('Error creating profile: ' + insertError.message)
+          return false
+        }
         
         if (manualProfile) {
           currentUser = manualProfile
