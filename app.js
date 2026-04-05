@@ -287,41 +287,89 @@ async function createUser(phoneNumber, name, location, role) {
 }
 
 // ============================================
-// LOAD USER DATA & DASHBOARD
-// ============================================
+// LOAD USER DATA & DASHBOARD - FIXED VERSION
 async function loadUserData(user) {
+  console.log('Loading user data for:', user.id)
+  console.log('User object:', user)
+  
   currentUser = user
   showLoading(true, 'Loading dashboard...')
   
-  let { data: profile } = await supabase
+  // Jaribu kupata profile kutoka database
+  let { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
   
+  if (error) {
+    console.error('Error fetching profile:', error)
+  }
+  
+  // Kama profile haipo, iunde manually
   if (!profile) {
-    profile = user
+    console.log('Profile not found, creating one...')
+    
+    const phoneNumber = user.phone || currentPhone || user.user_metadata?.phone || ''
+    const userName = user.user_metadata?.name || 'User'
+    const userLocation = user.user_metadata?.location || ''
+    const userRole = user.user_metadata?.role || selectedRole || 'retailer'
+    
+    const { data: newProfile, error: insertError } = await supabase
+      .from('profiles')
+      .insert([{
+        id: user.id,
+        phone: phoneNumber,
+        name: userName,
+        location: userLocation,
+        role: userRole
+      }])
+      .select()
+      .single()
+    
+    if (insertError) {
+      console.error('Error creating profile:', insertError)
+      showLoading(false)
+      alert('Error creating profile: ' + insertError.message)
+      return
+    }
+    
+    profile = newProfile
+    console.log('Profile created successfully:', profile)
   }
   
   currentRole = profile.role
+  console.log('User role:', currentRole)
   
-  // Check if admin
-  const { data: adminCheck } = await supabase
+  // Check if user is admin
+  const { data: adminCheck, error: adminError } = await supabase
     .from('admin_users')
     .select('id')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
+  
+  if (adminError) {
+    console.error('Admin check error:', adminError)
+  }
   
   // Hide all screens
-  document.getElementById('languageScreen')?.classList.add('hidden')
-  document.getElementById('loginSection')?.classList.add('hidden')
-  document.getElementById('phoneLoginSection')?.classList.add('hidden')
+  const languageScreen = document.getElementById('languageScreen')
+  const loginSection = document.getElementById('loginSection')
+  const phoneLoginSection = document.getElementById('phoneLoginSection')
   
+  if (languageScreen) languageScreen.classList.add('hidden')
+  if (loginSection) loginSection.classList.add('hidden')
+  if (phoneLoginSection) phoneLoginSection.classList.add('hidden')
+  
+  // Show appropriate dashboard
   if (adminCheck) {
+    console.log('Showing Admin Dashboard')
     await showAdminDashboard()
   } else if (currentRole === 'distributor') {
+    console.log('Showing Distributor Dashboard')
     await showDistributorDashboard()
   } else {
+    console.log('Showing Retailer Dashboard')
     await showRetailerDashboard()
   }
   
