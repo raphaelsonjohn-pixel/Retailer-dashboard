@@ -142,7 +142,7 @@ function showLoading(show, message = 'Loading...') {
 }
 
 // ============================================
-// AUTHENTICATION - Africa's Talking OTP
+// AUTHENTICATION - Africa's Talking OTP (NO Supabase Phone Auth)
 // ============================================
 
 // Send OTP via Africa's Talking Edge Function
@@ -186,7 +186,7 @@ function verifyOTP(enteredCode) {
   }
 }
 
-// Create user in Supabase - FIXED: Valid email format (must have letters before @)
+// Create user in Supabase (FIXED: Using temp-mail.org domain)
 async function createUser(phoneNumber, name, location, role) {
   showLoading(true, 'Creating your account...')
   
@@ -206,15 +206,15 @@ async function createUser(phoneNumber, name, location, role) {
       return true
     }
     
-    // Create a VALID email format (must have letters before @)
+    // Create a placeholder email using temp-mail.org (known domain)
     const phoneDigits = phoneNumber.replace(/[^0-9]/g, '')
-    const validEmail = `user${phoneDigits}@phone.bomawave.com`
+    const tempEmail = `user${phoneDigits}@temp-mail.org`
     const tempPassword = 'BomaWave2024Secure!'
     
-    console.log('Creating user with email:', validEmail)
+    console.log('Creating user with placeholder email:', tempEmail)
     
     const { data: authUser, error: signUpError } = await supabase.auth.signUp({
-      email: validEmail,
+      email: tempEmail,
       password: tempPassword,
       options: {
         data: {
@@ -227,39 +227,6 @@ async function createUser(phoneNumber, name, location, role) {
     })
     
     if (signUpError) {
-      // If user already exists, try to sign in
-      if (signUpError.message.includes('already registered')) {
-        console.log('User already exists, signing in...')
-        
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: validEmail,
-          password: tempPassword
-        })
-        
-        if (signInError) {
-          console.error('Sign in error:', signInError)
-          showLoading(false)
-          alert('Error signing in: ' + signInError.message)
-          return false
-        }
-        
-        if (signInData?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', signInData.user.id)
-            .single()
-          
-          if (profile) {
-            currentUser = profile
-            currentRole = profile.role
-            await loadUserData(profile)
-            showLoading(false)
-            return true
-          }
-        }
-      }
-      
       console.error('Sign up error:', signUpError)
       showLoading(false)
       alert('Error: ' + signUpError.message)
@@ -267,7 +234,7 @@ async function createUser(phoneNumber, name, location, role) {
     }
     
     if (authUser?.user) {
-      console.log('User created successfully:', authUser.user.id)
+      console.log('User created:', authUser.user.id)
       
       // Wait for profile trigger
       await new Promise(resolve => setTimeout(resolve, 2000))
@@ -285,8 +252,8 @@ async function createUser(phoneNumber, name, location, role) {
         showLoading(false)
         return true
       } else {
-        // Manual profile creation as fallback
-        const { data: manualProfile, error: insertError } = await supabase
+        // Manual profile creation
+        const { data: manualProfile } = await supabase
           .from('profiles')
           .insert([{
             id: authUser.user.id,
@@ -297,13 +264,6 @@ async function createUser(phoneNumber, name, location, role) {
           }])
           .select()
           .single()
-        
-        if (insertError) {
-          console.error('Manual profile insert error:', insertError)
-          showLoading(false)
-          alert('Error creating profile: ' + insertError.message)
-          return false
-        }
         
         if (manualProfile) {
           currentUser = manualProfile
