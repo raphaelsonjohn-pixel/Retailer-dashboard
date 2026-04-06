@@ -1,248 +1,226 @@
-// ============================================
-// BomaWave AUTH FLOW (FINAL STABLE VERSION)
-// ============================================
-
-// EDGE FUNCTION
-const EDGE_FUNCTION_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/send-sms-africastalking'
+import { supabase } from './supabase.js'
 
 // ============================================
 // STATE
 // ============================================
-let currentLanguage = 'en'
 let currentRole = 'retailer'
 let currentPhone = ''
-let pendingOTP = null
 
 // ============================================
-// SAFE DOM HELPER (IMPORTANT FIX)
-// ============================================
-function el(id) {
-  return document.getElementById(id)
-}
-
-// ============================================
-// SESSION MANAGEMENT
-// ============================================
-function saveSession(user) {
-  localStorage.setItem('bomaUser', JSON.stringify(user))
-}
-
-function getSession() {
-  try {
-    return JSON.parse(localStorage.getItem('bomaUser'))
-  } catch {
-    return null
-  }
-}
-
-function clearSession() {
-  localStorage.removeItem('bomaUser')
-}
-
-// ============================================
-// UI CONTROL
+// UI HELPERS
 // ============================================
 function hideAllScreens() {
   const screens = [
     'languageScreen',
     'phoneLoginSection',
     'distributorDashboard',
-    'retailerDashboard',
-    'adminDashboard'
+    'retailerDashboard'
   ]
 
-  screens.forEach(id => el(id)?.classList.add('hidden'))
+  screens.forEach(id => {
+    document.getElementById(id)?.classList.add('hidden')
+  })
 }
 
 function showLoading(show, message = 'Loading...') {
-  if (!el('loadingOverlay')) return
+  const overlay = document.getElementById('loadingOverlay')
+  const msg = document.getElementById('loadingMessage')
+
+  if (!overlay) return
 
   if (show) {
-    el('loadingMessage').textContent = message
-    el('loadingOverlay').classList.remove('hidden')
-    el('loadingOverlay').classList.add('flex')
+    msg.textContent = message
+    overlay.classList.remove('hidden')
+    overlay.classList.add('flex')
   } else {
-    el('loadingOverlay').classList.add('hidden')
-    el('loadingOverlay').classList.remove('flex')
+    overlay.classList.add('hidden')
+    overlay.classList.remove('flex')
   }
 }
 
 // ============================================
-// DASHBOARD NAVIGATION
+// DASHBOARD
 // ============================================
-function goToDashboard(role, user = null) {
-  console.log('➡️ Redirect:', role)
-
-  if (user) saveSession(user)
-
+function goToDashboard(role, user) {
   hideAllScreens()
 
   if (role === 'distributor') {
-    el('distributorDashboard')?.classList.remove('hidden')
-    if (user) el('distributorEmail').textContent = user.phone
+    document.getElementById('distributorDashboard')?.classList.remove('hidden')
+    document.getElementById('distributorEmail').textContent = user.phone || ''
   } else {
-    el('retailerDashboard')?.classList.remove('hidden')
-    if (user) el('retailerEmail').textContent = user.phone
+    document.getElementById('retailerDashboard')?.classList.remove('hidden')
+    document.getElementById('retailerEmail').textContent = user.phone || ''
   }
 }
 
 // ============================================
-// RESET LOGIN FLOW
+// AUTH CHECK (CRITICAL)
 // ============================================
-function showLogin() {
-  clearSession()
+async function checkAuth() {
+  const { data: { user } } = await supabase.auth.getUser()
 
-  hideAllScreens()
+  if (user) {
+    // Get profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
 
-  el('languageScreen')?.classList.remove('hidden')
-
-  // Reset steps
-  el('phoneStep')?.classList.remove('hidden')
-  el('otpStep')?.classList.add('hidden')
-
-  if (el('otpCode')) el('otpCode').value = ''
-  if (el('phoneNumber')) el('phoneNumber').value = ''
-}
-
-// ============================================
-// CHECK SESSION ON LOAD
-// ============================================
-function checkAuth() {
-  const user = getSession()
-
-  if (user && user.phone && user.role) {
-    console.log('✅ Session restored')
-    goToDashboard(user.role, user)
+    if (profile) {
+      goToDashboard(profile.role, profile)
+    }
   } else {
-    console.log('❌ No session')
-    el('languageScreen')?.classList.remove('hidden')
+    document.getElementById('languageScreen')?.classList.remove('hidden')
   }
 }
 
 // ============================================
-// SEND OTP
+// SEND OTP (REAL)
 // ============================================
 async function sendOTP(phone) {
-  showLoading(true, 'Sending code...')
+  showLoading(true, 'Sending OTP...')
 
-  try {
-    const res = await fetch(EDGE_FUNCTION_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone })
-    })
+  const { error } = await supabase.auth.signInWithOtp({
+    phone: phone
+  })
 
-    const data = await res.json()
+  showLoading(false)
 
-    showLoading(false)
-
-    if (data.success) {
-      pendingOTP = String(data.otp)
-      currentPhone = phone
-
-      console.log('OTP:', pendingOTP)
-
-      alert('OTP sent. Check simulator.')
-      return true
-    } else {
-      alert(data.error || 'Failed to send OTP')
-      return false
-    }
-
-  } catch (err) {
-    showLoading(false)
-    alert('Network error')
+  if (error) {
+    alert(error.message)
     return false
   }
+
+  return true
 }
 
 // ============================================
-// EVENTS SETUP (SAFE BINDING)
+// VERIFY OTP (REAL)
 // ============================================
-function setupEvents() {
+async function verifyOTP() {
+  const otp = document.getElementById('otpCode').value.trim()
 
-  // Language
-  window.selectLanguage = function (lang) {
-    currentLanguage = lang
-    el('languageScreen')?.classList.add('hidden')
-    el('phoneLoginSection')?.classList.remove('hidden')
+  if (!otp || otp.length !== 6) {
+    alert('Enter valid 6-digit code')
+    return
   }
 
-  // Role
-  el('phoneRoleRetailer')?.addEventListener('click', () => {
-    currentRole = 'retailer'
+  showLoading(true, 'Verifying...')
+
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone: currentPhone,
+    token: otp,
+    type: 'sms'
   })
 
-  el('phoneRoleDistributor')?.addEventListener('click', () => {
-    currentRole = 'distributor'
-  })
+  if (error) {
+    showLoading(false)
+    alert(error.message)
+    return
+  }
 
-  // SEND OTP
-  el('sendOtpPhoneBtn')?.addEventListener('click', async () => {
-    let phone = el('phoneNumber')?.value.trim()
+  const user = data.user
 
-    if (!phone) {
-      alert('Enter phone number')
+  // Check if profile exists
+  let { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  // If not → create one
+  if (!profile) {
+    const name = document.getElementById('signupName').value || 'User'
+    const location = document.getElementById('signupLocation').value || ''
+
+    const { data: newProfile, error: insertError } = await supabase
+      .from('profiles')
+      .insert([{
+        id: user.id,
+        phone: currentPhone,
+        name,
+        location,
+        role: currentRole
+      }])
+      .select()
+      .single()
+
+    if (insertError) {
+      showLoading(false)
+      alert(insertError.message)
       return
     }
 
-    if (!phone.startsWith('+')) {
-      phone = '+255' + phone.replace(/^0+/, '')
-    }
+    profile = newProfile
+  }
 
-    const ok = await sendOTP(phone)
+  showLoading(false)
 
-    if (ok) {
-      el('phoneStep')?.classList.add('hidden')
-      el('otpStep')?.classList.remove('hidden')
-    }
-  })
-
-  // VERIFY OTP
-  el('verifyOtpBtn')?.addEventListener('click', () => {
-    const otp = el('otpCode')?.value.trim()
-
-    if (!otp || otp.length !== 6) {
-      alert('Enter valid 6-digit code')
-      return
-    }
-
-    if (otp !== pendingOTP) {
-      alert('Invalid OTP')
-      return
-    }
-
-    const name = el('signupName')?.value || 'User'
-    const location = el('signupLocation')?.value || ''
-
-    const user = {
-      phone: currentPhone,
-      name,
-      location,
-      role: currentRole
-    }
-
-    alert('Login successful')
-
-    goToDashboard(currentRole, user)
-  })
-
-  // BACK
-  el('backToPhoneBtn')?.addEventListener('click', () => {
-    el('otpStep')?.classList.add('hidden')
-    el('phoneStep')?.classList.remove('hidden')
-  })
-
-  // LOGOUT
-  el('logoutBtn')?.addEventListener('click', showLogin)
-  el('logoutBtn2')?.addEventListener('click', showLogin)
-  el('adminLogoutBtn')?.addEventListener('click', showLogin)
+  goToDashboard(profile.role, profile)
 }
 
 // ============================================
-// INIT
+// EVENTS
 // ============================================
-window.addEventListener('load', () => {
-  setupEvents()
-  checkAuth()
+
+// Language select
+window.selectLanguage = function () {
+  document.getElementById('languageScreen').classList.add('hidden')
+  document.getElementById('phoneLoginSection').classList.remove('hidden')
+}
+
+// Role select
+document.getElementById('phoneRoleRetailer')?.addEventListener('click', () => {
+  currentRole = 'retailer'
 })
+
+document.getElementById('phoneRoleDistributor')?.addEventListener('click', () => {
+  currentRole = 'distributor'
+})
+
+// Send OTP
+document.getElementById('sendOtpPhoneBtn')?.addEventListener('click', async () => {
+  let phone = document.getElementById('phoneNumber').value.trim()
+
+  if (!phone) {
+    alert('Enter phone number')
+    return
+  }
+
+  if (!phone.startsWith('+')) {
+    phone = '+255' + phone.replace(/^0+/, '')
+  }
+
+  currentPhone = phone
+
+  const ok = await sendOTP(phone)
+
+  if (ok) {
+    document.getElementById('phoneStep').classList.add('hidden')
+    document.getElementById('otpStep').classList.remove('hidden')
+  }
+})
+
+// Verify OTP
+document.getElementById('verifyOtpBtn')?.addEventListener('click', verifyOTP)
+
+// Back
+document.getElementById('backToPhoneBtn')?.addEventListener('click', () => {
+  document.getElementById('otpStep').classList.add('hidden')
+  document.getElementById('phoneStep').classList.remove('hidden')
+})
+
+// Logout
+document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+  await supabase.auth.signOut()
+  location.reload()
+})
+
+document.getElementById('logoutBtn2')?.addEventListener('click', async () => {
+  await supabase.auth.signOut()
+  location.reload()
+})
+
+// INIT
+window.addEventListener('load', checkAuth)
