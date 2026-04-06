@@ -1,5 +1,5 @@
 // ============================================
-// BomaWave FINAL AUTH FLOW (FULL CLEAN VERSION)
+// BomaWave AUTH FLOW (FINAL STABLE VERSION)
 // ============================================
 
 // EDGE FUNCTION
@@ -14,6 +14,13 @@ let currentPhone = ''
 let pendingOTP = null
 
 // ============================================
+// SAFE DOM HELPER (IMPORTANT FIX)
+// ============================================
+function el(id) {
+  return document.getElementById(id)
+}
+
+// ============================================
 // SESSION MANAGEMENT
 // ============================================
 function saveSession(user) {
@@ -21,7 +28,11 @@ function saveSession(user) {
 }
 
 function getSession() {
-  return JSON.parse(localStorage.getItem('bomaUser'))
+  try {
+    return JSON.parse(localStorage.getItem('bomaUser'))
+  } catch {
+    return null
+  }
 }
 
 function clearSession() {
@@ -40,62 +51,57 @@ function hideAllScreens() {
     'adminDashboard'
   ]
 
-  screens.forEach(id => {
-    document.getElementById(id)?.classList.add('hidden')
-  })
+  screens.forEach(id => el(id)?.classList.add('hidden'))
 }
 
 function showLoading(show, message = 'Loading...') {
-  const overlay = document.getElementById('loadingOverlay')
-  const msg = document.getElementById('loadingMessage')
-
-  if (!overlay) return
+  if (!el('loadingOverlay')) return
 
   if (show) {
-    msg.textContent = message
-    overlay.classList.remove('hidden')
-    overlay.classList.add('flex')
+    el('loadingMessage').textContent = message
+    el('loadingOverlay').classList.remove('hidden')
+    el('loadingOverlay').classList.add('flex')
   } else {
-    overlay.classList.add('hidden')
-    overlay.classList.remove('flex')
+    el('loadingOverlay').classList.add('hidden')
+    el('loadingOverlay').classList.remove('flex')
   }
 }
 
 // ============================================
-// DASHBOARD NAVIGATION (CORE FIX)
+// DASHBOARD NAVIGATION
 // ============================================
 function goToDashboard(role, user = null) {
-  console.log('Redirecting to:', role)
+  console.log('➡️ Redirect:', role)
 
   if (user) saveSession(user)
 
   hideAllScreens()
 
   if (role === 'distributor') {
-    document.getElementById('distributorDashboard')?.classList.remove('hidden')
-    document.getElementById('distributorEmail').textContent = user?.phone || ''
+    el('distributorDashboard')?.classList.remove('hidden')
+    if (user) el('distributorEmail').textContent = user.phone
   } else {
-    document.getElementById('retailerDashboard')?.classList.remove('hidden')
-    document.getElementById('retailerEmail').textContent = user?.phone || ''
+    el('retailerDashboard')?.classList.remove('hidden')
+    if (user) el('retailerEmail').textContent = user.phone
   }
 }
 
 // ============================================
-// LOGIN RESET
+// RESET LOGIN FLOW
 // ============================================
 function showLogin() {
   clearSession()
 
   hideAllScreens()
 
-  document.getElementById('languageScreen')?.classList.remove('hidden')
+  el('languageScreen')?.classList.remove('hidden')
 
   // Reset steps
-  document.getElementById('phoneStep')?.classList.remove('hidden')
-  document.getElementById('otpStep')?.classList.add('hidden')
+  el('phoneStep')?.classList.remove('hidden')
+  el('otpStep')?.classList.add('hidden')
 
-  document.getElementById('otpCode').value = ''
-  document.getElementById('phoneNumber').value = ''
+  if (el('otpCode')) el('otpCode').value = ''
+  if (el('phoneNumber')) el('phoneNumber').value = ''
 }
 
 // ============================================
@@ -104,10 +110,12 @@ function showLogin() {
 function checkAuth() {
   const user = getSession()
 
-  if (user) {
+  if (user && user.phone && user.role) {
+    console.log('✅ Session restored')
     goToDashboard(user.role, user)
   } else {
-    document.getElementById('languageScreen')?.classList.remove('hidden')
+    console.log('❌ No session')
+    el('languageScreen')?.classList.remove('hidden')
   }
 }
 
@@ -129,13 +137,15 @@ async function sendOTP(phone) {
     showLoading(false)
 
     if (data.success) {
-      pendingOTP = data.otp
+      pendingOTP = String(data.otp)
       currentPhone = phone
+
+      console.log('OTP:', pendingOTP)
 
       alert('OTP sent. Check simulator.')
       return true
     } else {
-      alert(data.error || 'Failed')
+      alert(data.error || 'Failed to send OTP')
       return false
     }
 
@@ -147,91 +157,92 @@ async function sendOTP(phone) {
 }
 
 // ============================================
-// EVENTS
+// EVENTS SETUP (SAFE BINDING)
 // ============================================
+function setupEvents() {
 
-// Language select
-window.selectLanguage = function (lang) {
-  currentLanguage = lang
+  // Language
+  window.selectLanguage = function (lang) {
+    currentLanguage = lang
+    el('languageScreen')?.classList.add('hidden')
+    el('phoneLoginSection')?.classList.remove('hidden')
+  }
 
-  document.getElementById('languageScreen').classList.add('hidden')
-  document.getElementById('phoneLoginSection').classList.remove('hidden')
+  // Role
+  el('phoneRoleRetailer')?.addEventListener('click', () => {
+    currentRole = 'retailer'
+  })
+
+  el('phoneRoleDistributor')?.addEventListener('click', () => {
+    currentRole = 'distributor'
+  })
+
+  // SEND OTP
+  el('sendOtpPhoneBtn')?.addEventListener('click', async () => {
+    let phone = el('phoneNumber')?.value.trim()
+
+    if (!phone) {
+      alert('Enter phone number')
+      return
+    }
+
+    if (!phone.startsWith('+')) {
+      phone = '+255' + phone.replace(/^0+/, '')
+    }
+
+    const ok = await sendOTP(phone)
+
+    if (ok) {
+      el('phoneStep')?.classList.add('hidden')
+      el('otpStep')?.classList.remove('hidden')
+    }
+  })
+
+  // VERIFY OTP
+  el('verifyOtpBtn')?.addEventListener('click', () => {
+    const otp = el('otpCode')?.value.trim()
+
+    if (!otp || otp.length !== 6) {
+      alert('Enter valid 6-digit code')
+      return
+    }
+
+    if (otp !== pendingOTP) {
+      alert('Invalid OTP')
+      return
+    }
+
+    const name = el('signupName')?.value || 'User'
+    const location = el('signupLocation')?.value || ''
+
+    const user = {
+      phone: currentPhone,
+      name,
+      location,
+      role: currentRole
+    }
+
+    alert('Login successful')
+
+    goToDashboard(currentRole, user)
+  })
+
+  // BACK
+  el('backToPhoneBtn')?.addEventListener('click', () => {
+    el('otpStep')?.classList.add('hidden')
+    el('phoneStep')?.classList.remove('hidden')
+  })
+
+  // LOGOUT
+  el('logoutBtn')?.addEventListener('click', showLogin)
+  el('logoutBtn2')?.addEventListener('click', showLogin)
+  el('adminLogoutBtn')?.addEventListener('click', showLogin)
 }
-
-// Role select
-document.getElementById('phoneRoleRetailer')?.addEventListener('click', () => {
-  currentRole = 'retailer'
-})
-
-document.getElementById('phoneRoleDistributor')?.addEventListener('click', () => {
-  currentRole = 'distributor'
-})
-
-// Send OTP
-document.getElementById('sendOtpPhoneBtn')?.addEventListener('click', async () => {
-  let phone = document.getElementById('phoneNumber').value.trim()
-
-  if (!phone) {
-    alert('Enter phone number')
-    return
-  }
-
-  // Format Tanzanian number
-  if (!phone.startsWith('+')) {
-    phone = '+255' + phone.replace(/^0+/, '')
-  }
-
-  const ok = await sendOTP(phone)
-
-  if (ok) {
-    document.getElementById('phoneStep').classList.add('hidden')
-    document.getElementById('otpStep').classList.remove('hidden')
-  }
-})
-
-// Verify OTP
-document.getElementById('verifyOtpBtn')?.addEventListener('click', () => {
-  const otp = document.getElementById('otpCode').value.trim()
-
-  if (!otp || otp.length !== 6) {
-    alert('Enter valid 6-digit code')
-    return
-  }
-
-  if (otp !== pendingOTP) {
-    alert('Invalid OTP')
-    return
-  }
-
-  const name = document.getElementById('signupName').value || 'User'
-  const location = document.getElementById('signupLocation').value || ''
-
-  const user = {
-    phone: currentPhone,
-    name,
-    location,
-    role: currentRole
-  }
-
-  alert('Login successful')
-
-  goToDashboard(currentRole, user)
-})
-
-// Back button
-document.getElementById('backToPhoneBtn')?.addEventListener('click', () => {
-  document.getElementById('otpStep').classList.add('hidden')
-  document.getElementById('phoneStep').classList.remove('hidden')
-})
-
-// Logout
-document.getElementById('logoutBtn')?.addEventListener('click', showLogin)
-document.getElementById('logoutBtn2')?.addEventListener('click', showLogin)
-document.getElementById('adminLogoutBtn')?.addEventListener('click', showLogin)
 
 // ============================================
 // INIT
 // ============================================
 window.addEventListener('load', () => {
+  setupEvents()
   checkAuth()
 })
