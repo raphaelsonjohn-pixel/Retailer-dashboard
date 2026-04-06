@@ -92,12 +92,14 @@ async function sendOTP(phoneNumber) {
 function forceRedirectToDashboard() {
   console.log('🔴 FORCE REDIRECT: Redirecting to dashboard...')
   
+  // Hide all screens
   document.getElementById('languageScreen')?.classList.add('hidden')
   document.getElementById('loginSection')?.classList.add('hidden')
   document.getElementById('phoneLoginSection')?.classList.add('hidden')
   document.getElementById('phoneStep')?.classList.add('hidden')
   document.getElementById('otpStep')?.classList.add('hidden')
   
+  // Show dashboard based on role
   if (currentRole === 'distributor') {
     document.getElementById('distributorDashboard')?.classList.remove('hidden')
   } else {
