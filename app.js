@@ -1,11 +1,14 @@
-import { supabase } from './supabase.js';
+// ============================================
+// app.js
+// ============================================
+import { supabase } from './supabase.js'
 
 // ============================================
 // STATE
 // ============================================
-let currentRole = 'retailer';
-let currentPhone = '';
-let currentLanguage = 'en';
+let currentRole = 'retailer'
+let currentPhone = ''
+let currentLanguage = 'en' // default language
 
 // ============================================
 // UI HELPERS
@@ -17,76 +20,95 @@ function hideAllScreens() {
     'otpStep',
     'distributorDashboard',
     'retailerDashboard'
-  ];
-  screens.forEach(id => document.getElementById(id)?.classList.add('hidden'));
+  ]
+  screens.forEach(id => document.getElementById(id)?.classList.add('hidden'))
 }
 
 function showLoading(show, message = 'Loading...') {
-  const overlay = document.getElementById('loadingOverlay');
-  const msg = document.getElementById('loadingMessage');
-  if (!overlay) return;
+  const overlay = document.getElementById('loadingOverlay')
+  const msg = document.getElementById('loadingMessage')
+  if (!overlay) return
   if (show) {
-    msg.textContent = message;
-    overlay.classList.remove('hidden');
-    overlay.classList.add('flex');
+    msg.textContent = message
+    overlay.classList.remove('hidden')
+    overlay.classList.add('flex')
   } else {
-    overlay.classList.add('hidden');
-    overlay.classList.remove('flex');
+    overlay.classList.add('hidden')
+    overlay.classList.remove('flex')
   }
 }
 
-// ============================================
-// TRANSLATION
-// ============================================
-const translations = {
-  en: { sendOtp: 'Send OTP', enterPhone: 'Enter phone number', verifyOtp: 'Verify OTP', enterOtp: 'Enter 6-digit OTP', back: 'Back', loading: 'Loading...', retailer: 'Retailer', distributor: 'Distributor' },
-  sw: { sendOtp: 'Tuma OTP', enterPhone: 'Weka namba ya simu', verifyOtp: 'Thibitisha OTP', enterOtp: 'Weka namba ya OTP yenye tarakimu 6', back: 'Rudi', loading: 'Inapakia...', retailer: 'Muuza', distributor: 'Mwagaji' }
-};
-
-function translateUI() {
-  const t = translations[currentLanguage];
-  document.getElementById('sendOtpPhoneBtn').textContent = t.sendOtp;
-  document.getElementById('phoneNumber').placeholder = t.enterPhone;
-  document.getElementById('verifyOtpBtn').textContent = t.verifyOtp;
-  document.getElementById('otpCode').placeholder = t.enterOtp;
-  document.getElementById('backToPhoneBtn').textContent = t.back;
-  document.getElementById('phoneRoleRetailer').textContent = t.retailer;
-  document.getElementById('phoneRoleDistributor').textContent = t.distributor;
+function translate(text) {
+  const translations = {
+    en: {
+      enterPhone: 'Enter phone number',
+      sendOTP: 'Send OTP',
+      enterOTP: 'Enter OTP',
+      verifyOTP: 'Verify OTP',
+      loading: 'Loading...',
+    },
+    sw: {
+      enterPhone: 'Weka namba ya simu',
+      sendOTP: 'Tuma OTP',
+      enterOTP: 'Weka OTP',
+      verifyOTP: 'Thibitisha OTP',
+      loading: 'Inapakia...',
+    }
+  }
+  return translations[currentLanguage][text] || text
 }
 
 // ============================================
 // DASHBOARD
 // ============================================
-function goToDashboard(role, profile) {
-  hideAllScreens();
+function goToDashboard(role, user) {
+  hideAllScreens()
   if (role === 'distributor') {
-    document.getElementById('distributorDashboard')?.classList.remove('hidden');
-    document.getElementById('distributorEmail').textContent = profile.phone || '';
+    document.getElementById('distributorDashboard')?.classList.remove('hidden')
+    document.getElementById('distributorEmail').textContent = user.phone || ''
   } else {
-    document.getElementById('retailerDashboard')?.classList.remove('hidden');
-    document.getElementById('retailerEmail').textContent = profile.phone || '';
+    document.getElementById('retailerDashboard')?.classList.remove('hidden')
+    document.getElementById('retailerEmail').textContent = user.phone || ''
   }
 }
 
 // ============================================
-// SEND OTP
+// AUTH CHECK
+// ============================================
+async function checkAuth() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+    if (profile) goToDashboard(profile.role, profile)
+  } else {
+    document.getElementById('languageScreen')?.classList.remove('hidden')
+  }
+}
+
+// ============================================
+// SEND OTP (via Edge Function)
 // ============================================
 async function sendOTP(phone) {
-  showLoading(true, translations[currentLanguage].loading);
+  showLoading(true, translate('loading'))
   try {
-    const res = await fetch('https://YOUR_EDGE_FUNCTION_URL', {
+    const res = await fetch('https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/send-sms-africastalking', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
-    showLoading(false);
-    return true;
-  } catch (err) {
-    showLoading(false);
-    alert(err.message);
-    return false;
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to send OTP')
+    showLoading(false)
+    return true
+  } catch (error) {
+    showLoading(false)
+    console.error('Send OTP error:', error)
+    alert(error.message)
+    return false
   }
 }
 
@@ -94,63 +116,96 @@ async function sendOTP(phone) {
 // VERIFY OTP
 // ============================================
 async function verifyOTP() {
-  const otp = document.getElementById('otpCode').value.trim();
-  if (!otp || otp.length !== 6) { alert('Enter valid 6-digit OTP'); return; }
+  const otp = document.getElementById('otpCode').value.trim()
+  if (!otp || otp.length !== 6) {
+    alert('Enter valid 6-digit OTP')
+    return
+  }
+  showLoading(true, translate('loading'))
 
-  showLoading(true, translations[currentLanguage].loading);
   try {
-    const res = await fetch('https://YOUR_EDGE_FUNCTION_URL', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: currentPhone, otp })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'OTP verification failed');
+    const { data: { user }, error } = await supabase.auth.verifyOtp({
+      phone: currentPhone,
+      token: otp,
+      type: 'sms'
+    })
+    if (error) throw error
 
-    // Insert profile to Supabase if not exists
+    // Get or create profile
     let { data: profile } = await supabase
       .from('profiles')
       .select('*')
-      .eq('phone', currentPhone)
-      .single();
+      .eq('id', user.id)
+      .single()
 
     if (!profile) {
-      const { data: newProfile, error } = await supabase
+      const name = document.getElementById('signupName')?.value || 'User'
+      const location = document.getElementById('signupLocation')?.value || ''
+      const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
-        .insert([{ phone: currentPhone, role: currentRole, name: 'User', location: '' }])
+        .insert([{ id: user.id, phone: currentPhone, name, location, role: currentRole }])
         .select()
-        .single();
-      if (error) { alert(error.message); showLoading(false); return; }
-      profile = newProfile;
+        .single()
+      if (insertError) throw insertError
+      profile = newProfile
     }
 
-    showLoading(false);
-    goToDashboard(currentRole, profile);
-  } catch (err) { showLoading(false); alert(err.message); }
+    showLoading(false)
+    goToDashboard(profile.role, profile)
+
+  } catch (error) {
+    showLoading(false)
+    console.error('Verify OTP error:', error)
+    alert(error.message)
+  }
 }
 
 // ============================================
 // EVENTS
 // ============================================
-document.getElementById('selectEnglish')?.addEventListener('click', () => { currentLanguage = 'en'; translateUI(); hideAllScreens(); document.getElementById('phoneLoginSection')?.classList.remove('hidden'); });
-document.getElementById('selectSwahili')?.addEventListener('click', () => { currentLanguage = 'sw'; translateUI(); hideAllScreens(); document.getElementById('phoneLoginSection')?.classList.remove('hidden'); });
 
-document.getElementById('phoneRoleRetailer')?.addEventListener('click', () => currentRole = 'retailer');
-document.getElementById('phoneRoleDistributor')?.addEventListener('click', () => currentRole = 'distributor');
+// Language selection
+window.selectLanguage = function(lang) {
+  currentLanguage = lang
+  document.getElementById('languageScreen')?.classList.add('hidden')
+  document.getElementById('phoneLoginSection')?.classList.remove('hidden')
+}
 
+// Role select
+document.getElementById('phoneRoleRetailer')?.addEventListener('click', () => currentRole = 'retailer')
+document.getElementById('phoneRoleDistributor')?.addEventListener('click', () => currentRole = 'distributor')
+
+// Send OTP
 document.getElementById('sendOtpPhoneBtn')?.addEventListener('click', async () => {
-  let phone = document.getElementById('phoneNumber').value.trim();
-  if (!phone) { alert('Enter phone number'); return; }
-  if (!phone.startsWith('+')) phone = '+255' + phone.replace(/^0+/, '');
-  currentPhone = phone;
-  const ok = await sendOTP(phone);
-  if (ok) { document.getElementById('phoneStep')?.classList.add('hidden'); document.getElementById('otpStep')?.classList.remove('hidden'); }
-});
+  let phone = document.getElementById('phoneNumber').value.trim()
+  if (!phone) { alert(translate('enterPhone')); return }
+  if (!phone.startsWith('+')) phone = '+255' + phone.replace(/^0+/, '')
+  currentPhone = phone
+  const ok = await sendOTP(phone)
+  if (ok) {
+    document.getElementById('phoneStep')?.classList.add('hidden')
+    document.getElementById('otpStep')?.classList.remove('hidden')
+  }
+})
 
-document.getElementById('verifyOtpBtn')?.addEventListener('click', verifyOTP);
-document.getElementById('backToPhoneBtn')?.addEventListener('click', () => { document.getElementById('otpStep')?.classList.add('hidden'); document.getElementById('phoneStep')?.classList.remove('hidden'); });
-document.getElementById('logoutBtn')?.addEventListener('click', () => location.reload());
-document.getElementById('logoutBtn2')?.addEventListener('click', () => location.reload());
+// Verify OTP
+document.getElementById('verifyOtpBtn')?.addEventListener('click', verifyOTP)
+
+// Back button
+document.getElementById('backToPhoneBtn')?.addEventListener('click', () => {
+  document.getElementById('otpStep')?.classList.add('hidden')
+  document.getElementById('phoneStep')?.classList.remove('hidden')
+})
+
+// Logout
+document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+  await supabase.auth.signOut()
+  location.reload()
+})
+document.getElementById('logoutBtn2')?.addEventListener('click', async () => {
+  await supabase.auth.signOut()
+  location.reload()
+})
 
 // INIT
-window.addEventListener('load', translateUI);
+window.addEventListener('load', checkAuth)
