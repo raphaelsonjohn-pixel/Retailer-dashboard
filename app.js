@@ -1,62 +1,59 @@
-// ============================================
-// APP.JS WITH TRANSLATION
-// ============================================
-
+// app.js - Firebase Auth + Supabase DB (Njia Mseto)
 import { supabase } from './supabase.js'
 
+// ============================================
 // STATE
+// ============================================
+let currentLanguage = null
 let currentRole = 'retailer'
+let currentUser = null
+let confirmationResult = null
 let currentPhone = ''
-let currentOTP = ''
-let currentLang = 'en' // default
 
-// TRANSLATION STRINGS
+// ============================================
+// TRANSLATIONS
+// ============================================
 const translations = {
   en: {
+    enterPhone: 'Enter your phone number',
+    sendOTP: 'Send Verification Code',
+    verifyOTP: 'Verify Code',
+    enterCode: 'Enter 6-digit code',
     loading: 'Loading...',
-    sendOtp: 'Sending OTP...',
-    verifyOtp: 'Verifying OTP...',
-    enterPhone: 'Enter phone number',
-    enterOtp: 'Enter 6-digit code',
-    failedSend: 'Failed to send OTP',
-    failedVerify: 'Failed to verify OTP',
-    user: 'User',
+    retailer: 'Retailer',
+    distributor: 'Distributor',
+    logout: 'Logout',
+    name: 'Full Name',
+    location: 'Location',
+    phone: 'Phone Number',
+    welcome: 'Welcome!'
   },
   sw: {
+    enterPhone: 'Weka namba yako ya simu',
+    sendOTP: 'Tuma Msimbo wa Kuthibitisha',
+    verifyOTP: 'Thibitisha Msimbo',
+    enterCode: 'Weka msimbo wa tarakimu 6',
     loading: 'Inapakia...',
-    sendOtp: 'Kutuma OTP...',
-    verifyOtp: 'Kuthibitisha OTP...',
-    enterPhone: 'Weka namba ya simu',
-    enterOtp: 'Weka namba ya OTP yenye tarakimu 6',
-    failedSend: 'Imeshindikana kutuma OTP',
-    failedVerify: 'Imeshindikana kuthibitisha OTP',
-    user: 'Mtumiaji',
+    retailer: 'Muuzaji',
+    distributor: 'Msambazaji',
+    logout: 'Toka',
+    name: 'Jina Kamili',
+    location: 'Eneo',
+    phone: 'Namba ya Simu',
+    welcome: 'Karibu!'
   }
 }
 
-// HELPER: get translated text
-function t(key) {
-  return translations[currentLang][key] || key
+function t(key) { 
+  return translations[currentLanguage]?.[key] || translations.en[key] || key 
 }
 
-// UI HELPERS
-function hideAllScreens() {
-  const screens = [
-    'languageScreen',
-    'phoneLoginSection',
-    'otpStep',
-    'distributorDashboard',
-    'retailerDashboard'
-  ]
-  screens.forEach(id => document.getElementById(id)?.classList.add('hidden'))
-}
-
-function showLoading(show, messageKey = 'loading') {
+function showLoading(show, message = 'Loading...') {
   const overlay = document.getElementById('loadingOverlay')
-  const msg = document.getElementById('loadingMessage')
+  const msgEl = document.getElementById('loadingMessage')
   if (!overlay) return
   if (show) {
-    msg.textContent = t(messageKey)
+    if (msgEl) msgEl.textContent = message
     overlay.classList.remove('hidden')
     overlay.classList.add('flex')
   } else {
@@ -65,172 +62,506 @@ function showLoading(show, messageKey = 'loading') {
   }
 }
 
-// DASHBOARD HANDLER
-function goToDashboard(role, user) {
-  hideAllScreens()
-  if (role === 'distributor') {
-    document.getElementById('distributorDashboard')?.classList.remove('hidden')
-    document.getElementById('distributorEmail').textContent = user.phone || ''
-  } else {
-    document.getElementById('retailerDashboard')?.classList.remove('hidden')
-    document.getElementById('retailerEmail').textContent = user.phone || ''
-  }
-}
+// ============================================
+// FIREBASE PHONE AUTH
+// ============================================
 
-// AUTH CHECK ON LOAD
-async function checkAuth() {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (error) {
-      console.error('Profile fetch error:', error)
-      hideAllScreens()
-      document.getElementById('phoneLoginSection')?.classList.remove('hidden')
-      return
-    }
-    goToDashboard(profile.role, profile)
-  } else {
-    hideAllScreens()
-    document.getElementById('languageScreen')?.classList.remove('hidden')
-  }
-}
-
-// SEND OTP
-async function sendOTP(phone) {
-  showLoading(true, 'sendOtp')
+async function sendOTP(phoneNumber) {
+  console.log('📱 Sending OTP via Firebase to:', phoneNumber)
+  showLoading(true, 'Sending verification code...')
+  
   try {
-    const res = await fetch(
-      'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/send-sms-africastalking',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone })
-      }
-    )
-    const data = await res.json()
-    showLoading(false)
-    if (!res.ok) {
-      console.error('Send OTP error:', data)
-      alert(t('failedSend') + ': ' + (data.error || 'Unknown error'))
-      return false
+    const auth = window.firebaseAuth
+    const RecaptchaVerifier = window.RecaptchaVerifier
+    const signInWithPhoneNumber = window.signInWithPhoneNumber
+    
+    if (!auth) {
+      throw new Error('Firebase auth not initialized. Check your configuration.')
     }
-    currentOTP = data.otp
-    return true
-  } catch (err) {
+    
+    // Setup reCAPTCHA
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': () => console.log('reCAPTCHA resolved')
+      })
+    }
+    
+    const confirmation = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier)
+    window.confirmationResult = confirmation
+    console.log('✅ OTP sent successfully')
     showLoading(false)
-    console.error('Send OTP fetch error:', err)
-    alert(t('failedSend') + ': ' + err.message)
+    alert(`Verification code sent to ${phoneNumber}!`)
+    return true
+    
+  } catch (error) {
+    showLoading(false)
+    console.error('❌ Firebase error:', error)
+    
+    if (error.code === 'auth/invalid-phone-number') {
+      alert('Invalid phone number format. Use +255XXXXXXXXX')
+    } else if (error.code === 'auth/too-many-requests') {
+      alert('Too many requests. Please try again later.')
+    } else {
+      alert('Error: ' + error.message)
+    }
     return false
   }
 }
 
-// VERIFY OTP
-async function verifyOTP() {
-  const otp = document.getElementById('otpCode').value.trim()
-  if (!otp || otp.length !== 6) {
-    alert(t('enterOtp'))
-    return
-  }
-
-  showLoading(true, 'verifyOtp')
+async function verifyOTP(code) {
+  showLoading(true, 'Verifying code...')
+  
   try {
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone: currentPhone,
-      token: otp,
-      type: 'sms'
-    })
+    const confirmation = window.confirmationResult
+    if (!confirmation) {
+      throw new Error('No OTP pending. Please request a new code.')
+    }
+    
+    const result = await confirmation.confirm(code)
+    const firebaseUser = result.user
+    console.log('✅ Firebase user verified:', firebaseUser.uid, firebaseUser.phoneNumber)
+    
+    // Handle Supabase profile
+    await handleSupabaseUser(firebaseUser)
+    showLoading(false)
+    return true
+    
+  } catch (error) {
+    showLoading(false)
+    console.error('❌ Verification error:', error)
+    
+    if (error.code === 'auth/invalid-verification-code') {
+      alert('Invalid verification code. Please try again.')
+    } else {
+      alert('Error: ' + error.message)
+    }
+    return false
+  }
+}
 
-    if (error) {
-      showLoading(false)
-      console.error('OTP verify error:', error)
-      alert(error.message)
+// ============================================
+// SUPABASE PROFILE HANDLING
+// ============================================
+
+async function handleSupabaseUser(firebaseUser) {
+  console.log('📦 Checking Supabase profile for UID:', firebaseUser.uid)
+  
+  const name = sessionStorage.getItem('signupName') || 'User'
+  const location = sessionStorage.getItem('signupLocation') || ''
+  const role = sessionStorage.getItem('signupRole') || currentRole
+  const phoneNumber = firebaseUser.phoneNumber
+  
+  // Check if user exists in Supabase profiles
+  let { data: existingProfile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', firebaseUser.uid)
+    .maybeSingle()
+  
+  if (error) {
+    console.error('Supabase query error:', error)
+  }
+  
+  if (!existingProfile) {
+    console.log('📦 Creating new Supabase profile...')
+    
+    const { data: newProfile, error: insertError } = await supabase
+      .from('profiles')
+      .insert([{
+        id: firebaseUser.uid,
+        phone: phoneNumber,
+        name: name,
+        location: location,
+        role: role
+      }])
+      .select()
+      .single()
+    
+    if (insertError) {
+      console.error('Profile creation error:', insertError)
+      alert('Error creating profile: ' + insertError.message)
+      return false
+    }
+    
+    currentUser = newProfile
+    currentRole = newProfile.role
+  } else {
+    console.log('📦 Existing profile found')
+    currentUser = existingProfile
+    currentRole = existingProfile.role
+  }
+  
+  // Update role display on dashboards
+  updateDashboardEmail()
+  forceRedirectToDashboard()
+  return true
+}
+
+function updateDashboardEmail() {
+  const adminEmail = document.getElementById('adminEmail')
+  const distributorEmail = document.getElementById('distributorEmail')
+  const retailerEmail = document.getElementById('retailerEmail')
+  
+  const displayText = currentUser?.phone || currentUser?.email || 'User'
+  
+  if (adminEmail) adminEmail.textContent = displayText
+  if (distributorEmail) distributorEmail.textContent = displayText
+  if (retailerEmail) retailerEmail.textContent = displayText
+}
+
+// ============================================
+// DASHBOARD NAVIGATION
+// ============================================
+
+function forceRedirectToDashboard() {
+  console.log('🎯 Showing dashboard for role:', currentRole)
+  
+  // Hide all screens
+  const languageScreen = document.getElementById('languageScreen')
+  const loginSection = document.getElementById('loginSection')
+  const phoneLoginSection = document.getElementById('phoneLoginSection')
+  const phoneStep = document.getElementById('phoneStep')
+  const otpStep = document.getElementById('otpStep')
+  const distributorDashboard = document.getElementById('distributorDashboard')
+  const retailerDashboard = document.getElementById('retailerDashboard')
+  const adminDashboard = document.getElementById('adminDashboard')
+  
+  if (languageScreen) languageScreen.classList.add('hidden')
+  if (loginSection) loginSection.classList.add('hidden')
+  if (phoneLoginSection) phoneLoginSection.classList.add('hidden')
+  if (phoneStep) phoneStep.classList.add('hidden')
+  if (otpStep) otpStep.classList.add('hidden')
+  
+  // Show appropriate dashboard
+  if (currentRole === 'distributor') {
+    if (distributorDashboard) distributorDashboard.classList.remove('hidden')
+    loadDistributorData()
+  } else if (currentRole === 'admin') {
+    if (adminDashboard) adminDashboard.classList.remove('hidden')
+    loadAdminData()
+  } else {
+    if (retailerDashboard) retailerDashboard.classList.remove('hidden')
+    loadRetailerData()
+  }
+  
+  showLoading(false)
+}
+
+function showPhoneLogin() {
+  const languageScreen = document.getElementById('languageScreen')
+  const loginSection = document.getElementById('loginSection')
+  const phoneLoginSection = document.getElementById('phoneLoginSection')
+  const distributorDashboard = document.getElementById('distributorDashboard')
+  const retailerDashboard = document.getElementById('retailerDashboard')
+  const adminDashboard = document.getElementById('adminDashboard')
+  const phoneStep = document.getElementById('phoneStep')
+  const otpStep = document.getElementById('otpStep')
+  const otpCode = document.getElementById('otpCode')
+  const phoneNumber = document.getElementById('phoneNumber')
+  
+  if (languageScreen) languageScreen.classList.add('hidden')
+  if (loginSection) loginSection.classList.add('hidden')
+  if (phoneLoginSection) phoneLoginSection.classList.remove('hidden')
+  if (distributorDashboard) distributorDashboard.classList.add('hidden')
+  if (retailerDashboard) retailerDashboard.classList.add('hidden')
+  if (adminDashboard) adminDashboard.classList.add('hidden')
+  if (phoneStep) phoneStep.classList.remove('hidden')
+  if (otpStep) otpStep.classList.add('hidden')
+  if (otpCode) otpCode.value = ''
+  if (phoneNumber) phoneNumber.value = ''
+  
+  // Reset Firebase confirmation
+  window.confirmationResult = null
+  currentPhone = ''
+}
+
+// ============================================
+// DATA LOADING FUNCTIONS
+// ============================================
+
+async function loadDistributorData() {
+  console.log('Loading distributor data...')
+  const productsContainer = document.getElementById('distributorProducts')
+  if (productsContainer) {
+    productsContainer.innerHTML = '<div class="text-gray-500 text-center py-8">No products yet. Add your first product!</div>'
+  }
+  
+  const ordersContainer = document.getElementById('distributorOrders')
+  if (ordersContainer) {
+    ordersContainer.innerHTML = '<div class="text-gray-500 text-center py-8">No orders yet</div>'
+  }
+  
+  const alertsContainer = document.getElementById('stockAlerts')
+  if (alertsContainer) {
+    alertsContainer.innerHTML = '<div class="text-green-600 text-center py-8">✅ No low stock alerts</div>'
+  }
+}
+
+async function loadRetailerData() {
+  console.log('Loading retailer data...')
+  const productsContainer = document.getElementById('retailerProducts')
+  if (productsContainer) {
+    productsContainer.innerHTML = '<div class="text-gray-500 text-center py-8">No products available</div>'
+  }
+  
+  const ordersContainer = document.getElementById('retailerOrders')
+  if (ordersContainer) {
+    ordersContainer.innerHTML = '<div class="text-gray-500 text-center py-8">No orders yet</div>'
+  }
+  
+  const cartContainer = document.getElementById('cartItems')
+  if (cartContainer) {
+    cartContainer.innerHTML = '<div class="text-gray-500 text-center py-4">Your cart is empty</div>'
+  }
+  const cartCount = document.getElementById('cartCount')
+  if (cartCount) cartCount.textContent = '0'
+  const cartTotal = document.getElementById('cartTotal')
+  if (cartTotal) cartTotal.textContent = '0'
+}
+
+async function loadAdminData() {
+  console.log('Loading admin data...')
+  const pendingContainer = document.getElementById('pendingDistributors')
+  if (pendingContainer) {
+    pendingContainer.innerHTML = '<div class="text-gray-500 text-center py-4">No pending approvals</div>'
+  }
+  
+  const ordersContainer = document.getElementById('adminOrders')
+  if (ordersContainer) {
+    ordersContainer.innerHTML = '<div class="text-gray-500 text-center py-4">No orders yet</div>'
+  }
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+// Send OTP button
+const sendOtpBtn = document.getElementById('sendOtpPhoneBtn')
+if (sendOtpBtn) {
+  sendOtpBtn.addEventListener('click', async () => {
+    const phoneInput = document.getElementById('phoneNumber')
+    const phone = phoneInput?.value.trim()
+    
+    if (!phone) {
+      alert('Enter your phone number')
       return
     }
-
-    if (data?.session) {
-      await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token
-      })
+    
+    const nameInput = document.getElementById('signupName')
+    const locationInput = document.getElementById('signupLocation')
+    const name = nameInput?.value.trim() || 'User'
+    const location = locationInput?.value.trim() || ''
+    
+    sessionStorage.setItem('signupName', name)
+    sessionStorage.setItem('signupLocation', location)
+    sessionStorage.setItem('signupRole', currentRole)
+    
+    let formattedPhone = phone
+    if (!phone.startsWith('+')) {
+      formattedPhone = '+255' + phone.replace(/^0+/, '')
     }
+    currentPhone = formattedPhone
+    
+    const success = await sendOTP(formattedPhone)
+    if (success) {
+      const phoneStep = document.getElementById('phoneStep')
+      const otpStep = document.getElementById('otpStep')
+      if (phoneStep) phoneStep.classList.add('hidden')
+      if (otpStep) otpStep.classList.remove('hidden')
+    }
+  })
+}
 
-    const user = data.user
+// Verify OTP button
+const verifyBtn = document.getElementById('verifyOtpBtn')
+if (verifyBtn) {
+  verifyBtn.addEventListener('click', async () => {
+    const otpInput = document.getElementById('otpCode')
+    const otp = otpInput?.value.trim()
+    
+    if (!otp || otp.length !== 6) {
+      alert('Enter 6-digit verification code')
+      return
+    }
+    
+    await verifyOTP(otp)
+  })
+}
 
-    let { data: profile, error: profileError } = await supabase
+// Back button
+const backBtn = document.getElementById('backToPhoneBtn')
+if (backBtn) {
+  backBtn.addEventListener('click', () => {
+    const phoneStep = document.getElementById('phoneStep')
+    const otpStep = document.getElementById('otpStep')
+    const otpCode = document.getElementById('otpCode')
+    
+    if (phoneStep) phoneStep.classList.remove('hidden')
+    if (otpStep) otpStep.classList.add('hidden')
+    if (otpCode) otpCode.value = ''
+  })
+}
+
+// Role selection
+const retailerRoleBtn = document.getElementById('phoneRoleRetailer')
+const distributorRoleBtn = document.getElementById('phoneRoleDistributor')
+
+if (retailerRoleBtn) {
+  retailerRoleBtn.addEventListener('click', () => {
+    currentRole = 'retailer'
+    retailerRoleBtn.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
+    if (distributorRoleBtn) distributorRoleBtn.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
+  })
+}
+
+if (distributorRoleBtn) {
+  distributorRoleBtn.addEventListener('click', () => {
+    currentRole = 'distributor'
+    distributorRoleBtn.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
+    if (retailerRoleBtn) retailerRoleBtn.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
+  })
+}
+
+// ============================================
+// LANGUAGE SELECTION
+// ============================================
+window.selectLanguage = function(lang) {
+  currentLanguage = lang
+  const languageScreen = document.getElementById('languageScreen')
+  if (languageScreen) languageScreen.classList.add('hidden')
+  showPhoneLogin()
+  updateUIText()
+}
+
+function updateUIText() {
+  const phoneTitle = document.getElementById('phoneTitle')
+  const phoneSubtitle = document.getElementById('phoneSubtitle')
+  const sendOtpPhoneBtn = document.getElementById('sendOtpPhoneBtn')
+  const otpTitle = document.getElementById('otpTitle')
+  const verifyOtpBtn = document.getElementById('verifyOtpBtn')
+  
+  if (phoneTitle) phoneTitle.textContent = t('welcome')
+  if (phoneSubtitle) phoneSubtitle.textContent = t('enterPhone')
+  if (sendOtpPhoneBtn) sendOtpPhoneBtn.innerHTML = `<i class="fas fa-paper-plane"></i><span>${t('sendOTP')}</span>`
+  if (otpTitle) otpTitle.textContent = t('verifyOTP')
+  if (verifyOtpBtn) verifyOtpBtn.innerHTML = `<i class="fas fa-check-circle"></i><span>${t('verifyOTP')}</span>`
+  
+  const retailerBtn = document.getElementById('phoneRoleRetailer')
+  const distributorBtn = document.getElementById('phoneRoleDistributor')
+  if (retailerBtn) retailerBtn.innerHTML = `<i class="fas fa-store"></i><span>${t('retailer')}</span>`
+  if (distributorBtn) distributorBtn.innerHTML = `<i class="fas fa-truck"></i><span>${t('distributor')}</span>`
+  
+  // Update signup labels
+  const nameInput = document.getElementById('signupName')
+  const locationInput = document.getElementById('signupLocation')
+  if (nameInput) nameInput.placeholder = t('name')
+  if (locationInput) locationInput.placeholder = t('location')
+}
+
+// ============================================
+// LOGOUT
+// ============================================
+async function handleLogout() {
+  console.log('🚪 Logging out...')
+  
+  // Sign out from Firebase
+  if (window.firebaseAuth) {
+    try {
+      await window.firebaseAuth.signOut()
+    } catch (e) {
+      console.log('Firebase sign out error:', e)
+    }
+  }
+  
+  // Sign out from Supabase
+  try {
+    await supabase.auth.signOut()
+  } catch (e) {
+    console.log('Supabase sign out error:', e)
+  }
+  
+  // Reset state
+  sessionStorage.clear()
+  window.confirmationResult = null
+  currentUser = null
+  currentRole = 'retailer'
+  currentPhone = ''
+  
+  showPhoneLogin()
+}
+
+// Logout buttons
+const logoutBtn = document.getElementById('logoutBtn')
+const logoutBtn2 = document.getElementById('logoutBtn2')
+const adminLogoutBtn = document.getElementById('adminLogoutBtn')
+
+if (logoutBtn) logoutBtn.addEventListener('click', handleLogout)
+if (logoutBtn2) logoutBtn2.addEventListener('click', handleLogout)
+if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', handleLogout)
+
+// Cart modal
+const showCartBtn = document.getElementById('showCartBtn')
+if (showCartBtn) {
+  showCartBtn.addEventListener('click', () => {
+    const cartModal = document.getElementById('cartModal')
+    if (cartModal) cartModal.classList.remove('hidden')
+  })
+}
+
+// Close modal function
+window.closeModal = function(modalId) {
+  const modal = document.getElementById(modalId)
+  if (modal) modal.classList.add('hidden')
+}
+
+// ============================================
+// CHECK EXISTING SESSION
+// ============================================
+async function checkExistingSession() {
+  // Check Firebase session first
+  if (window.firebaseAuth) {
+    const user = window.firebaseAuth.currentUser
+    if (user) {
+      console.log('✅ Existing Firebase session found:', user.uid)
+      await handleSupabaseUser(user)
+      return true
+    }
+  }
+  
+  // Check Supabase session
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) {
+    console.log('✅ Existing Supabase session found:', session.user.id)
+    const { data: profile } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError && profileError.code === 'PGRST116') {
-      const name = document.getElementById('signupName')?.value || t('user')
-      const location = document.getElementById('signupLocation')?.value || ''
-      const { data: newProfile, error: insertError } = await supabase
-        .from('profiles')
-        .insert([{
-          id: user.id,
-          phone: currentPhone,
-          name,
-          location,
-          role: currentRole
-        }])
-        .select()
-        .single()
-
-      if (insertError) {
-        showLoading(false)
-        console.error('Insert profile error:', insertError)
-        alert(insertError.message)
-        return
-      }
-      profile = newProfile
-    } else if (profileError) {
-      showLoading(false)
-      console.error('Profile fetch error:', profileError)
-      alert(profileError.message)
-      return
+      .eq('id', session.user.id)
+      .maybeSingle()
+    if (profile) {
+      currentUser = profile
+      currentRole = profile.role
+      forceRedirectToDashboard()
+      return true
     }
+  }
+  
+  return false
+}
 
-    showLoading(false)
-    goToDashboard(profile.role, profile)
-  } catch (err) {
-    showLoading(false)
-    console.error('OTP verify exception:', err)
-    alert(t('failedVerify') + ': ' + err.message)
+// ============================================
+// INITIALIZE
+// ============================================
+async function init() {
+  console.log('🚀 Initializing BomaWave app...')
+  
+  // Check for existing session
+  const hasSession = await checkExistingSession()
+  if (!hasSession) {
+    const languageScreen = document.getElementById('languageScreen')
+    if (languageScreen) languageScreen.classList.remove('hidden')
   }
 }
 
-// EVENTS
-window.selectLanguage = function(lang) {
-  currentLang = lang
-  hideAllScreens()
-  document.getElementById('phoneLoginSection')?.classList.remove('hidden')
-}
-
-document.getElementById('phoneRoleRetailer')?.addEventListener('click', () => { currentRole = 'retailer' })
-document.getElementById('phoneRoleDistributor')?.addEventListener('click', () => { currentRole = 'distributor' })
-document.getElementById('sendOtpPhoneBtn')?.addEventListener('click', async () => {
-  let phone = document.getElementById('phoneNumber').value.trim()
-  if (!phone) { alert(t('enterPhone')); return }
-  if (!phone.startsWith('+')) { phone = '+255' + phone.replace(/^0+/, '') }
-  currentPhone = phone
-  const ok = await sendOTP(phone)
-  if (ok) {
-    document.getElementById('phoneStep').classList.add('hidden')
-    document.getElementById('otpStep').classList.remove('hidden')
-  }
-})
-document.getElementById('verifyOtpBtn')?.addEventListener('click', verifyOTP)
-document.getElementById('backToPhoneBtn')?.addEventListener('click', () => {
-  document.getElementById('otpStep').classList.add('hidden')
-  document.getElementById('phoneStep').classList.remove('hidden')
-})
-document.getElementById('logoutBtn')?.addEventListener('click', async () => { await supabase.auth.signOut(); location.reload() })
-document.getElementById('logoutBtn2')?.addEventListener('click', async () => { await supabase.auth.signOut(); location.reload() })
-
-window.addEventListener('load', checkAuth)
+init()
