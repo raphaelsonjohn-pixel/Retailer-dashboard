@@ -7,131 +7,38 @@
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-  
-  <!-- Tailwind Configuration -->
   <script>
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            primary: {
-              50: '#ecfdf5',
-              100: '#d1fae5',
-              200: '#a7f3d0',
-              300: '#6ee7b7',
-              400: '#34d399',
-              500: '#10b981',
-              600: '#059669',
-              700: '#047857',
-              800: '#065f46',
-              900: '#064e3b',
-            },
-            secondary: {
-              50: '#eff6ff',
-              100: '#dbeafe',
-              200: '#bfdbfe',
-              300: '#93c5fd',
-              400: '#60a5fa',
-              500: '#3b82f6',
-              600: '#2563eb',
-              700: '#1d4ed8',
-              800: '#1e40af',
-              900: '#1e3a8a',
-            },
+            primary: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857' },
+            secondary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+            accent: { 50: '#fff7ed', 500: '#f97316', 600: '#ea580c' },
+            dark: '#1f2937',
+            light: '#f9fafb'
           },
-          fontFamily: {
-            'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-          },
-          animation: {
-            'fade-in': 'fadeIn 0.5s ease-in-out',
-            'slide-up': 'slideUp 0.4s ease-out',
-            'slide-in-right': 'slideInRight 0.3s ease-out',
-          },
+          fontFamily: { 'sans': ['Inter', 'system-ui', 'sans-serif'] },
+          animation: { 'fade-in': 'fadeIn 0.4s ease-out', 'slide-up': 'slideUp 0.3s ease-out' },
           keyframes: {
-            fadeIn: {
-              '0%': { opacity: '0' },
-              '100%': { opacity: '1' },
-            },
-            slideUp: {
-              '0%': { transform: 'translateY(20px)', opacity: '0' },
-              '100%': { transform: 'translateY(0)', opacity: '1' },
-            },
-            slideInRight: {
-              '0%': { transform: 'translateX(100%)', opacity: '0' },
-              '100%': { transform: 'translateX(0)', opacity: '1' },
-            },
-          },
+            fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+            slideUp: { '0%': { transform: 'translateY(10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+          }
         }
       }
     }
   </script>
   
-  <!-- Custom CSS -->
   <style>
-    * {
-      font-family: 'Inter', sans-serif;
-    }
-    
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    
-    ::-webkit-scrollbar-track {
-      background: #f1f5f9;
-      border-radius: 10px;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-      background: linear-gradient(135deg, #10b981, #3b82f6);
-      border-radius: 10px;
-    }
-    
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid #e5e7eb;
-      border-top: 3px solid #10b981;
-      border-right: 3px solid #3b82f6;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    .modal-overlay {
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
-    }
-    
-    .hover-lift {
-      transition: all 0.3s ease;
-    }
-    
-    .hover-lift:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.15);
-    }
-    
-    .product-card {
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    .product-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.15);
-      border-color: #10b981;
-    }
+    * { font-family: 'Inter', sans-serif; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .transition-all { transition: all 0.2s ease; }
+    .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
   </style>
   
   <script type="module" src="supabase.js"></script>
@@ -140,425 +47,253 @@
 <body class="bg-gradient-to-br from-primary-50 via-white to-secondary-50 min-h-screen antialiased">
 
   <!-- Loading Overlay -->
-  <div id="loadingOverlay" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/80 backdrop-blur-md">
-    <div class="bg-white rounded-2xl p-8 flex flex-col items-center shadow-2xl animate-fade-in">
-      <div class="spinner mb-4"></div>
-      <p id="loadingMessage" class="text-gray-700 font-medium text-lg">Loading...</p>
-      <p class="text-gray-400 text-sm mt-2">Please wait</p>
+  <div id="loadingOverlay" class="fixed inset-0 z-[100] hidden items-center justify-center bg-dark/80 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl p-6 flex flex-col items-center shadow-2xl">
+      <div class="spinner mb-3"></div>
+      <p id="loadingMessage" class="text-gray-600 font-medium">Loading...</p>
     </div>
   </div>
 
-  <!-- Language Selection Screen -->
-  <div id="languageScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-800">
+  <!-- Screen: Language Selection -->
+  <div id="screenLanguage" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary-700 to-secondary-800">
     <div class="text-center p-8 animate-fade-in">
-      <div class="mb-8">
-        <div class="w-28 h-28 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl border border-white/20">
-          <i class="fas fa-boxes text-5xl text-white"></i>
-        </div>
-        <h1 class="text-6xl font-bold text-white mb-3 tracking-tight">BomaWave</h1>
-        <p class="text-white/80 text-lg max-w-md mx-auto">Enterprise FMCG Distribution Platform</p>
+      <div class="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
+        <i class="fas fa-boxes text-4xl text-white"></i>
       </div>
-      
-      <div class="space-y-4 mt-12">
-        <button onclick="window.selectLanguage('en')" class="group w-80 py-4 bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3">
-          <i class="fas fa-flag-usa text-2xl text-primary-600 group-hover:scale-110 transition"></i>
-          <span class="text-xl font-semibold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">English</span>
+      <h1 class="text-5xl font-bold text-white mb-2">BomaWave</h1>
+      <p class="text-white/70 mb-10">FMCG Distribution Network</p>
+      <div class="space-y-3">
+        <button onclick="window.app.selectLanguage('en')" class="w-72 py-4 bg-white rounded-xl shadow-lg hover:scale-105 transition-all font-semibold text-primary-600">🇬🇧 English</button>
+        <button onclick="window.app.selectLanguage('sw')" class="w-72 py-4 bg-white rounded-xl shadow-lg hover:scale-105 transition-all font-semibold text-secondary-600">🇹🇿 Kiswahili</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen: Role Selection -->
+  <div id="screenRole" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary-700 to-secondary-800">
+    <div class="text-center p-8 animate-fade-in">
+      <i class="fas fa-users text-5xl text-white mb-4"></i>
+      <h2 id="roleTitle" class="text-3xl font-bold text-white mb-8">I am a</h2>
+      <div class="flex flex-col sm:flex-row gap-5">
+        <button id="selectRetailer" class="w-72 py-6 bg-white rounded-2xl shadow-xl hover:scale-105 transition-all group">
+          <i class="fas fa-store text-4xl text-primary-500 mb-2 group-hover:scale-110 transition"></i>
+          <p class="text-xl font-bold text-gray-800">Retailer</p>
+          <p class="text-sm text-gray-500">Buy products & manage orders</p>
         </button>
-        <button onclick="window.selectLanguage('sw')" class="group w-80 py-4 bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3">
-          <i class="fas fa-flag-checkered text-2xl text-secondary-600 group-hover:scale-110 transition"></i>
-          <span class="text-xl font-semibold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">Kiswahili</span>
+        <button id="selectDistributor" class="w-72 py-6 bg-white rounded-2xl shadow-xl hover:scale-105 transition-all group">
+          <i class="fas fa-truck text-4xl text-secondary-500 mb-2 group-hover:scale-110 transition"></i>
+          <p class="text-xl font-bold text-gray-800">Distributor</p>
+          <p class="text-sm text-gray-500">Sell products & manage inventory</p>
         </button>
       </div>
-      
-      <p class="text-white/60 text-sm mt-12">Secure platform for distributors and retailers</p>
     </div>
   </div>
 
-  <!-- Authentication Section (Login/Signup - No OTP) -->
-  <div id="authSection" class="hidden min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-md w-full animate-slide-up">
-      <div class="text-center mb-8">
-        <div class="w-20 h-20 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
-          <i class="fas fa-boxes text-3xl text-white"></i>
-        </div>
-        <h1 class="text-3xl font-bold text-gray-800">BomaWave</h1>
-        <p class="text-gray-500 mt-1">FMCG Distribution Network</p>
+  <!-- Screen: Login -->
+  <div id="screenLogin" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 animate-slide-up">
+      <div class="text-center mb-6">
+        <i class="fas fa-boxes text-3xl text-primary-500"></i>
+        <h2 id="loginTitle" class="text-2xl font-bold text-gray-800 mt-2">Welcome Back</h2>
+        <p id="loginSubtitle" class="text-gray-500 text-sm">Sign in to your account</p>
       </div>
-      
-      <!-- Login Form -->
-      <div id="loginForm" class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-gray-100">
-        <div class="mb-6">
-          <h2 id="loginTitle" class="text-2xl font-bold text-gray-800">Welcome Back</h2>
-          <p class="text-gray-500 text-sm mt-1">Sign in to access your dashboard</p>
-        </div>
-        
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-phone-alt mr-2 text-primary-500"></i>Phone or Email
-            </label>
-            <input type="text" id="loginIdentifier" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="0712345678 or email@example.com">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-lock mr-2 text-primary-500"></i>Password
-            </label>
-            <input type="password" id="loginPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="Enter your password">
-          </div>
-          
-          <button id="loginBtn" class="w-full py-3.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 mt-4 flex items-center justify-center gap-2">
-            <i class="fas fa-sign-in-alt"></i>
-            <span>Login</span>
-          </button>
-        </div>
-        
-        <div class="mt-6 pt-6 border-t border-gray-100 text-center">
-          <p class="text-sm text-gray-500">
-            Don't have an account? 
-            <button id="showSignup" class="text-primary-600 hover:text-primary-700 font-medium">Sign Up</button>
-          </p>
-        </div>
-      </div>
-      
-      <!-- Signup Form -->
-      <div id="signupForm" class="hidden bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-gray-100">
-        <div class="mb-6">
-          <h2 id="signupTitle" class="text-2xl font-bold text-gray-800">Create Account</h2>
-          <p class="text-gray-500 text-sm mt-1">Join BomaWave platform</p>
-        </div>
-        
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-phone-alt mr-2 text-primary-500"></i>Phone or Email
-            </label>
-            <input type="text" id="signupIdentifier" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="0712345678 or email@example.com">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-lock mr-2 text-primary-500"></i>Password
-            </label>
-            <input type="password" id="signupPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="Create a password">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-user mr-2 text-primary-500"></i>Full Name
-            </label>
-            <input type="text" id="signupName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="Your full name">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-location-dot mr-2 text-primary-500"></i>Location
-            </label>
-            <input type="text" id="signupLocation" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="City, District">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-3">I am a:</label>
-            <div class="flex gap-3">
-              <button type="button" id="signupRoleRetailer" class="flex-1 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2">
-                <i class="fas fa-store"></i>
-                <span>Retailer</span>
-              </button>
-              <button type="button" id="signupRoleDistributor" class="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl flex items-center justify-center gap-2">
-                <i class="fas fa-truck"></i>
-                <span>Distributor</span>
-              </button>
-            </div>
-            <input type="hidden" id="signupRole" value="retailer">
-          </div>
-          
-          <button id="signupBtn" class="w-full py-3.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 mt-4 flex items-center justify-center gap-2">
-            <i class="fas fa-user-plus"></i>
-            <span>Sign Up</span>
-          </button>
-        </div>
-        
-        <div class="mt-6 pt-6 border-t border-gray-100 text-center">
-          <p class="text-sm text-gray-500">
-            Already have an account? 
-            <button id="showLogin" class="text-primary-600 hover:text-primary-700 font-medium">Login</button>
-          </p>
-        </div>
-      </div>
+      <input type="text" id="loginUsername" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent mb-3" placeholder="Store Name">
+      <input type="password" id="loginPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent mb-4" placeholder="Password">
+      <button id="loginBtn" class="w-full py-3 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition">Sign In</button>
+      <p class="text-center text-sm text-gray-500 mt-4">New to BomaWave? <button id="goToSignup" class="text-primary-500 font-medium">Create Account</button></p>
     </div>
   </div>
 
-  <!-- Distributor Dashboard -->
-  <div id="distributorDashboard" class="hidden min-h-screen bg-gray-50">
-    <div class="bg-white shadow-md border-b border-gray-200 sticky top-0 z-20">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center shadow-md">
-              <i class="fas fa-boxes text-white text-xl"></i>
-            </div>
-            <div>
-              <h2 class="text-xl font-bold text-gray-800">Distributor Portal</h2>
-              <p class="text-xs text-gray-500">Manage your inventory and orders</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-xl">
-              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span id="distributorEmail" class="text-sm text-gray-600 font-medium">Loading...</span>
-            </div>
-            <button id="logoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300 font-medium flex items-center gap-2">
-              <i class="fas fa-sign-out-alt"></i>
-              <span>Logout</span>
-            </button>
-          </div>
-        </div>
+  <!-- Screen: Retailer Signup -->
+  <div id="screenRetailerSignup" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 animate-slide-up">
+      <div class="text-center mb-6">
+        <i class="fas fa-store text-3xl text-primary-500"></i>
+        <h2 class="text-2xl font-bold text-gray-800">Retailer Registration</h2>
+        <p class="text-gray-500 text-sm">Join as a retailer</p>
       </div>
-    </div>
-
-    <div class="border-b border-gray-200 bg-white sticky top-[73px] z-10 shadow-sm">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex gap-1">
-          <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-primary-600 border-b-2 border-transparent transition-all duration-300 font-medium flex items-center gap-2" data-tab="distProductsTab">
-            <i class="fas fa-box"></i>
-            <span>Products</span>
-          </button>
-          <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-primary-600 border-b-2 border-transparent transition-all duration-300 font-medium flex items-center gap-2" data-tab="distOrdersTab">
-            <i class="fas fa-shopping-cart"></i>
-            <span>Orders</span>
-          </button>
-          <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-primary-600 border-b-2 border-transparent transition-all duration-300 font-medium flex items-center gap-2" data-tab="distAlertsTab">
-            <i class="fas fa-bell"></i>
-            <span>Alerts</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div id="distProductsTab" class="distributorTabContent">
-        <div class="bg-white rounded-2xl shadow-sm p-6 mb-8 border border-gray-100 hover-lift">
-          <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <i class="fas fa-plus-circle text-primary-500"></i>
-            <span>Add New Product</span>
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-              <input type="text" id="productName" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500" placeholder="e.g., Coca Cola 1L">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Jina la Bidhaa (Swahili)</label>
-              <input type="text" id="productNameSw" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500" placeholder="e.g., Coca Cola 1L">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Price (TZS)</label>
-              <input type="number" id="productPrice" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500" placeholder="0">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
-              <input type="number" id="productStock" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500" placeholder="0">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Min Order Quantity</label>
-              <input type="number" id="minOrderQty" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500" value="1">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <input type="text" id="productCategory" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500" placeholder="Beverages, Food, etc.">
-            </div>
-          </div>
-          <button id="addProductBtn" class="mt-6 px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 flex items-center gap-2">
-            <i class="fas fa-plus"></i>
-            <span>Add Product</span>
-          </button>
-        </div>
-        
-        <div id="distributorProducts" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-      </div>
-
-      <div id="distOrdersTab" class="distributorTabContent hidden">
-        <div id="distributorOrders" class="space-y-4"></div>
-      </div>
-
-      <div id="distAlertsTab" class="distributorTabContent hidden">
-        <div id="stockAlerts" class="space-y-4"></div>
-      </div>
+      <input type="text" id="retailerStoreName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-3" placeholder="Store Name *">
+      <input type="text" id="retailerLocation" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-3" placeholder="Location (City/District) *">
+      <input type="text" id="retailerName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-3" placeholder="Your Full Name *">
+      <input type="tel" id="retailerPhone" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-3" placeholder="Phone Number *">
+      <input type="password" id="retailerPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-4" placeholder="Password *">
+      <button id="retailerSignupBtn" class="w-full py-3 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition">Create Account</button>
+      <p class="text-center text-sm text-gray-500 mt-4">Already have an account? <button id="retailerBackToLogin" class="text-primary-500 font-medium">Sign In</button></p>
     </div>
   </div>
 
-  <!-- Retailer Dashboard -->
-  <div id="retailerDashboard" class="hidden min-h-screen bg-gray-50">
-    <div class="bg-white shadow-md border-b border-gray-200 sticky top-0 z-20">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center shadow-md">
-              <i class="fas fa-store text-white text-xl"></i>
-            </div>
-            <div>
-              <h2 class="text-xl font-bold text-gray-800">Retailer Portal</h2>
-              <p class="text-xs text-gray-500">Browse and order products</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-xl">
-              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span id="retailerEmail" class="text-sm text-gray-600 font-medium">Loading...</span>
-            </div>
-            <button id="showCartBtn" class="relative px-4 py-2 text-secondary-600 hover:bg-secondary-50 rounded-xl transition-all duration-300 font-medium flex items-center gap-2">
-              <i class="fas fa-shopping-cart"></i>
-              <span>Cart</span>
-              <span id="cartCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px]">0</span>
-            </button>
-            <button id="logoutBtn2" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300 font-medium flex items-center gap-2">
-              <i class="fas fa-sign-out-alt"></i>
-              <span>Logout</span>
-            </button>
+  <!-- Screen: Distributor Signup -->
+  <div id="screenDistributorSignup" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 animate-slide-up">
+      <div class="text-center mb-6">
+        <i class="fas fa-truck text-3xl text-secondary-500"></i>
+        <h2 class="text-2xl font-bold text-gray-800">Distributor Registration</h2>
+        <p class="text-gray-500 text-sm">Join as a distributor</p>
+      </div>
+      <input type="text" id="distributorCompanyName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Company Name *">
+      <input type="text" id="distributorStoreName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Store Name *">
+      <input type="text" id="distributorName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Your Full Name *">
+      <input type="text" id="distributorProductType" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Product Categories *">
+      <input type="text" id="distributorLocation" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Your Location *">
+      <input type="text" id="distributorCoverage" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Delivery Coverage Areas *">
+      <input type="text" id="distributorVehicle" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Delivery Vehicle">
+      <input type="tel" id="distributorPhone" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Phone Number *">
+      <input type="password" id="distributorPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-4" placeholder="Password *">
+      <p class="text-xs text-amber-600 mb-3">⚠️ Account requires admin approval</p>
+      <button id="distributorSignupBtn" class="w-full py-3 bg-secondary-500 text-white rounded-xl font-semibold hover:bg-secondary-600 transition">Register & Submit</button>
+      <p class="text-center text-sm text-gray-500 mt-4">Already have an account? <button id="distributorBackToLogin" class="text-secondary-500 font-medium">Sign In</button></p>
+    </div>
+  </div>
+
+  <!-- Dashboard: Retailer -->
+  <div id="dashboardRetailer" class="hidden min-h-screen bg-gray-50">
+    <nav class="bg-white shadow-sm sticky top-0 z-20 border-b">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-store text-2xl text-primary-500"></i>
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">Retailer Portal</h2>
+            <p id="retailerStoreDisplay" class="text-xs text-gray-500">Store: Loading...</p>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="border-b border-gray-200 bg-white sticky top-[73px] z-10 shadow-sm">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex gap-1">
-          <button class="retailerTabBtn px-6 py-3 text-gray-600 hover:text-primary-600 border-b-2 border-transparent transition-all duration-300 font-medium flex items-center gap-2" data-tab="retailerProductsTab">
-            <i class="fas fa-box"></i>
-            <span>Products</span>
+        <div class="flex gap-2">
+          <button id="showCartBtn" class="relative px-4 py-2 text-secondary-600 hover:bg-secondary-50 rounded-lg transition">
+            <i class="fas fa-shopping-cart"></i> Cart
+            <span id="cartCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5">0</span>
           </button>
-          <button class="retailerTabBtn px-6 py-3 text-gray-600 hover:text-primary-600 border-b-2 border-transparent transition-all duration-300 font-medium flex items-center gap-2" data-tab="retailerOrdersTab">
-            <i class="fas fa-history"></i>
-            <span>My Orders</span>
-          </button>
+          <button id="logoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">Logout</button>
         </div>
       </div>
+    </nav>
+    <div class="border-b border-gray-200 bg-white">
+      <div class="max-w-7xl mx-auto px-4 flex gap-1">
+        <button class="retailerTabBtn px-6 py-3 text-gray-600 hover:text-primary-600 border-b-2 border-transparent font-medium transition" data-tab="retailerProductsTab">Products</button>
+        <button class="retailerTabBtn px-6 py-3 text-gray-600 hover:text-primary-600 border-b-2 border-transparent font-medium transition" data-tab="retailerOrdersTab">My Orders</button>
+      </div>
     </div>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-4 py-6">
       <div id="retailerProductsTab" class="retailerTabContent">
-        <div class="bg-white rounded-2xl shadow-sm p-4 mb-6 flex flex-col md:flex-row gap-4">
+        <div class="flex flex-col md:flex-row gap-4 mb-6">
           <div class="flex-1 relative">
             <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
             <input type="text" id="searchProducts" class="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500" placeholder="Search products...">
           </div>
-          <div class="md:w-64">
-            <select id="categoryFilter" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500">
-              <option value="all">All Categories</option>
-            </select>
-          </div>
+          <select id="categoryFilter" class="md:w-48 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500">
+            <option value="all">All Categories</option>
+          </select>
         </div>
         <div id="retailerProducts" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
       </div>
-
       <div id="retailerOrdersTab" class="retailerTabContent hidden">
         <div id="retailerOrders" class="space-y-4"></div>
       </div>
     </div>
   </div>
 
-  <!-- Admin Dashboard -->
-  <div id="adminDashboard" class="hidden min-h-screen bg-gray-50">
-    <div class="bg-white shadow-md border-b border-gray-200 sticky top-0 z-20">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center shadow-md">
-              <i class="fas fa-crown text-white text-xl"></i>
-            </div>
-            <div>
-              <h2 class="text-xl font-bold text-gray-800">Admin Portal</h2>
-              <p class="text-xs text-gray-500">Platform Management</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-xl">
-              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span id="adminEmail" class="text-sm text-gray-600 font-medium">Loading...</span>
-            </div>
-            <button id="adminLogoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300 font-medium flex items-center gap-2">
-              <i class="fas fa-sign-out-alt"></i>
-              <span>Logout</span>
-            </button>
+  <!-- Dashboard: Distributor -->
+  <div id="dashboardDistributor" class="hidden min-h-screen bg-gray-50">
+    <nav class="bg-white shadow-sm sticky top-0 z-20 border-b">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-truck text-2xl text-secondary-500"></i>
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">Distributor Portal</h2>
+            <p id="distributorStoreDisplay" class="text-xs text-gray-500">Store: Loading...</p>
           </div>
         </div>
+        <button id="logoutBtn2" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">Logout</button>
+      </div>
+    </nav>
+    <div class="border-b border-gray-200 bg-white">
+      <div class="max-w-7xl mx-auto px-4 flex gap-1">
+        <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-secondary-600 border-b-2 border-transparent font-medium transition" data-tab="distProductsTab">Products</button>
+        <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-secondary-600 border-b-2 border-transparent font-medium transition" data-tab="distOrdersTab">Orders</button>
+        <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-secondary-600 border-b-2 border-transparent font-medium transition" data-tab="distAlertsTab">Alerts</button>
       </div>
     </div>
+    <div class="max-w-7xl mx-auto px-4 py-6">
+      <div id="distProductsTab" class="distributorTabContent">
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border">
+          <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i class="fas fa-plus-circle text-secondary-500"></i> Add New Product</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input type="text" id="productName" class="px-4 py-2 border rounded-xl" placeholder="Product Name">
+            <input type="text" id="productNameSw" class="px-4 py-2 border rounded-xl" placeholder="Product Name (Swahili)">
+            <input type="number" id="productPrice" class="px-4 py-2 border rounded-xl" placeholder="Price (TZS)">
+            <input type="number" id="productStock" class="px-4 py-2 border rounded-xl" placeholder="Stock Quantity">
+            <input type="text" id="productCategory" class="px-4 py-2 border rounded-xl" placeholder="Category">
+          </div>
+          <button id="addProductBtn" class="mt-4 px-6 py-2 bg-secondary-500 text-white rounded-lg hover:bg-secondary-600 transition">Add Product</button>
+        </div>
+        <div id="distributorProducts" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      </div>
+      <div id="distOrdersTab" class="distributorTabContent hidden">
+        <div id="distributorOrders" class="space-y-4"></div>
+      </div>
+      <div id="distAlertsTab" class="distributorTabContent hidden">
+        <div id="stockAlerts" class="space-y-4"></div>
+      </div>
+    </div>
+  </div>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="bg-white rounded-2xl shadow-sm p-6 mb-8 border border-gray-100">
-        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <i class="fas fa-clock text-accent-500"></i>
-          <span>Pending Distributor Approvals</span>
-        </h3>
+  <!-- Dashboard: Admin -->
+  <div id="dashboardAdmin" class="hidden min-h-screen bg-gray-50">
+    <nav class="bg-white shadow-sm sticky top-0 z-20 border-b">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-crown text-2xl text-amber-500"></i>
+          <h2 class="text-lg font-bold text-gray-800">Admin Portal</h2>
+        </div>
+        <button id="adminLogoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">Logout</button>
+      </div>
+    </nav>
+    <div class="max-w-7xl mx-auto px-4 py-6">
+      <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i class="fas fa-clock text-amber-500"></i> Pending Distributor Approvals</h3>
         <div id="pendingDistributors" class="space-y-3"></div>
       </div>
-
-      <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <i class="fas fa-chart-bar text-primary-500"></i>
-          <span>All Orders (Platform Wide)</span>
-        </h3>
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i class="fas fa-chart-line text-primary-500"></i> All Orders (Platform Wide)</h3>
         <div id="adminOrders" class="space-y-3"></div>
       </div>
     </div>
   </div>
 
-  <!-- Cart Modal -->
+  <!-- Modals -->
   <div id="cartModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
     <div class="absolute inset-0 modal-overlay" onclick="closeModal('cartModal')"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto animate-slide-in-right">
-      <div class="sticky top-0 bg-white border-b border-gray-100 p-4 flex justify-between items-center">
-        <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <i class="fas fa-shopping-cart text-primary-500"></i>
-          <span>Your Cart</span>
-        </h3>
-        <button onclick="closeModal('cartModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+    <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto">
+      <div class="sticky top-0 bg-white border-b p-4 flex justify-between">
+        <h3 class="font-bold text-lg"><i class="fas fa-shopping-cart text-primary-500"></i> Your Cart</h3>
+        <button onclick="closeModal('cartModal')" class="text-gray-400 text-2xl hover:text-gray-600">&times;</button>
       </div>
       <div id="cartItems" class="p-4 space-y-3"></div>
-      <div class="border-t border-gray-100 p-4 space-y-4 bg-gray-50">
-        <div class="flex justify-between text-lg font-bold">
-          <span>Total:</span>
-          <span id="cartTotal" class="text-primary-600">0</span>
-          <span class="text-sm font-normal text-gray-500">TZS</span>
-        </div>
-        <p id="minOrderWarning" class="text-sm text-yellow-600"></p>
-        <textarea id="deliveryAddress" class="w-full px-3 py-2 border border-gray-200 rounded-xl" rows="2" placeholder="Delivery Address"></textarea>
-        <select id="paymentMethod" class="w-full px-3 py-2 border border-gray-200 rounded-xl">
-          <option value="cash">💵 Cash</option>
-          <option value="card">💳 Card</option>
-          <option value="mobile_money">📱 Mobile Money</option>
+      <div class="border-t p-4 space-y-3 bg-gray-50">
+        <div class="flex justify-between font-bold"><span>Total:</span> <span id="cartTotal" class="text-primary-600">0</span> TZS</div>
+        <textarea id="deliveryAddress" class="w-full px-3 py-2 border rounded-xl" rows="2" placeholder="Delivery Address *"></textarea>
+        <select id="deliveryTime" class="w-full px-3 py-2 border rounded-xl">
+          <option value="morning">Morning (8AM - 12PM)</option>
+          <option value="afternoon">Afternoon (12PM - 4PM)</option>
+          <option value="evening">Evening (4PM - 8PM)</option>
         </select>
-        <button id="checkoutBtn" class="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
-          <i class="fas fa-check-circle"></i>
-          <span>Place Order</span>
-        </button>
+        <button id="checkoutBtn" class="w-full py-3 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition">Place Order</button>
       </div>
     </div>
   </div>
 
-  <!-- Order Status Modal -->
   <div id="orderStatusModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
     <div class="absolute inset-0 modal-overlay" onclick="closeModal('orderStatusModal')"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full animate-fade-in">
-      <div class="border-b border-gray-100 p-4 flex justify-between items-center">
-        <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <i class="fas fa-truck text-primary-500"></i>
-          <span>Order Status</span>
-        </h3>
-        <button onclick="closeModal('orderStatusModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+    <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full">
+      <div class="border-b p-4 flex justify-between">
+        <h3 class="font-bold"><i class="fas fa-truck text-primary-500"></i> Order Details</h3>
+        <button onclick="closeModal('orderStatusModal')" class="text-gray-400 text-2xl hover:text-gray-600">&times;</button>
       </div>
       <div id="orderStatusContent" class="p-4"></div>
     </div>
   </div>
 
   <script>
-    function closeModal(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) modal.classList.add('hidden');
-    }
+    function closeModal(modalId) { document.getElementById(modalId)?.classList.add('hidden'); }
     window.closeModal = closeModal;
   </script>
-
 </body>
 </html>
