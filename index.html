@@ -73,34 +73,6 @@
     }
   </script>
   
-  <!-- Firebase SDK -->
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js'
-    import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js'
-    
-    // Your web app's Firebase configuration (COPY FROM FIREBASE CONSOLE)
-    const firebaseConfig = {
-      apiKey: "AIzaSyBpbN7d9Aop806iFQXqXNLVNXCfeNyUtY8",
-      authDomain: "bomawave-47087.firebaseapp.com",
-      projectId: "bomawave-47087",
-      storageBucket: "bomawave-47087.firebasestorage.app",
-      messagingSenderId: "24340888735",
-      appId: "1:24340888735:web:2c427377986099c3fc36aa",
-      measurementId: "G-5K50SFXZYG"
-    };
-    
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    
-    // Make auth and functions available globally
-    window.firebaseAuth = auth;
-    window.RecaptchaVerifier = RecaptchaVerifier;
-    window.signInWithPhoneNumber = signInWithPhoneNumber;
-    
-    console.log('✅ Firebase initialized successfully');
-  </script>
-  
   <!-- Custom CSS -->
   <style>
     * {
@@ -212,9 +184,6 @@
         <h1 class="text-3xl font-bold text-gray-800">BomaWave</h1>
         <p class="text-gray-500 mt-1">FMCG Distribution Network</p>
       </div>
-      
-      <!-- reCAPTCHA Container (invisible) -->
-      <div id="recaptcha-container"></div>
       
       <!-- Phone Step -->
       <div id="phoneStep" class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-gray-100">
