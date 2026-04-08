@@ -174,30 +174,73 @@
     </div>
   </div>
 
-  <!-- Phone Login Section (Main Login) -->
-  <div id="phoneLoginSection" class="hidden min-h-screen flex items-center justify-center p-4">
+  <!-- Authentication Section (Login/Signup - No OTP) -->
+  <div id="authSection" class="hidden min-h-screen flex items-center justify-center p-4">
     <div class="max-w-md w-full animate-slide-up">
       <div class="text-center mb-8">
         <div class="w-20 h-20 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
-          <i class="fas fa-mobile-alt text-3xl text-white"></i>
+          <i class="fas fa-boxes text-3xl text-white"></i>
         </div>
         <h1 class="text-3xl font-bold text-gray-800">BomaWave</h1>
         <p class="text-gray-500 mt-1">FMCG Distribution Network</p>
       </div>
       
-      <!-- Phone Step -->
-      <div id="phoneStep" class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-gray-100">
+      <!-- Login Form -->
+      <div id="loginForm" class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-gray-100">
         <div class="mb-6">
-          <h2 id="phoneTitle" class="text-2xl font-bold text-gray-800">Welcome!</h2>
-          <p id="phoneSubtitle" class="text-gray-500 text-sm mt-1">Enter your phone number to continue</p>
+          <h2 id="loginTitle" class="text-2xl font-bold text-gray-800">Welcome Back</h2>
+          <p class="text-gray-500 text-sm mt-1">Sign in to access your dashboard</p>
         </div>
         
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-phone mr-2 text-primary-500"></i>Phone Number
+              <i class="fas fa-phone-alt mr-2 text-primary-500"></i>Phone or Email
             </label>
-            <input type="tel" id="phoneNumber" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="0712345678 or +255712345678">
+            <input type="text" id="loginIdentifier" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="0712345678 or email@example.com">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-lock mr-2 text-primary-500"></i>Password
+            </label>
+            <input type="password" id="loginPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="Enter your password">
+          </div>
+          
+          <button id="loginBtn" class="w-full py-3.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 mt-4 flex items-center justify-center gap-2">
+            <i class="fas fa-sign-in-alt"></i>
+            <span>Login</span>
+          </button>
+        </div>
+        
+        <div class="mt-6 pt-6 border-t border-gray-100 text-center">
+          <p class="text-sm text-gray-500">
+            Don't have an account? 
+            <button id="showSignup" class="text-primary-600 hover:text-primary-700 font-medium">Sign Up</button>
+          </p>
+        </div>
+      </div>
+      
+      <!-- Signup Form -->
+      <div id="signupForm" class="hidden bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-gray-100">
+        <div class="mb-6">
+          <h2 id="signupTitle" class="text-2xl font-bold text-gray-800">Create Account</h2>
+          <p class="text-gray-500 text-sm mt-1">Join BomaWave platform</p>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-phone-alt mr-2 text-primary-500"></i>Phone or Email
+            </label>
+            <input type="text" id="signupIdentifier" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="0712345678 or email@example.com">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-lock mr-2 text-primary-500"></i>Password
+            </label>
+            <input type="password" id="signupPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gray-50/50" placeholder="Create a password">
           </div>
           
           <div>
@@ -215,65 +258,30 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-3">
-              <i class="fas fa-users mr-2 text-primary-500"></i>I am a:
-            </label>
+            <label class="block text-sm font-medium text-gray-700 mb-3">I am a:</label>
             <div class="flex gap-3">
-              <button type="button" id="phoneRoleRetailer" class="flex-1 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+              <button type="button" id="signupRoleRetailer" class="flex-1 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2">
                 <i class="fas fa-store"></i>
                 <span>Retailer</span>
               </button>
-              <button type="button" id="phoneRoleDistributor" class="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+              <button type="button" id="signupRoleDistributor" class="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl flex items-center justify-center gap-2">
                 <i class="fas fa-truck"></i>
                 <span>Distributor</span>
               </button>
             </div>
+            <input type="hidden" id="signupRole" value="retailer">
           </div>
           
-          <button id="sendOtpPhoneBtn" class="btn-ripple w-full py-3.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 mt-4 flex items-center justify-center gap-2">
-            <i class="fas fa-paper-plane"></i>
-            <span>Send Verification Code</span>
+          <button id="signupBtn" class="w-full py-3.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 mt-4 flex items-center justify-center gap-2">
+            <i class="fas fa-user-plus"></i>
+            <span>Sign Up</span>
           </button>
         </div>
         
         <div class="mt-6 pt-6 border-t border-gray-100 text-center">
-          <p class="text-xs text-gray-400">
-            <i class="fas fa-shield-alt mr-1"></i>
-            We'll send a verification code via SMS
-          </p>
-        </div>
-      </div>
-      
-      <!-- OTP Step -->
-      <div id="otpStep" class="hidden bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-gray-100">
-        <div class="mb-6">
-          <h2 id="otpTitle" class="text-2xl font-bold text-gray-800">Verification</h2>
-          <p class="text-gray-500 text-sm mt-1">Enter the 6-digit code sent to your phone</p>
-        </div>
-        
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-key mr-2 text-primary-500"></i>Verification Code
-            </label>
-            <input type="text" id="otpCode" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all text-center text-2xl tracking-widest bg-gray-50/50" placeholder="123456" maxlength="6" inputmode="numeric">
-          </div>
-          
-          <button id="verifyOtpBtn" class="w-full py-3.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2">
-            <i class="fas fa-check-circle"></i>
-            <span>Verify & Login</span>
-          </button>
-          
-          <button id="backToPhoneBtn" class="w-full py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2">
-            <i class="fas fa-arrow-left"></i>
-            <span>Back to Phone Number</span>
-          </button>
-        </div>
-        
-        <div class="mt-6 pt-6 border-t border-gray-100 text-center">
-          <p class="text-xs text-gray-400">
-            <i class="fas fa-clock mr-1"></i>
-            Code expires in 5 minutes
+          <p class="text-sm text-gray-500">
+            Already have an account? 
+            <button id="showLogin" class="text-primary-600 hover:text-primary-700 font-medium">Login</button>
           </p>
         </div>
       </div>
