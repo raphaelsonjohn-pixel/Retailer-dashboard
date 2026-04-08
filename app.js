@@ -1,59 +1,61 @@
-// app.js - Custom Session + Africa's Talking OTP (No Supabase Auth)
+// app.js - Simple Phone/Email + Password Authentication (NO OTP)
 import { supabase } from './supabase.js'
 
 // ============================================
-// CONSTANTS
+// STATE
 // ============================================
-const EDGE_FUNCTION_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/send-sms-africastalking'
+let currentLanguage = null
+let currentUser = null
+let currentRole = 'retailer'
 
 // ============================================
 // TRANSLATIONS
 // ============================================
-let currentLanguage = null
-
 const translations = {
   en: {
-    enterPhone: 'Enter your phone number',
-    sendOTP: 'Send Verification Code',
-    verifyOTP: 'Verify Code',
-    enterCode: 'Enter 6-digit code',
+    phone: 'Phone Number',
+    email: 'Email Address',
+    password: 'Password',
+    signup: 'Sign Up',
+    login: 'Login',
+    logout: 'Logout',
     loading: 'Loading...',
     retailer: 'Retailer',
     distributor: 'Distributor',
-    logout: 'Logout',
     name: 'Full Name',
     location: 'Location',
-    phone: 'Phone Number',
     welcome: 'Welcome!',
     loginSuccess: 'Login successful!',
-    invalidCode: 'Invalid verification code. Please try again.',
-    errorSendingOTP: 'Error: Could not send verification code.',
-    noPhone: 'Enter your phone number',
-    noCode: 'Enter 6-digit verification code'
+    signupSuccess: 'Account created! Please login.',
+    error: 'Error: ',
+    noPhoneEmail: 'Enter phone number or email',
+    noPassword: 'Enter password',
+    noName: 'Enter your name'
   },
   sw: {
-    enterPhone: 'Weka namba yako ya simu',
-    sendOTP: 'Tuma Msimbo wa Kuthibitisha',
-    verifyOTP: 'Thibitisha Msimbo',
-    enterCode: 'Weka msimbo wa tarakimu 6',
+    phone: 'Namba ya Simu',
+    email: 'Barua Pepe',
+    password: 'Nenosiri',
+    signup: 'Jiunge',
+    login: 'Ingia',
+    logout: 'Toka',
     loading: 'Inapakia...',
     retailer: 'Muuzaji',
     distributor: 'Msambazaji',
-    logout: 'Toka',
     name: 'Jina Kamili',
     location: 'Eneo',
-    phone: 'Namba ya Simu',
     welcome: 'Karibu!',
     loginSuccess: 'Kuingia kumefanikiwa!',
-    invalidCode: 'Msimbo si sahihi. Tafadhali jaribu tena.',
-    errorSendingOTP: 'Imeshindwa kutuma msimbo. Tafadhali jaribu tena.',
-    noPhone: 'Weka namba yako ya simu',
-    noCode: 'Weka msimbo wa tarakimu 6'
+    signupSuccess: 'Akaunti imeundwa! Tafadhali ingia.',
+    error: 'Hitilafu: ',
+    noPhoneEmail: 'Weka namba ya simu au barua pepe',
+    noPassword: 'Weka nenosiri',
+    noName: 'Weka jina lako'
   }
 }
 
-function t(key) {
-  return translations[currentLanguage]?.[key] || translations.en[key] || key
+function t(key) { 
+  return translations[currentLanguage]?.[key] || translations.en[key] || key 
 }
 
 function showLoading(show, message = 'Loading...') {
@@ -71,378 +73,292 @@ function showLoading(show, message = 'Loading...') {
 }
 
 // ============================================
-// SESSION MANAGEMENT (Custom - No Supabase Auth)
+// AUTHENTICATION (Phone/Email + Password)
 // ============================================
-let currentUser = null
-let currentRole = null
-let pendingOTP = null
-let pendingPhone = null
 
-function saveSession(user) {
-  localStorage.setItem('bomawave_user', JSON.stringify(user))
-  currentUser = user
-  currentRole = user.role
-}
-
-function loadSession() {
-  const saved = localStorage.getItem('bomawave_user')
-  if (saved) {
-    currentUser = JSON.parse(saved)
-    currentRole = currentUser.role
+// Sign Up
+async function signUp(identifier, password, name, location, role) {
+  showLoading(true, 'Creating account...')
+  
+  // Determine if identifier is phone or email
+  const isEmail = identifier.includes('@')
+  let formattedIdentifier = identifier
+  
+  if (!isEmail && !identifier.startsWith('+')) {
+    formattedIdentifier = '+255' + identifier.replace(/^0+/, '')
+  }
+  
+  const signUpData = isEmail 
+    ? { email: formattedIdentifier, password }
+    : { phone: formattedIdentifier, password }
+  
+  const { data, error } = await supabase.auth.signUp({
+    ...signUpData,
+    options: {
+      data: { name, location, role }
+    }
+  })
+  
+  showLoading(false)
+  
+  if (error) {
+    alert(t('error') + error.message)
+    return false
+  }
+  
+  if (data.user) {
+    alert(t('signupSuccess'))
     return true
   }
   return false
 }
 
-function clearSession() {
-  localStorage.removeItem('bomawave_user')
+// Login
+async function login(identifier, password) {
+  showLoading(true, 'Logging in...')
+  
+  const isEmail = identifier.includes('@')
+  let formattedIdentifier = identifier
+  
+  if (!isEmail && !identifier.startsWith('+')) {
+    formattedIdentifier = '+255' + identifier.replace(/^0+/, '')
+  }
+  
+  const loginData = isEmail 
+    ? { email: formattedIdentifier, password }
+    : { phone: formattedIdentifier, password }
+  
+  const { data, error } = await supabase.auth.signInWithPassword(loginData)
+  
+  showLoading(false)
+  
+  if (error) {
+    alert(t('error') + error.message)
+    return false
+  }
+  
+  if (data.session) {
+    await loadUserData(data.user)
+    alert(t('loginSuccess'))
+    return true
+  }
+  return false
+}
+
+// Logout
+async function logout() {
+  await supabase.auth.signOut()
   currentUser = null
-  currentRole = null
+  currentRole = 'retailer'
+  showLoginScreen()
 }
 
 // ============================================
-// OTP FUNCTIONS (Africa's Talking)
+// LOAD USER DATA & DASHBOARD
 // ============================================
-async function sendOTP(phoneNumber) {
-  console.log('📱 Sending OTP to:', phoneNumber)
+async function loadUserData(user) {
   showLoading(true, t('loading'))
   
-  try {
-    const response = await fetch(EDGE_FUNCTION_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phoneNumber })
-    })
-    
-    const result = await response.json()
-    showLoading(false)
-    
-    if (result.success) {
-      pendingOTP = result.otp
-      pendingPhone = phoneNumber
-      console.log('✅ OTP received:', pendingOTP)
-      alert(`Verification code sent to ${phoneNumber}! Check your WhatsApp/SMS.`)
-      return true
-    } else {
-      alert(t('errorSendingOTP'))
-      return false
-    }
-  } catch (error) {
-    showLoading(false)
-    console.error('Send OTP error:', error)
-    alert(t('errorSendingOTP'))
-    return false
-  }
-}
-
-function verifyOTP(enteredCode) {
-  if (enteredCode === pendingOTP) {
-    return true
-  } else {
-    alert(t('invalidCode'))
-    return false
-  }
-}
-
-// ============================================
-// DATABASE FUNCTIONS (Supabase - Direct)
-// ============================================
-async function createOrGetUser(phoneNumber, name, location, role) {
-  // First, try to get existing user
-  let { data: existingUser, error: selectError } = await supabase
+  // Get profile from profiles table
+  let { data: profile } = await supabase
     .from('profiles')
     .select('*')
-    .eq('phone', phoneNumber)
+    .eq('id', user.id)
     .maybeSingle()
   
-  if (selectError) {
-    console.error('Select error:', selectError)
+  if (!profile) {
+    // Create profile if not exists
+    const metadata = user.user_metadata || {}
+    const { data: newProfile } = await supabase
+      .from('profiles')
+      .insert([{
+        id: user.id,
+        phone: user.phone || metadata.phone,
+        email: user.email,
+        name: metadata.name || 'User',
+        location: metadata.location || '',
+        role: metadata.role || 'retailer'
+      }])
+      .select()
+      .single()
+    profile = newProfile
   }
   
-  if (existingUser) {
-    return existingUser
-  }
+  currentUser = profile
+  currentRole = profile.role
   
-  // Create new user
-  const { data: newUser, error: insertError } = await supabase
-    .from('profiles')
-    .insert([{
-      phone: phoneNumber,
-      name: name,
-      location: location,
-      role: role,
-      created_at: new Date()
-    }])
-    .select()
-    .single()
+  // Hide login screens
+  document.getElementById('languageScreen')?.classList.add('hidden')
+  document.getElementById('authSection')?.classList.add('hidden')
   
-  if (insertError) {
-    console.error('Insert error:', insertError)
-    return null
-  }
-  
-  return newUser
-}
-
-// ============================================
-// DASHBOARD NAVIGATION
-// ============================================
-function showDashboard() {
-  console.log('🎯 Showing dashboard for role:', currentRole)
-  
-  // Hide all screens
-  const languageScreen = document.getElementById('languageScreen')
-  const loginSection = document.getElementById('loginSection')
-  const phoneLoginSection = document.getElementById('phoneLoginSection')
-  const phoneStep = document.getElementById('phoneStep')
-  const otpStep = document.getElementById('otpStep')
-  const distributorDashboard = document.getElementById('distributorDashboard')
-  const retailerDashboard = document.getElementById('retailerDashboard')
-  const adminDashboard = document.getElementById('adminDashboard')
-  
-  if (languageScreen) languageScreen.classList.add('hidden')
-  if (loginSection) loginSection.classList.add('hidden')
-  if (phoneLoginSection) phoneLoginSection.classList.add('hidden')
-  if (phoneStep) phoneStep.classList.add('hidden')
-  if (otpStep) otpStep.classList.add('hidden')
-  
-  // Show appropriate dashboard
+  // Show dashboard
   if (currentRole === 'distributor') {
-    if (distributorDashboard) distributorDashboard.classList.remove('hidden')
+    document.getElementById('distributorDashboard')?.classList.remove('hidden')
+    loadDistributorData()
   } else if (currentRole === 'admin') {
-    if (adminDashboard) adminDashboard.classList.remove('hidden')
+    document.getElementById('adminDashboard')?.classList.remove('hidden')
   } else {
-    if (retailerDashboard) retailerDashboard.classList.remove('hidden')
+    document.getElementById('retailerDashboard')?.classList.remove('hidden')
+    loadRetailerData()
   }
   
   showLoading(false)
 }
 
-function showPhoneLogin() {
-  const languageScreen = document.getElementById('languageScreen')
-  const loginSection = document.getElementById('loginSection')
-  const phoneLoginSection = document.getElementById('phoneLoginSection')
-  const distributorDashboard = document.getElementById('distributorDashboard')
-  const retailerDashboard = document.getElementById('retailerDashboard')
-  const adminDashboard = document.getElementById('adminDashboard')
-  const phoneStep = document.getElementById('phoneStep')
-  const otpStep = document.getElementById('otpStep')
-  const otpCode = document.getElementById('otpCode')
-  const phoneNumber = document.getElementById('phoneNumber')
+// ============================================
+// UI SCREENS
+// ============================================
+function showLoginScreen() {
+  document.getElementById('languageScreen')?.classList.add('hidden')
+  document.getElementById('authSection')?.classList.remove('hidden')
+  document.getElementById('distributorDashboard')?.classList.add('hidden')
+  document.getElementById('retailerDashboard')?.classList.add('hidden')
+  document.getElementById('adminDashboard')?.classList.add('hidden')
   
-  if (languageScreen) languageScreen.classList.add('hidden')
-  if (loginSection) loginSection.classList.add('hidden')
-  if (phoneLoginSection) phoneLoginSection.classList.remove('hidden')
-  if (distributorDashboard) distributorDashboard.classList.add('hidden')
-  if (retailerDashboard) retailerDashboard.classList.add('hidden')
-  if (adminDashboard) adminDashboard.classList.add('hidden')
-  if (phoneStep) phoneStep.classList.remove('hidden')
-  if (otpStep) otpStep.classList.add('hidden')
-  if (otpCode) otpCode.value = ''
-  if (phoneNumber) phoneNumber.value = ''
-  
-  pendingOTP = null
-  pendingPhone = null
+  // Clear forms
+  document.getElementById('loginIdentifier').value = ''
+  document.getElementById('loginPassword').value = ''
+  document.getElementById('signupIdentifier').value = ''
+  document.getElementById('signupPassword').value = ''
+  document.getElementById('signupName').value = ''
+  document.getElementById('signupLocation').value = ''
 }
 
 // ============================================
-// UPDATE UI TEXT (Translation)
-// ============================================
-function updateUIText() {
-  const phoneTitle = document.getElementById('phoneTitle')
-  const phoneSubtitle = document.getElementById('phoneSubtitle')
-  const sendOtpPhoneBtn = document.getElementById('sendOtpPhoneBtn')
-  const otpTitle = document.getElementById('otpTitle')
-  const verifyOtpBtn = document.getElementById('verifyOtpBtn')
-  const nameInput = document.getElementById('signupName')
-  const locationInput = document.getElementById('signupLocation')
-  const retailerBtn = document.getElementById('phoneRoleRetailer')
-  const distributorBtn = document.getElementById('phoneRoleDistributor')
-  
-  if (phoneTitle) phoneTitle.textContent = t('welcome')
-  if (phoneSubtitle) phoneSubtitle.textContent = t('enterPhone')
-  if (sendOtpPhoneBtn) sendOtpPhoneBtn.innerHTML = `<i class="fas fa-paper-plane"></i><span>${t('sendOTP')}</span>`
-  if (otpTitle) otpTitle.textContent = t('verifyOTP')
-  if (verifyOtpBtn) verifyOtpBtn.innerHTML = `<i class="fas fa-check-circle"></i><span>${t('verifyOTP')}</span>`
-  if (nameInput) nameInput.placeholder = t('name')
-  if (locationInput) locationInput.placeholder = t('location')
-  if (retailerBtn) retailerBtn.innerHTML = `<i class="fas fa-store"></i><span>${t('retailer')}</span>`
-  if (distributorBtn) distributorBtn.innerHTML = `<i class="fas fa-truck"></i><span>${t('distributor')}</span>`
-}
-
-// ============================================
-// EVENT LISTENERS
-// ============================================
-
-// Send OTP button
-const sendOtpBtn = document.getElementById('sendOtpPhoneBtn')
-if (sendOtpBtn) {
-  sendOtpBtn.addEventListener('click', async () => {
-    const phoneInput = document.getElementById('phoneNumber')
-    const phone = phoneInput?.value.trim()
-    
-    if (!phone) {
-      alert(t('noPhone'))
-      return
-    }
-    
-    const nameInput = document.getElementById('signupName')
-    const locationInput = document.getElementById('signupLocation')
-    const name = nameInput?.value.trim() || 'User'
-    const location = locationInput?.value.trim() || ''
-    
-    const isRetailer = document.getElementById('phoneRoleRetailer')?.classList.contains('bg-green-600')
-    const role = isRetailer ? 'retailer' : 'distributor'
-    
-    sessionStorage.setItem('signupName', name)
-    sessionStorage.setItem('signupLocation', location)
-    sessionStorage.setItem('signupRole', role)
-    
-    let formattedPhone = phone
-    if (!phone.startsWith('+')) {
-      formattedPhone = '+255' + phone.replace(/^0+/, '')
-    }
-    
-    const success = await sendOTP(formattedPhone)
-    if (success) {
-      const phoneStep = document.getElementById('phoneStep')
-      const otpStep = document.getElementById('otpStep')
-      if (phoneStep) phoneStep.classList.add('hidden')
-      if (otpStep) otpStep.classList.remove('hidden')
-    }
-  })
-}
-
-// Verify OTP button
-const verifyBtn = document.getElementById('verifyOtpBtn')
-if (verifyBtn) {
-  verifyBtn.addEventListener('click', async () => {
-    const otpInput = document.getElementById('otpCode')
-    const otp = otpInput?.value.trim()
-    
-    if (!otp || otp.length !== 6) {
-      alert(t('noCode'))
-      return
-    }
-    
-    const isValid = verifyOTP(otp)
-    
-    if (isValid) {
-      const name = sessionStorage.getItem('signupName') || 'User'
-      const location = sessionStorage.getItem('signupLocation') || ''
-      const role = sessionStorage.getItem('signupRole') || 'retailer'
-      
-      const user = await createOrGetUser(pendingPhone, name, location, role)
-      
-      if (user) {
-        saveSession(user)
-        alert(t('loginSuccess'))
-        showDashboard()
-      } else {
-        alert('Error creating account. Please try again.')
-      }
-    }
-  })
-}
-
-// Back button
-const backBtn = document.getElementById('backToPhoneBtn')
-if (backBtn) {
-  backBtn.addEventListener('click', () => {
-    const phoneStep = document.getElementById('phoneStep')
-    const otpStep = document.getElementById('otpStep')
-    const otpCode = document.getElementById('otpCode')
-    
-    if (phoneStep) phoneStep.classList.remove('hidden')
-    if (otpStep) otpStep.classList.add('hidden')
-    if (otpCode) otpCode.value = ''
-  })
-}
-
-// Role selection
-const retailerRoleBtn = document.getElementById('phoneRoleRetailer')
-const distributorRoleBtn = document.getElementById('phoneRoleDistributor')
-
-if (retailerRoleBtn) {
-  retailerRoleBtn.addEventListener('click', () => {
-    retailerRoleBtn.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
-    if (distributorRoleBtn) distributorRoleBtn.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
-  })
-}
-
-if (distributorRoleBtn) {
-  distributorRoleBtn.addEventListener('click', () => {
-    distributorRoleBtn.className = 'flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl'
-    if (retailerRoleBtn) retailerRoleBtn.className = 'flex-1 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl'
-  })
-}
-
-// Language selection
-window.selectLanguage = function(lang) {
-  currentLanguage = lang
-  const languageScreen = document.getElementById('languageScreen')
-  if (languageScreen) languageScreen.classList.add('hidden')
-  showPhoneLogin()
-  updateUIText()
-}
-
-// Logout
-function handleLogout() {
-  console.log('🚪 Logging out...')
-  clearSession()
-  showPhoneLogin()
-}
-
-const logoutBtn = document.getElementById('logoutBtn')
-const logoutBtn2 = document.getElementById('logoutBtn2')
-const adminLogoutBtn = document.getElementById('adminLogoutBtn')
-
-if (logoutBtn) logoutBtn.addEventListener('click', handleLogout)
-if (logoutBtn2) logoutBtn2.addEventListener('click', handleLogout)
-if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', handleLogout)
-
-// Cart modal
-const showCartBtn = document.getElementById('showCartBtn')
-if (showCartBtn) {
-  showCartBtn.addEventListener('click', () => {
-    const cartModal = document.getElementById('cartModal')
-    if (cartModal) cartModal.classList.remove('hidden')
-  })
-}
-
-window.closeModal = function(modalId) {
-  const modal = document.getElementById(modalId)
-  if (modal) modal.classList.add('hidden')
-}
-
-// ============================================
-// DASHBOARD DATA FUNCTIONS (Placeholders)
+// DASHBOARD DATA FUNCTIONS
 // ============================================
 async function loadDistributorData() {
   const container = document.getElementById('distributorProducts')
   if (container) {
-    container.innerHTML = '<div class="text-gray-500 text-center py-8">Ready to add products. Your session is working!</div>'
+    container.innerHTML = '<div class="text-gray-500 text-center py-8">Ready to add products. Your dashboard is working!</div>'
   }
 }
 
 async function loadRetailerData() {
   const container = document.getElementById('retailerProducts')
   if (container) {
-    container.innerHTML = '<div class="text-gray-500 text-center py-8">Ready to shop. Your session is working!</div>'
+    container.innerHTML = '<div class="text-gray-500 text-center py-8">Ready to shop. Your dashboard is working!</div>'
   }
+}
+
+// ============================================
+// UPDATE UI TEXT
+// ============================================
+function updateUIText() {
+  const elements = ['loginTitle', 'signupTitle', 'loginBtn', 'signupBtn']
+  elements.forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.textContent = t(id === 'loginBtn' ? 'login' : id === 'signupBtn' ? 'signup' : id)
+  })
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+document.getElementById('loginBtn')?.addEventListener('click', async () => {
+  const identifier = document.getElementById('loginIdentifier').value.trim()
+  const password = document.getElementById('loginPassword').value
+  
+  if (!identifier) {
+    alert(t('noPhoneEmail'))
+    return
+  }
+  if (!password) {
+    alert(t('noPassword'))
+    return
+  }
+  
+  await login(identifier, password)
+})
+
+document.getElementById('signupBtn')?.addEventListener('click', async () => {
+  const identifier = document.getElementById('signupIdentifier').value.trim()
+  const password = document.getElementById('signupPassword').value
+  const name = document.getElementById('signupName').value.trim()
+  const location = document.getElementById('signupLocation').value.trim()
+  const role = document.getElementById('signupRole').value
+  
+  if (!identifier) {
+    alert(t('noPhoneEmail'))
+    return
+  }
+  if (!password) {
+    alert(t('noPassword'))
+    return
+  }
+  if (!name) {
+    alert(t('noName'))
+    return
+  }
+  
+  await signUp(identifier, password, name, location, role)
+})
+
+// Toggle between Login and Sign Up
+document.getElementById('showSignup')?.addEventListener('click', () => {
+  document.getElementById('loginForm').classList.add('hidden')
+  document.getElementById('signupForm').classList.remove('hidden')
+})
+
+document.getElementById('showLogin')?.addEventListener('click', () => {
+  document.getElementById('signupForm').classList.add('hidden')
+  document.getElementById('loginForm').classList.remove('hidden')
+})
+
+// Role selection for signup
+document.getElementById('signupRoleRetailer')?.addEventListener('click', () => {
+  document.getElementById('signupRole').value = 'retailer'
+  document.getElementById('signupRoleRetailer').className = 'flex-1 py-2 bg-green-600 text-white rounded-lg'
+  document.getElementById('signupRoleDistributor').className = 'flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg'
+})
+
+document.getElementById('signupRoleDistributor')?.addEventListener('click', () => {
+  document.getElementById('signupRole').value = 'distributor'
+  document.getElementById('signupRoleDistributor').className = 'flex-1 py-2 bg-green-600 text-white rounded-lg'
+  document.getElementById('signupRoleRetailer').className = 'flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg'
+})
+
+// Language selection
+window.selectLanguage = function(lang) {
+  currentLanguage = lang
+  document.getElementById('languageScreen').classList.add('hidden')
+  showLoginScreen()
+  updateUIText()
+}
+
+// Logout handlers
+document.getElementById('logoutBtn')?.addEventListener('click', logout)
+document.getElementById('logoutBtn2')?.addEventListener('click', logout)
+document.getElementById('adminLogoutBtn')?.addEventListener('click', logout)
+
+// Cart modal
+document.getElementById('showCartBtn')?.addEventListener('click', () => {
+  document.getElementById('cartModal')?.classList.remove('hidden')
+})
+
+window.closeModal = function(modalId) {
+  document.getElementById(modalId)?.classList.add('hidden')
+}
+
+// ============================================
+// CHECK EXISTING SESSION
+// ============================================
+async function checkSession() {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) {
+    await loadUserData(session.user)
+    return true
+  }
+  return false
 }
 
 // ============================================
 // INITIALIZE
 // ============================================
-function init() {
-  console.log('🚀 Initializing BomaWave app...')
-  
-  if (loadSession()) {
-    showDashboard()
-  } else {
-    const languageScreen = document.getElementById('languageScreen')
-    if (languageScreen) languageScreen.classList.remove('hidden')
+async function init() {
+  const hasSession = await checkSession()
+  if (!hasSession) {
+    document.getElementById('languageScreen')?.classList.remove('hidden')
   }
 }
 
