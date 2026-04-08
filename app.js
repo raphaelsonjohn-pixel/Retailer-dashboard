@@ -1,4 +1,4 @@
-// app.js - Custom Session + Africa's Talking OTP (With Translation)
+// app.js - Custom Session + Africa's Talking OTP (No Supabase Auth)
 import { supabase } from './supabase.js'
 
 // ============================================
@@ -7,7 +7,7 @@ import { supabase } from './supabase.js'
 const EDGE_FUNCTION_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/send-sms-africastalking'
 
 // ============================================
-// TRANSLATIONS (English & Kiswahili)
+// TRANSLATIONS
 // ============================================
 let currentLanguage = null
 
@@ -56,11 +56,27 @@ function t(key) {
   return translations[currentLanguage]?.[key] || translations.en[key] || key
 }
 
+function showLoading(show, message = 'Loading...') {
+  const overlay = document.getElementById('loadingOverlay')
+  const msgEl = document.getElementById('loadingMessage')
+  if (!overlay) return
+  if (show) {
+    if (msgEl) msgEl.textContent = message
+    overlay.classList.remove('hidden')
+    overlay.classList.add('flex')
+  } else {
+    overlay.classList.add('hidden')
+    overlay.classList.remove('flex')
+  }
+}
+
 // ============================================
-// SESSION MANAGEMENT (Custom - No Firebase, No Supabase Auth)
+// SESSION MANAGEMENT (Custom - No Supabase Auth)
 // ============================================
 let currentUser = null
 let currentRole = null
+let pendingOTP = null
+let pendingPhone = null
 
 function saveSession(user) {
   localStorage.setItem('bomawave_user', JSON.stringify(user))
@@ -87,25 +103,8 @@ function clearSession() {
 // ============================================
 // OTP FUNCTIONS (Africa's Talking)
 // ============================================
-let pendingOTP = null
-let pendingPhone = null
-
-function showLoading(show, message = 'Loading...') {
-  const overlay = document.getElementById('loadingOverlay')
-  const msgEl = document.getElementById('loadingMessage')
-  if (!overlay) return
-  if (show) {
-    if (msgEl) msgEl.textContent = message
-    overlay.classList.remove('hidden')
-    overlay.classList.add('flex')
-  } else {
-    overlay.classList.add('hidden')
-    overlay.classList.remove('flex')
-  }
-}
-
 async function sendOTP(phoneNumber) {
-  console.log('📱 Sending OTP via Africa\'s Talking to:', phoneNumber)
+  console.log('📱 Sending OTP to:', phoneNumber)
   showLoading(true, t('loading'))
   
   try {
@@ -125,7 +124,7 @@ async function sendOTP(phoneNumber) {
       alert(`Verification code sent to ${phoneNumber}! Check your WhatsApp/SMS.`)
       return true
     } else {
-      alert('Error: ' + (result.error || 'Failed to send verification code'))
+      alert(t('errorSendingOTP'))
       return false
     }
   } catch (error) {
@@ -146,22 +145,26 @@ function verifyOTP(enteredCode) {
 }
 
 // ============================================
-// CREATE USER IN SUPABASE (Database only)
+// DATABASE FUNCTIONS (Supabase - Direct)
 // ============================================
 async function createOrGetUser(phoneNumber, name, location, role) {
-  // Check if user exists in Supabase profiles
-  let { data: existingUser } = await supabase
+  // First, try to get existing user
+  let { data: existingUser, error: selectError } = await supabase
     .from('profiles')
     .select('*')
     .eq('phone', phoneNumber)
     .maybeSingle()
+  
+  if (selectError) {
+    console.error('Select error:', selectError)
+  }
   
   if (existingUser) {
     return existingUser
   }
   
   // Create new user
-  const { data: newUser, error } = await supabase
+  const { data: newUser, error: insertError } = await supabase
     .from('profiles')
     .insert([{
       phone: phoneNumber,
@@ -173,8 +176,8 @@ async function createOrGetUser(phoneNumber, name, location, role) {
     .select()
     .single()
   
-  if (error) {
-    console.error('Error creating user:', error)
+  if (insertError) {
+    console.error('Insert error:', insertError)
     return null
   }
   
@@ -206,12 +209,10 @@ function showDashboard() {
   // Show appropriate dashboard
   if (currentRole === 'distributor') {
     if (distributorDashboard) distributorDashboard.classList.remove('hidden')
-    loadDistributorData()
   } else if (currentRole === 'admin') {
     if (adminDashboard) adminDashboard.classList.remove('hidden')
   } else {
     if (retailerDashboard) retailerDashboard.classList.remove('hidden')
-    loadRetailerData()
   }
   
   showLoading(false)
@@ -290,7 +291,6 @@ if (sendOtpBtn) {
     const name = nameInput?.value.trim() || 'User'
     const location = locationInput?.value.trim() || ''
     
-    // Get selected role
     const isRetailer = document.getElementById('phoneRoleRetailer')?.classList.contains('bg-green-600')
     const role = isRetailer ? 'retailer' : 'distributor'
     
@@ -377,9 +377,7 @@ if (distributorRoleBtn) {
   })
 }
 
-// ============================================
-// LANGUAGE SELECTION
-// ============================================
+// Language selection
 window.selectLanguage = function(lang) {
   currentLanguage = lang
   const languageScreen = document.getElementById('languageScreen')
@@ -388,9 +386,7 @@ window.selectLanguage = function(lang) {
   updateUIText()
 }
 
-// ============================================
-// LOGOUT
-// ============================================
+// Logout
 function handleLogout() {
   console.log('🚪 Logging out...')
   clearSession()
