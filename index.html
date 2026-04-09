@@ -1,299 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>BomaWave | FMCG Distribution Platform</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857' },
-            secondary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
-            accent: { 50: '#fff7ed', 500: '#f97316', 600: '#ea580c' },
-            dark: '#1f2937',
-            light: '#f9fafb'
-          },
-          fontFamily: { 'sans': ['Inter', 'system-ui', 'sans-serif'] },
-          animation: { 'fade-in': 'fadeIn 0.4s ease-out', 'slide-up': 'slideUp 0.3s ease-out' },
-          keyframes: {
-            fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-            slideUp: { '0%': { transform: 'translateY(10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
-          }
-        }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Supply Platform</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: "#16a34a",
+        primaryDark: "#15803d",
+        secondary: "#2563eb",
+        bg: "#f9fafb"
       }
     }
-  </script>
-  
-  <style>
-    * { font-family: 'Inter', sans-serif; }
-    .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
-    .transition-all { transition: all 0.2s ease; }
-    .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
-  </style>
-  
-  <script type="module" src="supabase.js"></script>
-  <script type="module" src="app.js"></script>
+  }
+}
+</script>
 </head>
-<body class="bg-gradient-to-br from-primary-50 via-white to-secondary-50 min-h-screen antialiased">
 
-  <!-- Loading Overlay -->
-  <div id="loadingOverlay" class="fixed inset-0 z-[100] hidden items-center justify-center bg-dark/80 backdrop-blur-sm">
-    <div class="bg-white rounded-2xl p-6 flex flex-col items-center shadow-2xl">
-      <div class="spinner mb-3"></div>
-      <p id="loadingMessage" class="text-gray-600 font-medium">Loading...</p>
-    </div>
+<body class="bg-bg min-h-screen flex items-center justify-center px-4">
+
+<div class="w-full max-w-md bg-white rounded-2xl shadow p-6 space-y-6">
+
+<!-- LANGUAGE -->
+<section id="screen-language" class="space-y-4 text-center">
+  <h1 class="text-xl font-semibold">Choose Language</h1>
+  <button onclick="selectLanguage('en')" class="w-full bg-primary text-white py-3 rounded-xl">English</button>
+  <button onclick="selectLanguage('sw')" class="w-full bg-primary text-white py-3 rounded-xl">Swahili</button>
+</section>
+
+<!-- ROLE -->
+<section id="screen-role" class="hidden space-y-4 text-center">
+  <h1 class="text-xl font-semibold">Select Role</h1>
+  <button onclick="selectRole('retailer')" class="w-full bg-primary text-white py-3 rounded-xl">Retailer</button>
+  <button onclick="selectRole('distributor')" class="w-full bg-primary text-white py-3 rounded-xl">Distributor</button>
+</section>
+
+<!-- SIGNUP -->
+<section id="screen-signup" class="hidden space-y-3">
+  <h2 class="text-lg font-semibold text-center">Create Account</h2>
+
+  <input id="name" placeholder="Name" class="input"/>
+  <input id="username" placeholder="Username" class="input"/>
+  <input id="phone" placeholder="Phone" class="input"/>
+
+  <div id="retailer-fields">
+    <input id="store_name" placeholder="Store Name" class="input"/>
+    <input id="location" placeholder="Location" class="input"/>
   </div>
 
-  <!-- Screen: Language Selection -->
-  <div id="screenLanguage" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary-700 to-secondary-800">
-    <div class="text-center p-8 animate-fade-in">
-      <div class="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
-        <i class="fas fa-boxes text-4xl text-white"></i>
-      </div>
-      <h1 class="text-5xl font-bold text-white mb-2">BomaWave</h1>
-      <p class="text-white/70 mb-10">FMCG Distribution Network</p>
-      <div class="space-y-3">
-        <button onclick="window.app.selectLanguage('en')" class="w-72 py-4 bg-white rounded-xl shadow-lg hover:scale-105 transition-all font-semibold text-primary-600">🇬🇧 English</button>
-        <button onclick="window.app.selectLanguage('sw')" class="w-72 py-4 bg-white rounded-xl shadow-lg hover:scale-105 transition-all font-semibold text-secondary-600">🇹🇿 Kiswahili</button>
-      </div>
-    </div>
+  <div id="distributor-fields" class="hidden">
+    <input id="business_name" placeholder="Business Name" class="input"/>
+    <input id="business_type" placeholder="Business Type" class="input"/>
+    <input id="operating_area" placeholder="Operating Area" class="input"/>
+    <select id="delivery_available" class="input">
+      <option value="true">Have delivery</option>
+      <option value="false">No delivery</option>
+    </select>
   </div>
 
-  <!-- Screen: Role Selection -->
-  <div id="screenRole" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary-700 to-secondary-800">
-    <div class="text-center p-8 animate-fade-in">
-      <i class="fas fa-users text-5xl text-white mb-4"></i>
-      <h2 id="roleTitle" class="text-3xl font-bold text-white mb-8">I am a</h2>
-      <div class="flex flex-col sm:flex-row gap-5">
-        <button id="selectRetailer" class="w-72 py-6 bg-white rounded-2xl shadow-xl hover:scale-105 transition-all group">
-          <i class="fas fa-store text-4xl text-primary-500 mb-2 group-hover:scale-110 transition"></i>
-          <p class="text-xl font-bold text-gray-800">Retailer</p>
-          <p class="text-sm text-gray-500">Buy products & manage orders</p>
-        </button>
-        <button id="selectDistributor" class="w-72 py-6 bg-white rounded-2xl shadow-xl hover:scale-105 transition-all group">
-          <i class="fas fa-truck text-4xl text-secondary-500 mb-2 group-hover:scale-110 transition"></i>
-          <p class="text-xl font-bold text-gray-800">Distributor</p>
-          <p class="text-sm text-gray-500">Sell products & manage inventory</p>
-        </button>
-      </div>
-    </div>
+  <input id="password" type="password" placeholder="Password" class="input"/>
+
+  <button onclick="signup()" class="btn">Create Account</button>
+  <p onclick="showLogin()" class="text-secondary text-center cursor-pointer">Login</p>
+</section>
+
+<!-- LOGIN -->
+<section id="screen-login" class="hidden space-y-3">
+  <h2 class="text-lg text-center font-semibold">Login</h2>
+  <input id="login_phone" placeholder="Phone" class="input"/>
+  <input id="login_password" type="password" placeholder="Password" class="input"/>
+  <button onclick="login()" class="btn">Login</button>
+</section>
+
+<!-- DASHBOARD -->
+<section id="screen-dashboard" class="hidden space-y-4">
+
+  <h2 id="welcome" class="font-semibold text-lg"></h2>
+
+  <!-- Distributor: Add product -->
+  <div id="addProductSection" class="hidden space-y-2">
+    <input id="product_name" placeholder="Product" class="input"/>
+    <input id="price" placeholder="Price" class="input"/>
+    <input id="moq" placeholder="MOQ" class="input"/>
+    <button onclick="addProduct()" class="bg-secondary text-white w-full py-3 rounded-xl">Add Product</button>
   </div>
 
-  <!-- Screen: Login -->
-  <div id="screenLogin" class="hidden min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 animate-slide-up">
-      <div class="text-center mb-6">
-        <i class="fas fa-boxes text-3xl text-primary-500"></i>
-        <h2 id="loginTitle" class="text-2xl font-bold text-gray-800 mt-2">Welcome Back</h2>
-        <p id="loginSubtitle" class="text-gray-500 text-sm">Sign in to your account</p>
-      </div>
-      <input type="text" id="loginUsername" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent mb-3" placeholder="Store Name">
-      <input type="password" id="loginPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent mb-4" placeholder="Password">
-      <button id="loginBtn" class="w-full py-3 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition">Sign In</button>
-      <p class="text-center text-sm text-gray-500 mt-4">New to BomaWave? <button id="goToSignup" class="text-primary-500 font-medium">Create Account</button></p>
-    </div>
-  </div>
+  <!-- Retailer: Products -->
+  <div id="productList" class="space-y-2"></div>
 
-  <!-- Screen: Retailer Signup -->
-  <div id="screenRetailerSignup" class="hidden min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 animate-slide-up">
-      <div class="text-center mb-6">
-        <i class="fas fa-store text-3xl text-primary-500"></i>
-        <h2 class="text-2xl font-bold text-gray-800">Retailer Registration</h2>
-        <p class="text-gray-500 text-sm">Join as a retailer</p>
-      </div>
-      <input type="text" id="retailerStoreName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-3" placeholder="Store Name *">
-      <input type="text" id="retailerLocation" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-3" placeholder="Location (City/District) *">
-      <input type="text" id="retailerName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-3" placeholder="Your Full Name *">
-      <input type="tel" id="retailerPhone" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-3" placeholder="Phone Number *">
-      <input type="password" id="retailerPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 mb-4" placeholder="Password *">
-      <button id="retailerSignupBtn" class="w-full py-3 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition">Create Account</button>
-      <p class="text-center text-sm text-gray-500 mt-4">Already have an account? <button id="retailerBackToLogin" class="text-primary-500 font-medium">Sign In</button></p>
-    </div>
-  </div>
+  <!-- Distributor: Orders -->
+  <div id="ordersList" class="space-y-2"></div>
 
-  <!-- Screen: Distributor Signup -->
-  <div id="screenDistributorSignup" class="hidden min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 animate-slide-up">
-      <div class="text-center mb-6">
-        <i class="fas fa-truck text-3xl text-secondary-500"></i>
-        <h2 class="text-2xl font-bold text-gray-800">Distributor Registration</h2>
-        <p class="text-gray-500 text-sm">Join as a distributor</p>
-      </div>
-      <input type="text" id="distributorCompanyName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Company Name *">
-      <input type="text" id="distributorStoreName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Store Name *">
-      <input type="text" id="distributorName" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Your Full Name *">
-      <input type="text" id="distributorProductType" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Product Categories *">
-      <input type="text" id="distributorLocation" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Your Location *">
-      <input type="text" id="distributorCoverage" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Delivery Coverage Areas *">
-      <input type="text" id="distributorVehicle" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Delivery Vehicle">
-      <input type="tel" id="distributorPhone" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-3" placeholder="Phone Number *">
-      <input type="password" id="distributorPassword" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-secondary-500 mb-4" placeholder="Password *">
-      <p class="text-xs text-amber-600 mb-3">⚠️ Account requires admin approval</p>
-      <button id="distributorSignupBtn" class="w-full py-3 bg-secondary-500 text-white rounded-xl font-semibold hover:bg-secondary-600 transition">Register & Submit</button>
-      <p class="text-center text-sm text-gray-500 mt-4">Already have an account? <button id="distributorBackToLogin" class="text-secondary-500 font-medium">Sign In</button></p>
-    </div>
-  </div>
+  <button onclick="logout()" class="w-full bg-gray-200 py-3 rounded-xl">Logout</button>
 
-  <!-- Dashboard: Retailer -->
-  <div id="dashboardRetailer" class="hidden min-h-screen bg-gray-50">
-    <nav class="bg-white shadow-sm sticky top-0 z-20 border-b">
-      <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-          <i class="fas fa-store text-2xl text-primary-500"></i>
-          <div>
-            <h2 class="text-lg font-bold text-gray-800">Retailer Portal</h2>
-            <p id="retailerStoreDisplay" class="text-xs text-gray-500">Store: Loading...</p>
-          </div>
-        </div>
-        <div class="flex gap-2">
-          <button id="showCartBtn" class="relative px-4 py-2 text-secondary-600 hover:bg-secondary-50 rounded-lg transition">
-            <i class="fas fa-shopping-cart"></i> Cart
-            <span id="cartCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5">0</span>
-          </button>
-          <button id="logoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">Logout</button>
-        </div>
-      </div>
-    </nav>
-    <div class="border-b border-gray-200 bg-white">
-      <div class="max-w-7xl mx-auto px-4 flex gap-1">
-        <button class="retailerTabBtn px-6 py-3 text-gray-600 hover:text-primary-600 border-b-2 border-transparent font-medium transition" data-tab="retailerProductsTab">Products</button>
-        <button class="retailerTabBtn px-6 py-3 text-gray-600 hover:text-primary-600 border-b-2 border-transparent font-medium transition" data-tab="retailerOrdersTab">My Orders</button>
-      </div>
-    </div>
-    <div class="max-w-7xl mx-auto px-4 py-6">
-      <div id="retailerProductsTab" class="retailerTabContent">
-        <div class="flex flex-col md:flex-row gap-4 mb-6">
-          <div class="flex-1 relative">
-            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-            <input type="text" id="searchProducts" class="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500" placeholder="Search products...">
-          </div>
-          <select id="categoryFilter" class="md:w-48 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500">
-            <option value="all">All Categories</option>
-          </select>
-        </div>
-        <div id="retailerProducts" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-      </div>
-      <div id="retailerOrdersTab" class="retailerTabContent hidden">
-        <div id="retailerOrders" class="space-y-4"></div>
-      </div>
-    </div>
-  </div>
+</section>
 
-  <!-- Dashboard: Distributor -->
-  <div id="dashboardDistributor" class="hidden min-h-screen bg-gray-50">
-    <nav class="bg-white shadow-sm sticky top-0 z-20 border-b">
-      <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-          <i class="fas fa-truck text-2xl text-secondary-500"></i>
-          <div>
-            <h2 class="text-lg font-bold text-gray-800">Distributor Portal</h2>
-            <p id="distributorStoreDisplay" class="text-xs text-gray-500">Store: Loading...</p>
-          </div>
-        </div>
-        <button id="logoutBtn2" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">Logout</button>
-      </div>
-    </nav>
-    <div class="border-b border-gray-200 bg-white">
-      <div class="max-w-7xl mx-auto px-4 flex gap-1">
-        <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-secondary-600 border-b-2 border-transparent font-medium transition" data-tab="distProductsTab">Products</button>
-        <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-secondary-600 border-b-2 border-transparent font-medium transition" data-tab="distOrdersTab">Orders</button>
-        <button class="distributorTabBtn px-6 py-3 text-gray-600 hover:text-secondary-600 border-b-2 border-transparent font-medium transition" data-tab="distAlertsTab">Alerts</button>
-      </div>
-    </div>
-    <div class="max-w-7xl mx-auto px-4 py-6">
-      <div id="distProductsTab" class="distributorTabContent">
-        <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border">
-          <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i class="fas fa-plus-circle text-secondary-500"></i> Add New Product</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="text" id="productName" class="px-4 py-2 border rounded-xl" placeholder="Product Name">
-            <input type="text" id="productNameSw" class="px-4 py-2 border rounded-xl" placeholder="Product Name (Swahili)">
-            <input type="number" id="productPrice" class="px-4 py-2 border rounded-xl" placeholder="Price (TZS)">
-            <input type="number" id="productStock" class="px-4 py-2 border rounded-xl" placeholder="Stock Quantity">
-            <input type="text" id="productCategory" class="px-4 py-2 border rounded-xl" placeholder="Category">
-          </div>
-          <button id="addProductBtn" class="mt-4 px-6 py-2 bg-secondary-500 text-white rounded-lg hover:bg-secondary-600 transition">Add Product</button>
-        </div>
-        <div id="distributorProducts" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-      </div>
-      <div id="distOrdersTab" class="distributorTabContent hidden">
-        <div id="distributorOrders" class="space-y-4"></div>
-      </div>
-      <div id="distAlertsTab" class="distributorTabContent hidden">
-        <div id="stockAlerts" class="space-y-4"></div>
-      </div>
-    </div>
-  </div>
+</div>
 
-  <!-- Dashboard: Admin -->
-  <div id="dashboardAdmin" class="hidden min-h-screen bg-gray-50">
-    <nav class="bg-white shadow-sm sticky top-0 z-20 border-b">
-      <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-          <i class="fas fa-crown text-2xl text-amber-500"></i>
-          <h2 class="text-lg font-bold text-gray-800">Admin Portal</h2>
-        </div>
-        <button id="adminLogoutBtn" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">Logout</button>
-      </div>
-    </nav>
-    <div class="max-w-7xl mx-auto px-4 py-6">
-      <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i class="fas fa-clock text-amber-500"></i> Pending Distributor Approvals</h3>
-        <div id="pendingDistributors" class="space-y-3"></div>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm p-6">
-        <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i class="fas fa-chart-line text-primary-500"></i> All Orders (Platform Wide)</h3>
-        <div id="adminOrders" class="space-y-3"></div>
-      </div>
-    </div>
-  </div>
+<style>
+.input {
+  @apply w-full p-3 border rounded-xl;
+}
+.btn {
+  @apply w-full bg-primary text-white py-3 rounded-xl;
+}
+</style>
 
-  <!-- Modals -->
-  <div id="cartModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
-    <div class="absolute inset-0 modal-overlay" onclick="closeModal('cartModal')"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto">
-      <div class="sticky top-0 bg-white border-b p-4 flex justify-between">
-        <h3 class="font-bold text-lg"><i class="fas fa-shopping-cart text-primary-500"></i> Your Cart</h3>
-        <button onclick="closeModal('cartModal')" class="text-gray-400 text-2xl hover:text-gray-600">&times;</button>
-      </div>
-      <div id="cartItems" class="p-4 space-y-3"></div>
-      <div class="border-t p-4 space-y-3 bg-gray-50">
-        <div class="flex justify-between font-bold"><span>Total:</span> <span id="cartTotal" class="text-primary-600">0</span> TZS</div>
-        <textarea id="deliveryAddress" class="w-full px-3 py-2 border rounded-xl" rows="2" placeholder="Delivery Address *"></textarea>
-        <select id="deliveryTime" class="w-full px-3 py-2 border rounded-xl">
-          <option value="morning">Morning (8AM - 12PM)</option>
-          <option value="afternoon">Afternoon (12PM - 4PM)</option>
-          <option value="evening">Evening (4PM - 8PM)</option>
-        </select>
-        <button id="checkoutBtn" class="w-full py-3 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition">Place Order</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="orderStatusModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
-    <div class="absolute inset-0 modal-overlay" onclick="closeModal('orderStatusModal')"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full">
-      <div class="border-b p-4 flex justify-between">
-        <h3 class="font-bold"><i class="fas fa-truck text-primary-500"></i> Order Details</h3>
-        <button onclick="closeModal('orderStatusModal')" class="text-gray-400 text-2xl hover:text-gray-600">&times;</button>
-      </div>
-      <div id="orderStatusContent" class="p-4"></div>
-    </div>
-  </div>
-
-  <script>
-    function closeModal(modalId) { document.getElementById(modalId)?.classList.add('hidden'); }
-    window.closeModal = closeModal;
-  </script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
