@@ -573,10 +573,15 @@ export const App = {
       location:      el('reg-loc').value.trim(),
       role:          State.role,
       coverage_area: el('reg-coverage')?.value.trim() || null,
-      categories:    cats.length ? cats : null,
+      // categories column removed - database doesn't have this column
       lang:          State.lang,
-      is_approved:   true, // MVP: auto-approve all
+      is_approved:   true,
     };
+
+    // Save categories to localStorage if needed later
+    if (cats.length && State.role === 'distributor') {
+      localStorage.setItem('dist_categories', JSON.stringify(cats));
+    }
 
     setLoading('reg-submit', 'reg-submit-text', true, '');
 
@@ -1115,7 +1120,7 @@ export const App = {
 
     const { data, error } = await supabase
       .from('orders')
-      .select(`*, profiles!orders_distributor_id_fkey(store_name)`)
+      .select(`*, distributor:profiles!orders_distributor_id_fkey(store_name)`)
       .eq('retailer_id', State.user.id)
       .order('created_at', { ascending: false });
 
@@ -1166,7 +1171,7 @@ export const App = {
             ${data.map(o => `
               <tr>
                 <td><span style="font-family:monospace;font-size:0.8rem;color:var(--muted)">${o.order_ref}</span></td>
-                <td><strong>${o.profiles?.store_name || '—'}</strong></td>
+                <td><strong>${o.distributor?.store_name || '—'}</strong></td>
                 <td>${o.items_count || '—'}</td>
                 <td><strong style="color:var(--green)">${fmt(o.total_price)}</strong></td>
                 <td>${this.statusPill(o.status)}</td>
@@ -1236,7 +1241,7 @@ export const App = {
                 <th>${t('total')}</th>
                 <th>${t('status')}</th>
                 <th>${t('action')}</th>
-              </tr></thead>
+               </tr></thead>
               <tbody id="dash-orders-body"></tbody>
             </table>
           </div>`
@@ -1255,7 +1260,7 @@ export const App = {
 
     const { data, error } = await supabase
       .from('orders')
-      .select(`*, profiles!orders_retailer_id_fkey(store_name, location, phone_number)`)
+      .select(`*, retailer:profiles!orders_retailer_id_fkey(store_name, location, phone_number)`)
       .eq('distributor_id', State.user.id)
       .order('created_at', { ascending: false });
 
@@ -1307,9 +1312,9 @@ export const App = {
     tbody.innerHTML = orders.map(o => `
       <tr id="order-row-${o.id}">
         <td>
-          <div style="font-weight:700;font-size:0.875rem">${o.profiles?.store_name || '—'}</div>
-          <div style="font-size:0.75rem;color:var(--muted)">📍 ${o.profiles?.location || ''}</div>
-          ${o.profiles?.phone_number ? `<div style="font-size:0.75rem;color:var(--muted)">📞 ${o.profiles.phone_number}</div>` : ''}
+          <div style="font-weight:700;font-size:0.875rem">${o.retailer?.store_name || '—'}</div>
+          <div style="font-size:0.75rem;color:var(--muted)">📍 ${o.retailer?.location || ''}</div>
+          ${o.retailer?.phone_number ? `<div style="font-size:0.75rem;color:var(--muted)">📞 ${o.retailer.phone_number}</div>` : ''}
         </td>
         <td><span style="font-family:monospace;font-size:0.78rem;color:var(--muted)">${o.order_ref}</span></td>
         <td>${o.items_count || '—'}</td>
@@ -1537,7 +1542,7 @@ export const App = {
 
     const { data: orders } = await supabase
       .from('orders')
-      .select(`*, profiles!orders_retailer_id_fkey(id, store_name, location, phone_number)`)
+      .select(`*, retailer:profiles!orders_retailer_id_fkey(id, store_name, location, phone_number)`)
       .eq('distributor_id', State.user.id);
 
     if (!orders || orders.length === 0) {
@@ -1548,7 +1553,7 @@ export const App = {
     // Aggregate by retailer
     const map = {};
     orders.forEach(o => {
-      const r = o.profiles;
+      const r = o.retailer;
       if (!r) return;
       if (!map[r.id]) {
         map[r.id] = { ...r, totalOrders: 0, totalSpent: 0, lastOrder: o.created_at };
