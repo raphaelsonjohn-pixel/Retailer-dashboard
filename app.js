@@ -73,7 +73,7 @@ const T = {
     cat_beverages:'🥤 Vinywaji', cat_flour:'🌾 Unga na Nafaka',
     cat_oil:'🫙 Mafuta', cat_sugar:'🍬 Sukari na Chumvi',
     cat_soap:'🧼 Sabuni', cat_personal:'🧴 Usafi wa Mwili',
-    cat_dairy:'🧈 Maziwa', cat_tobacco:'🚬 Tumbaku', cat_other:'📦 Nyingine',
+    cat_dairy:'🧈 Maziwa', cat_other:'📦 Nyingine',
     update_stock:'Sasisha Stoki', stock_qty:'Stoki Iliyobaki',
     view_all:'Angalia Zote →', go_market:'Nenda Sokoni',
   },
@@ -140,7 +140,7 @@ const T = {
     cat_beverages:'🥤 Beverages', cat_flour:'🌾 Flour & Grains',
     cat_oil:'🫙 Cooking Oil', cat_sugar:'🍬 Sugar & Salt',
     cat_soap:'🧼 Soap & Detergents', cat_personal:'🧴 Personal Care',
-    cat_dairy:'🧈 Dairy', cat_tobacco:'🚬 Tobacco', cat_other:'📦 Other',
+    cat_dairy:'🧈 Dairy', cat_other:'📦 Other',
     update_stock:'Update Stock', stock_qty:'Stock Remaining',
     view_all:'View All →', go_market:'Go to Marketplace',
   }
@@ -170,8 +170,7 @@ const CATEGORIES = [
   { key:'beverages', icon:'🥤' }, { key:'flour', icon:'🌾' },
   { key:'oil', icon:'🫙' }, { key:'sugar', icon:'🍬' },
   { key:'soap', icon:'🧼' }, { key:'personal', icon:'🧴' },
-  { key:'dairy', icon:'🧈' }, { key:'tobacco', icon:'🚬' },
-  { key:'other', icon:'📦' },
+  { key:'dairy', icon:'🧈' }, { key:'other', icon:'📦' },
 ];
 
 // ═══════════════════════════════════════════
@@ -280,23 +279,27 @@ export const App = {
     const grid = el('cat-grid');
     if (!grid) return;
     grid.innerHTML = CATEGORIES.map(c => `
-      <label class="cat-check" id="cat-${c.key}" onclick="App.toggleCat('${c.key}')">
-        <input type="checkbox" value="${c.key}" />
+      <label class="cat-check" id="cat-label-${c.key}" for="cat-cb-${c.key}">
+        <input type="checkbox" id="cat-cb-${c.key}" value="${c.key}"
+          onchange="App.onCatChange('${c.key}')" style="display:none" />
         <span class="cat-icon">${c.icon}</span>
         <span>${catLabel(c.key).replace(/^[^ ]+ /, '')}</span>
       </label>
     `).join('');
   },
 
-  toggleCat(key) {
-    const e = el(`cat-${key}`); if (!e) return;
-    e.classList.toggle('checked');
-    const inp = e.querySelector('input');
-    if (inp) inp.checked = e.classList.contains('checked');
+  onCatChange(key) {
+    const inp = el(`cat-cb-${key}`);
+    const lbl = el(`cat-label-${key}`);
+    if (!inp || !lbl) return;
+    lbl.classList.toggle('checked', inp.checked);
   },
 
   getSelectedCats() {
-    return CATEGORIES.filter(c => el(`cat-${c.key}`)?.classList.contains('checked')).map(c => c.key);
+    return CATEGORIES.filter(c => {
+      const inp = el(`cat-cb-${c.key}`);
+      return inp && inp.checked;
+    }).map(c => c.key);
   },
 
   // ── STEP NAV ────────────────────────────
@@ -309,12 +312,32 @@ export const App = {
     if (pf) pf.style.width = pct + '%';
   },
 
-  selectRole(role) {
+  pickRole(role) {
     State.role = role;
+    document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+    const selectedCard = el(`role-btn-${role}`);
+    if (selectedCard) selectedCard.classList.add('selected');
+    ['retailer', 'distributor'].forEach(r => {
+      const check = el(`check-${r}`);
+      const arrow = el(`arrow-${r}`);
+      if (check) check.style.display = r === role ? 'inline' : 'none';
+      if (arrow) arrow.style.display = r === role ? 'none' : 'inline';
+    });
+    const nextBtn = el('role-next-btn');
+    if (nextBtn) nextBtn.style.display = '';
+    const nextText = el('role-next-text');
+    if (nextText) nextText.innerText = State.lang === 'sw' ? 'Endelea →' : 'Continue →';
+  },
+
+  proceedFromRole() {
+    if (!State.role) return;
     const distExtra = el('dist-extra');
-    if (distExtra) distExtra.style.display = role === 'distributor' ? 'flex' : 'none';
+    if (distExtra) distExtra.style.display = State.role === 'distributor' ? 'flex' : 'none';
+    this.buildCatGrid();
     this.goStep(State.authMode === 'login' ? 4 : 3);
   },
+
+  selectRole(role) { this.pickRole(role); },
 
   setAuthMode(mode) {
     State.authMode = mode;
