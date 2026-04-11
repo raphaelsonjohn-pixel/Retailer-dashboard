@@ -406,6 +406,7 @@ export const App = {
       }
 
       State.user = data;
+      this._saveSession();
       this.launchApp();
 
     } catch (err) {
@@ -453,6 +454,7 @@ export const App = {
 
       State.user = data;
       State.lang = data.lang || State.lang;
+      this._saveSession();
       this.launchApp();
 
     } catch (err) {
@@ -464,11 +466,41 @@ export const App = {
     }
   },
 
+  // ── SESSION PERSISTENCE ─────────────────
+
+  _saveSession() {
+    try {
+      localStorage.setItem('bw_session', JSON.stringify({
+        user: State.user,
+        lang: State.lang,
+      }));
+    } catch(e) {}
+  },
+
+  _clearSession() {
+    try { localStorage.removeItem('bw_session'); } catch(e) {}
+  },
+
+  _restoreSession() {
+    try {
+      const raw = localStorage.getItem('bw_session');
+      if (!raw) return false;
+      const { user, lang } = JSON.parse(raw);
+      if (!user || !user.id) return false;
+      State.user = user;
+      State.lang = lang || 'sw';
+      return true;
+    } catch(e) {
+      return false;
+    }
+  },
+
   logout() {
     if (State.realtimeSub) {
       supabase.removeChannel(State.realtimeSub);
       State.realtimeSub = null;
     }
+    this._clearSession();
     State.user = null; State.cart = {};
     State.notifications = []; State.activePage = '';
     el('app-main').style.display = 'none';
@@ -1389,6 +1421,13 @@ export const App = {
 // ── GLOBAL EVENTS ──────────────────────────
 
 window.App = App;
+
+// ── AUTO-RESTORE SESSION ON LOAD ───────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (App._restoreSession()) {
+    App.launchApp();
+  }
+});
 
 document.addEventListener('click', (e) => {
   if (!el('notif-bell')?.contains(e.target) && !el('notif-dropdown')?.contains(e.target)) {
