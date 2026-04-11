@@ -1,92 +1,1095 @@
 <!DOCTYPE html>
 <html lang="sw">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BomaWave | FMCG Ordering System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .step-content { display: none; }
-        .step-active { display: flex; }
-        .bg-boma-blue { background-color: #1e40af; }
-        .bg-boma-green { background-color: #16a34a; }
-        .text-boma-blue { color: #1e40af; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BomaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --green:       #16a34a;
+      --green-light: #dcfce7;
+      --green-dark:  #14532d;
+      --amber:       #d97706;
+      --amber-light: #fef3c7;
+      --red:         #dc2626;
+      --red-light:   #fee2e2;
+      --blue:        #2563eb;
+      --blue-light:  #dbeafe;
+      --surface:     #ffffff;
+      --bg:          #f8fafc;
+      --border:      #e2e8f0;
+      --text:        #0f172a;
+      --muted:       #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── ONBOARDING ── */
+    #onboarding {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #14532d 100%);
+      padding: 1rem;
+    }
+
+    .onboard-card {
+      width: 100%; max-width: 480px;
+      background: white;
+      border-radius: 2rem;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.4);
+    }
+
+    .onboard-top {
+      background: linear-gradient(135deg, #0f172a, #1e3a5f);
+      padding: 2.5rem 2rem 2rem;
+      text-align: center;
+    }
+
+    .brand-logo {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .brand-icon {
+      width: 44px; height: 44px;
+      background: var(--green);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+
+    .brand-name {
+      font-family: 'Instrument Serif', serif;
+      font-size: 2rem;
+      color: white;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-tagline {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .onboard-body { padding: 2rem; }
+
+    /* Steps */
+    .step { display: none; flex-direction: column; gap: 1rem; }
+    .step.active { display: flex; }
+
+    .step-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      text-align: center;
+      margin-bottom: 0.25rem;
+    }
+
+    .step-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      text-align: center;
+      color: var(--text);
+      line-height: 1.3;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Language Buttons */
+    .lang-btn {
+      width: 100%;
+      padding: 1.1rem 1.5rem;
+      border-radius: 1rem;
+      border: 2px solid var(--border);
+      background: white;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 1rem;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .lang-btn:hover {
+      border-color: var(--green);
+      background: var(--green-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(22,163,74,0.15);
+    }
+
+    .lang-flag { font-size: 2rem; }
+    .lang-name { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .lang-sub  { font-size: 0.75rem; color: var(--muted); }
+
+    /* Role Cards */
+    .role-card {
+      width: 100%;
+      padding: 1.2rem 1.5rem;
+      border-radius: 1rem;
+      border: 2px solid var(--border);
+      background: white;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .role-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    .role-card.retailer:hover { border-color: var(--green); background: var(--green-light); }
+    .role-card.distributor:hover { border-color: var(--blue); background: var(--blue-light); }
+
+    .role-icon { font-size: 2.2rem; }
+    .role-info { flex: 1; padding: 0 1rem; }
+    .role-name { font-size: 1rem; font-weight: 800; color: var(--text); }
+    .role-desc { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .role-arrow { font-size: 1.2rem; color: var(--muted); }
+
+    /* Form */
+    .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+    .form-label { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .form-input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border: 2px solid var(--border);
+      border-radius: 0.75rem;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus { border-color: var(--green); background: white; }
+    .form-input::placeholder { color: #cbd5e1; }
+
+    /* Categories checkbox grid */
+    .cat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .cat-check {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 0.75rem;
+      border: 2px solid var(--border);
+      border-radius: 0.6rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .cat-check input { display: none; }
+    .cat-check:hover { border-color: var(--blue); }
+    .cat-check.checked { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
+    .cat-check .cat-icon { font-size: 1rem; }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%;
+      padding: 1rem 1.5rem;
+      background: var(--green);
+      color: white;
+      border: none;
+      border-radius: 0.875rem;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.2px;
+    }
+
+    .btn-primary:hover { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(22,163,74,0.3); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      padding: 0.5rem;
+      transition: color 0.15s;
+    }
+
+    .btn-ghost:hover { color: var(--text); }
+
+    .btn-secondary {
+      padding: 1rem 1.5rem;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 0.875rem;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover { border-color: var(--muted); background: #f1f5f9; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+    /* Progress dots */
+    .progress-dots { display: flex; justify-content: center; gap: 0.4rem; margin-bottom: 1.5rem; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: all 0.3s; }
+    .dot.active { width: 20px; border-radius: 3px; background: var(--green); }
+
+    /* ── APP SHELL ── */
+    #app-main { display: none; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 260px;
+      background: #0f172a;
+      display: flex; flex-direction: column;
+      z-index: 40;
+      padding: 0;
+    }
+
+    .sidebar-brand {
+      padding: 1.75rem 1.5rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+
+    .sidebar-brand-icon {
+      width: 38px; height: 38px;
+      background: var(--green);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+
+    .sidebar-brand-text { font-family: 'Instrument Serif', serif; font-size: 1.5rem; color: white; }
+
+    .sidebar-user {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+
+    .user-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--green), #0d9488);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 800; color: white; flex-shrink: 0;
+    }
+
+    .user-name { font-size: 0.85rem; font-weight: 700; color: white; }
+    .user-role-badge {
+      display: inline-block;
+      font-size: 0.65rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    .badge-retailer { background: rgba(22,163,74,0.2); color: #4ade80; }
+    .badge-distributor { background: rgba(37,99,235,0.2); color: #93c5fd; }
+
+    .sidebar-nav { padding: 1rem 0.75rem; flex: 1; overflow-y: auto; }
+    .nav-section-label {
+      font-size: 0.65rem; font-weight: 700; color: rgba(255,255,255,0.3);
+      text-transform: uppercase; letter-spacing: 1.5px;
+      padding: 0 0.75rem; margin: 1rem 0 0.5rem;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.7rem 0.75rem; border-radius: 0.6rem;
+      cursor: pointer; color: rgba(255,255,255,0.55);
+      font-size: 0.875rem; font-weight: 600;
+      transition: all 0.15s; border: none; background: none;
+      width: 100%; text-align: left; position: relative;
+    }
+
+    .nav-item:hover { color: white; background: rgba(255,255,255,0.06); }
+    .nav-item.active { color: white; background: rgba(22,163,74,0.2); }
+    .nav-item.active .nav-icon { color: var(--green); }
+
+    .nav-icon { font-size: 1.1rem; width: 22px; text-align: center; }
+    .nav-badge {
+      margin-left: auto;
+      background: var(--amber);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 20px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .logout-btn {
+      width: 100%; display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.7rem 0.75rem; border-radius: 0.6rem;
+      border: none; background: none; cursor: pointer;
+      color: rgba(255,255,255,0.4); font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.85rem; font-weight: 600; transition: all 0.15s;
+    }
+
+    .logout-btn:hover { color: #f87171; background: rgba(239,68,68,0.1); }
+
+    /* Main content */
+    .main-content { margin-left: 260px; min-height: 100vh; display: flex; flex-direction: column; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(248,250,252,0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .topbar-title { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+    .topbar-sub { font-size: 0.75rem; color: var(--muted); font-weight: 500; margin-top: 1px; }
+
+    /* Notification Bell */
+    .notif-bell {
+      position: relative;
+      width: 40px; height: 40px;
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: 0.75rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1.1rem;
+      transition: all 0.2s;
+    }
+
+    .notif-bell:hover { border-color: var(--green); }
+
+    .notif-dot {
+      position: absolute; top: -4px; right: -4px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--red); border: 2px solid var(--bg);
+      font-size: 0.55rem; font-weight: 800; color: white;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Notification dropdown */
+    .notif-dropdown {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      width: 320px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      z-index: 100;
+      overflow: hidden;
+      display: none;
+    }
+
+    .notif-dropdown.open { display: block; }
+    .notif-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; font-weight: 800; }
+
+    .notif-item {
+      padding: 0.875rem 1.25rem;
+      border-bottom: 1px solid #f8fafc;
+      display: flex; gap: 0.75rem; align-items: flex-start;
+    }
+
+    .notif-item.unread { background: #f0fdf4; }
+    .notif-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+    .notif-text { font-size: 0.8rem; color: var(--text); font-weight: 600; line-height: 1.4; }
+    .notif-time { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+    .notif-empty { padding: 2rem; text-align: center; font-size: 0.85rem; color: var(--muted); }
+
+    /* Page content */
+    .page-content { padding: 2rem; flex: 1; }
+
+    /* Stat cards */
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.75rem; }
+
+    .stat-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      border-radius: 2px 2px 0 0;
+    }
+
+    .stat-card.green::before  { background: var(--green); }
+    .stat-card.amber::before  { background: var(--amber); }
+    .stat-card.blue::before   { background: var(--blue); }
+    .stat-card.red::before    { background: var(--red); }
+
+    .stat-label { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; }
+    .stat-value { font-size: 1.9rem; font-weight: 800; line-height: 1; margin-bottom: 0.25rem; letter-spacing: -1px; }
+    .stat-sub { font-size: 0.75rem; color: var(--muted); }
+
+    /* Section headers */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .section-title { font-size: 1rem; font-weight: 800; color: var(--text); }
+    .section-action {
+      font-size: 0.8rem; font-weight: 700; color: var(--green);
+      background: none; border: none; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* Cards */
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      overflow: hidden;
+    }
+
+    .card-pad { padding: 1.5rem; }
+
+    /* Product grid */
+    .product-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
+
+    .product-card {
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .product-card:hover { border-color: var(--green); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(22,163,74,0.1); }
+    .product-card.in-cart { border-color: var(--green); background: #f0fdf4; }
+
+    .product-emoji { font-size: 2.2rem; margin-bottom: 0.75rem; display: block; }
+    .product-category { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 0.25rem; }
+    .product-name { font-size: 0.875rem; font-weight: 800; margin-bottom: 0.2rem; }
+    .product-unit { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.875rem; }
+
+    .product-footer { display: flex; align-items: center; justify-content: space-between; }
+    .product-price { font-size: 0.95rem; font-weight: 800; color: var(--green); font-variant-numeric: tabular-nums; }
+
+    .add-btn {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--green); border: none; color: white;
+      font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; transition: all 0.15s;
+    }
+
+    .add-btn:hover { background: var(--green-dark); transform: scale(1.1); }
+
+    .qty-control { display: flex; align-items: center; gap: 0.4rem; }
+
+    .qty-btn {
+      width: 26px; height: 26px; border-radius: 6px;
+      border: 2px solid var(--border); background: white;
+      color: var(--text); font-size: 0.9rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-weight: 700;
+      transition: all 0.15s;
+    }
+
+    .qty-btn:hover { border-color: var(--green); color: var(--green); }
+    .qty-num { font-size: 0.875rem; font-weight: 800; min-width: 22px; text-align: center; }
+
+    .stock-badge {
+      position: absolute; top: 0.75rem; right: 0.75rem;
+      font-size: 0.65rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+    }
+
+    .stock-ok  { background: var(--green-light); color: var(--green); }
+    .stock-low { background: var(--amber-light); color: var(--amber); }
+    .stock-out { background: var(--red-light); color: var(--red); }
+
+    /* Cart sidebar */
+    .cart-panel {
+      position: fixed; top: 0; right: 0; bottom: 0; width: 340px;
+      background: white;
+      border-left: 1px solid var(--border);
+      z-index: 200;
+      display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: -8px 0 40px rgba(0,0,0,0.1);
+    }
+
+    .cart-panel.open { transform: translateX(0); }
+
+    .cart-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .cart-title { font-size: 1rem; font-weight: 800; }
+
+    .cart-close {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--bg); border: 2px solid var(--border);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; color: var(--muted); transition: all 0.15s;
+    }
+
+    .cart-close:hover { border-color: var(--red); color: var(--red); }
+
+    .cart-items { flex: 1; overflow-y: auto; padding: 1rem; }
+
+    .cart-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.875rem;
+      background: var(--bg);
+      border-radius: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .cart-item-emoji { font-size: 1.5rem; flex-shrink: 0; }
+    .cart-item-info { flex: 1; min-width: 0; }
+    .cart-item-name { font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cart-item-price { font-size: 0.75rem; color: var(--green); font-weight: 700; margin-top: 2px; }
+
+    .cart-footer { padding: 1.25rem; border-top: 1px solid var(--border); }
+
+    .cart-total-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .cart-total-label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+    .cart-total-value { font-size: 1.25rem; font-weight: 800; color: var(--green); }
+
+    /* Cart FAB */
+    .cart-fab {
+      position: fixed; bottom: 2rem; right: 2rem;
+      width: 60px; height: 60px;
+      background: var(--green);
+      border: none; border-radius: 50%;
+      cursor: pointer; font-size: 1.5rem;
+      box-shadow: 0 8px 30px rgba(22,163,74,0.4);
+      z-index: 100; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .cart-fab:hover { transform: scale(1.1); box-shadow: 0 12px 40px rgba(22,163,74,0.5); }
+
+    .cart-fab-badge {
+      position: absolute; top: -4px; right: -4px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--amber); border: 2px solid white;
+      font-size: 0.65rem; font-weight: 800; color: white;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Orders table */
+    .orders-table { width: 100%; border-collapse: collapse; }
+    .orders-table th {
+      text-align: left; padding: 0.75rem 1rem;
+      font-size: 0.7rem; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .orders-table td {
+      padding: 1rem;
+      border-bottom: 1px solid #f8fafc;
+      font-size: 0.85rem;
+      vertical-align: middle;
+    }
+
+    .orders-table tr:last-child td { border-bottom: none; }
+    .orders-table tr:hover td { background: #fafbfc; }
+
+    /* Status pills */
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 700;
+    }
+
+    .status-pending   { background: var(--amber-light); color: var(--amber); }
+    .status-confirmed { background: var(--blue-light);  color: var(--blue); }
+    .status-delivered { background: var(--green-light); color: var(--green); }
+    .status-cancelled { background: var(--red-light);   color: var(--red); }
+
+    /* Action buttons */
+    .action-btn {
+      padding: 6px 14px; border-radius: 8px;
+      border: 2px solid var(--border); background: white;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.75rem; font-weight: 700; cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .action-btn.confirm { border-color: var(--green); color: var(--green); }
+    .action-btn.confirm:hover { background: var(--green); color: white; }
+    .action-btn.deliver { border-color: var(--blue); color: var(--blue); }
+    .action-btn.deliver:hover { background: var(--blue); color: white; }
+    .action-btn.cancel { border-color: var(--red); color: var(--red); }
+    .action-btn.cancel:hover { background: var(--red); color: white; }
+
+    /* Distributor product form */
+    .dist-form {
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+
+    /* Category filter pills */
+    .filter-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+
+    .filter-pill {
+      padding: 6px 14px; border-radius: 20px;
+      border: 2px solid var(--border);
+      background: white; color: var(--muted);
+      font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.15s;
+    }
+
+    .filter-pill:hover { border-color: var(--green); color: var(--green); }
+    .filter-pill.active { background: var(--green); color: white; border-color: var(--green); }
+
+    /* Inventory cards */
+    .inventory-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1rem; }
+
+    .inventory-card {
+      background: white; border: 1px solid var(--border); border-radius: 1.25rem; padding: 1.25rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+
+    .inv-icon { font-size: 2rem; flex-shrink: 0; }
+    .inv-name { font-size: 0.875rem; font-weight: 800; }
+    .inv-meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .inv-stock { font-size: 1.25rem; font-weight: 800; color: var(--green); margin-left: auto; }
+
+    /* Retailer network */
+    .retailer-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1rem; }
+
+    .retailer-card {
+      background: white; border: 1px solid var(--border); border-radius: 1.25rem; padding: 1.25rem;
+    }
+
+    .retailer-card-header { display: flex; align-items: center; gap: 0.875rem; margin-bottom: 1rem; }
+    .retailer-avatar {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--green-light), #d1fae5);
+      display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+    }
+
+    .retailer-card-name { font-size: 0.875rem; font-weight: 800; }
+    .retailer-card-loc { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    .retailer-stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.5rem; }
+
+    .r-stat {
+      background: var(--bg); border-radius: 0.6rem; padding: 0.6rem;
+      text-align: center;
+    }
+
+    .r-stat-val { font-size: 0.95rem; font-weight: 800; }
+    .r-stat-lbl { font-size: 0.65rem; color: var(--muted); font-weight: 600; margin-top: 1px; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 4rem 2rem; color: var(--muted);
+    }
+
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+    .empty-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; }
+    .empty-sub { font-size: 0.85rem; }
+
+    /* Success screen */
+    .success-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 4rem 2rem;
+    }
+
+    .success-icon-wrap {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--green-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.5rem; margin-bottom: 1.5rem;
+      animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .success-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .success-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .success-order-id {
+      background: var(--bg); border: 2px solid var(--border);
+      border-radius: 0.75rem; padding: 0.75rem 1.5rem;
+      font-size: 0.9rem; font-weight: 800; color: var(--green);
+      font-variant-numeric: tabular-nums; margin-bottom: 1.5rem;
+      letter-spacing: 1px;
+    }
+
+    /* Waiting screen */
+    .waiting-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 4rem 2rem; min-height: 60vh;
+    }
+
+    .waiting-icon {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--amber-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.5rem; margin-bottom: 1.5rem;
+    }
+
+    /* Toast notifications */
+    #toast-container {
+      position: fixed; top: 1.5rem; right: 1.5rem;
+      z-index: 1000; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+
+    .toast {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.875rem 1.25rem;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 0.875rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      font-size: 0.85rem; font-weight: 600;
+      max-width: 320px;
+      animation: slideIn 0.3s ease, fadeOut 0.3s ease 3.7s forwards;
+    }
+
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateX(20px); } }
+
+    .toast.success { border-left: 4px solid var(--green); }
+    .toast.error   { border-left: 4px solid var(--red); }
+    .toast.info    { border-left: 4px solid var(--blue); }
+
+    /* Loading spinner */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Mobile overlay */
+    .mobile-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 35;
+    }
+
+    /* Login page */
+    .login-tabs { display: flex; gap: 0; background: var(--bg); border-radius: 0.75rem; padding: 4px; border: 1px solid var(--border); }
+    .login-tab {
+      flex: 1; padding: 0.6rem; border-radius: 0.6rem;
+      border: none; background: none; cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.85rem; font-weight: 700; color: var(--muted);
+      transition: all 0.2s;
+    }
+
+    .login-tab.active { background: white; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* Select */
+    select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem; }
+
+    /* Alert */
+    .alert { padding: 0.875rem 1rem; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 600; display: flex; gap: 0.5rem; align-items: flex-start; }
+    .alert-info { background: var(--blue-light); color: var(--blue); }
+    .alert-warn { background: var(--amber-light); color: var(--amber); }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .stats-row { grid-template-columns: repeat(2,1fr); }
+      .product-grid { grid-template-columns: repeat(2,1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; }
+      .mobile-overlay { display: block; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen font-sans">
+<body>
 
-    <div id="onboarding" class="fixed inset-0 z-50 flex items-center justify-center bg-white p-4">
-        <div class="w-full max-w-xl bg-white rounded-3xl shadow-2xl p-8 border border-slate-100">
-            
-            <div id="step-1" class="step-content step-active flex-col items-center text-center">
-                <h1 class="text-4xl font-black text-boma-blue italic mb-6">BomaWave</h1>
-                <p class="text-slate-500 mb-8">Chagua Lugha / Select Language</p>
-                <button onclick="BomaController.nextStep(1, 2, 'en')" class="w-full bg-boma-blue text-white py-4 rounded-2xl font-bold mb-4 shadow-lg">English</button>
-                <button onclick="BomaController.nextStep(1, 2, 'sw')" class="w-full border-2 border-boma-blue text-boma-blue py-4 rounded-2xl font-bold">Kiswahili</button>
-            </div>
+<!-- ═══════════════════════════════════════
+     ONBOARDING
+════════════════════════════════════════ -->
+<div id="onboarding">
+  <div class="onboard-card">
+    <div class="onboard-top">
+      <div class="brand-logo">
+        <div class="brand-icon">🌿</div>
+        <span class="brand-name">BomaWave</span>
+      </div>
+      <p class="brand-tagline">FMCG Ordering Platform</p>
+    </div>
+    <div class="onboard-body">
 
-            <div id="step-2" class="step-content flex-col">
-                <h2 class="text-2xl font-bold mb-6 text-center">Wewe ni nani?</h2>
-                <div class="space-y-4">
-                    <button onclick="BomaController.selectRole('retailer')" class="w-full p-6 border-2 border-slate-100 rounded-2xl hover:border-green-600 text-left flex justify-between items-center group transition">
-                        <div>
-                            <span class="block font-bold text-lg">Retailer (Duka)</span>
-                            <span class="text-sm text-slate-400">Naagiza bidhaa kwa duka langu</span>
-                        </div>
-                        <div class="w-6 h-6 border-2 rounded-full group-hover:bg-green-600"></div>
-                    </button>
-                    <button onclick="BomaController.selectRole('distributor')" class="w-full p-6 border-2 border-slate-100 rounded-2xl hover:border-blue-600 text-left flex justify-between items-center group transition">
-                        <div>
-                            <span class="block font-bold text-lg">Distributor (Muuzaji)</span>
-                            <span class="text-sm text-slate-400">Nasambaza bidhaa kwa maduka</span>
-                        </div>
-                        <div class="w-6 h-6 border-2 rounded-full group-hover:bg-blue-600"></div>
-                    </button>
-                </div>
-                <button onclick="BomaController.prevStep(2, 1)" class="mt-8 text-slate-400 font-bold">← Rudi Nyuma</button>
-            </div>
+      <!-- Progress -->
+      <div class="progress-dots" id="progress-dots">
+        <div class="dot active" id="dot-1"></div>
+        <div class="dot" id="dot-2"></div>
+        <div class="dot" id="dot-3"></div>
+        <div class="dot" id="dot-4"></div>
+      </div>
 
-            <div id="step-3" class="step-content flex-col">
-                <h2 class="text-2xl font-bold mb-6 text-center">Tengeneza Akaunti</h2>
-                <form id="reg-form" class="space-y-4">
-                    <input type="text" id="reg-name" placeholder="Jina Kamili / Full Name" class="w-full border p-4 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required>
-                    <input type="text" id="reg-user" placeholder="Username" class="w-full border p-4 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required>
-                    <input type="text" id="reg-phone" placeholder="Namba ya Simu" class="w-full border p-4 rounded-xl" required>
-                    <input type="text" id="reg-loc" placeholder="Eneo la Biashara (Location)" class="w-full border p-4 rounded-xl" required>
-                    
-                    <div id="coverage-field" class="hidden">
-                        <input type="text" id="reg-coverage" placeholder="Maeneo unayosambaza (Coverage Area)" class="w-full border p-4 rounded-xl border-blue-200">
-                    </div>
+      <!-- Step 1: Language -->
+      <div class="step active" id="step-1">
+        <p class="step-label">Hatua 1 / Step 1</p>
+        <h2 class="step-title">Chagua Lugha<br><span style="color:var(--muted);font-size:0.95rem">Select Language</span></h2>
+        <button class="lang-btn" onclick="App.setLang('sw')">
+          <span class="lang-flag">🇹🇿</span>
+          <div>
+            <div class="lang-name">Kiswahili</div>
+            <div class="lang-sub">Endelea kwa Kiswahili</div>
+          </div>
+        </button>
+        <button class="lang-btn" onclick="App.setLang('en')">
+          <span class="lang-flag">🇬🇧</span>
+          <div>
+            <div class="lang-name">English</div>
+            <div class="lang-sub">Continue in English</div>
+          </div>
+        </button>
+      </div>
 
-                    <input type="password" id="reg-pass" placeholder="Password" class="w-full border p-4 rounded-xl" required>
-                    
-                    <div class="grid grid-cols-2 gap-4 mt-6">
-                        <button type="button" onclick="BomaController.prevStep(3, 2)" class="bg-slate-100 py-4 rounded-2xl font-bold">Back</button>
-                        <button type="submit" class="bg-boma-blue text-white py-4 rounded-2xl font-bold shadow-lg">Kamilisha</button>
-                    </div>
-                </form>
-            </div>
+      <!-- Step 2: Role -->
+      <div class="step" id="step-2">
+        <p class="step-label" id="s2-label">Hatua 2</p>
+        <h2 class="step-title" id="s2-title">Wewe ni nani?</h2>
+        <button class="role-card retailer" onclick="App.selectRole('retailer')">
+          <span class="role-icon">🏪</span>
+          <div class="role-info">
+            <div class="role-name" id="role-retailer-name">Duka (Retailer)</div>
+            <div class="role-desc" id="role-retailer-desc">Naagiza bidhaa kwa duka langu</div>
+          </div>
+          <span class="role-arrow">→</span>
+        </button>
+        <button class="role-card distributor" onclick="App.selectRole('distributor')">
+          <span class="role-icon">🚚</span>
+          <div class="role-info">
+            <div class="role-name" id="role-dist-name">Msambazaji (Distributor)</div>
+            <div class="role-desc" id="role-dist-desc">Nasambaza bidhaa kwa maduka</div>
+          </div>
+          <span class="role-arrow">→</span>
+        </button>
+        <button class="btn-ghost" id="s2-back" onclick="App.goStep(1)">← Rudi Nyuma</button>
+        <div class="login-tabs" style="margin-top:0.5rem">
+          <button class="login-tab active" id="tab-register" onclick="App.setAuthMode('register')">Akaunti Mpya</button>
+          <button class="login-tab" id="tab-login" onclick="App.setAuthMode('login')">Ingia</button>
         </div>
-    </div>
+      </div>
 
-    <div id="app-main" class="hidden min-h-screen">
-        <header class="bg-white border-b p-4 sticky top-0 z-40">
-            <div class="max-w-6xl mx-auto flex justify-between items-center">
-                <span class="text-2xl font-black text-boma-blue italic tracking-tighter">BomaWave</span>
-                <div id="user-badge" class="flex items-center gap-3">
-                    <div class="text-right">
-                        <p id="ui-username" class="font-bold text-sm"></p>
-                        <p id="ui-role" class="text-[10px] font-black uppercase text-slate-400 tracking-widest"></p>
-                    </div>
-                </div>
+      <!-- Step 3: Register -->
+      <div class="step" id="step-3">
+        <p class="step-label" id="s3-label">Hatua 3</p>
+        <h2 class="step-title" id="s3-title">Tengeneza Akaunti</h2>
+        <form id="reg-form" onsubmit="App.handleRegister(event)">
+          <div style="display:flex;flex-direction:column;gap:0.75rem">
+            <div class="form-group">
+              <label class="form-label" id="lbl-store">Jina la Duka</label>
+              <input class="form-input" id="reg-name" required />
             </div>
-        </header>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" id="lbl-user">Jina la Mtumiaji</label>
+                <input class="form-input" id="reg-user" autocomplete="username" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl-phone">Namba ya Simu</label>
+                <input class="form-input" id="reg-phone" type="tel" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" id="lbl-loc">Eneo la Biashara</label>
+              <input class="form-input" id="reg-loc" required />
+            </div>
+            <!-- Distributor-only fields -->
+            <div id="dist-extra" style="display:none;flex-direction:column;gap:0.75rem">
+              <div class="form-group">
+                <label class="form-label" id="lbl-coverage">Maeneo ya Usambazaji</label>
+                <input class="form-input" id="reg-coverage" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl-cats">Aina za Bidhaa Unazosambaza</label>
+                <div class="cat-grid" id="cat-grid"></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" id="lbl-pass">Nywila</label>
+                <input class="form-input" id="reg-pass" type="password" autocomplete="new-password" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl-pass2">Thibitisha Nywila</label>
+                <input class="form-input" id="reg-pass2" type="password" autocomplete="new-password" required />
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:0.75rem;margin-top:1.25rem">
+            <button type="button" class="btn-secondary" id="s3-back" onclick="App.goStep(2)">←</button>
+            <button type="submit" class="btn-primary" id="reg-submit">
+              <span id="reg-submit-text">Kamilisha</span>
+            </button>
+          </div>
+        </form>
+      </div>
 
-        <main class="max-w-6xl mx-auto p-6">
-            <div id="app-view"></div>
-        </main>
+      <!-- Step 4: Login -->
+      <div class="step" id="step-4">
+        <p class="step-label" id="s4-label">Ingia</p>
+        <h2 class="step-title" id="s4-title">Karibu Tena!</h2>
+        <form id="login-form" onsubmit="App.handleLogin(event)">
+          <div style="display:flex;flex-direction:column;gap:0.75rem">
+            <div class="form-group">
+              <label class="form-label" id="lbl-login-user">Jina la Mtumiaji</label>
+              <input class="form-input" id="login-user" autocomplete="username" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" id="lbl-login-pass">Nywila</label>
+              <input class="form-input" id="login-pass" type="password" autocomplete="current-password" required />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:0.75rem;margin-top:1.25rem">
+            <button type="button" class="btn-secondary" onclick="App.goStep(2)">←</button>
+            <button type="submit" class="btn-primary" id="login-submit">
+              <span id="login-submit-text">Ingia</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
     </div>
+  </div>
+</div>
 
-    <script type="module" src="app.js"></script>
+<!-- ═══════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════ -->
+<div id="app-main">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">🌿</div>
+      <span class="sidebar-brand-text">BomaWave</span>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sb-avatar">U</div>
+      <div>
+        <div class="user-name" id="sb-name">—</div>
+        <span class="user-role-badge" id="sb-role-badge">—</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="App.logout()">
+        <span>🚪</span>
+        <span id="lbl-logout">Toka</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-sub" id="topbar-sub"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem;position:relative">
+        <button class="notif-bell" id="notif-bell" onclick="App.toggleNotif()">
+          🔔
+          <span class="notif-dot" id="notif-dot" style="display:none">0</span>
+        </button>
+        <div class="notif-dropdown" id="notif-dropdown">
+          <div class="notif-header" id="notif-header">Arifa</div>
+          <div id="notif-list"><div class="notif-empty" id="notif-empty-msg">Hakuna arifa</div></div>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content" id="app-view"></main>
+  </div>
+
+</div>
+
+<!-- Cart FAB -->
+<button class="cart-fab" id="cart-fab" style="display:none" onclick="App.toggleCart()">
+  🛒
+  <span class="cart-fab-badge" id="cart-count">0</span>
+</button>
+
+<!-- Cart Panel -->
+<div class="cart-panel" id="cart-panel">
+  <div class="cart-header">
+    <div>
+      <div class="cart-title" id="cart-title">Agizo Lako</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:2px" id="cart-subtitle"></div>
+    </div>
+    <button class="cart-close" onclick="App.toggleCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cart-items-list"></div>
+  <div class="cart-footer">
+    <div class="cart-total-row">
+      <span class="cart-total-label" id="cart-total-lbl">Jumla</span>
+      <span class="cart-total-value" id="cart-total">TZS 0</span>
+    </div>
+    <div class="alert alert-info" id="cart-payment-note" style="margin-bottom:0.75rem;font-size:0.78rem">
+      💡 Malipo yanafanywa moja kwa moja na Msambazaji baada ya kuthibitishwa.
+    </div>
+    <button class="btn-primary" id="place-order-btn" onclick="App.placeOrder()">
+      <span id="place-order-text">Tuma Agizo</span>
+    </button>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script type="module" src="app.js"></script>
 </body>
 </html>
