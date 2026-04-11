@@ -344,9 +344,9 @@ const T = {
 const State = {
   lang:       'sw',
   role:       '',
-  authMode:   'register',   // 'register' | 'login'
+  authMode:   'register',
   user:       null,
-  cart:       {},           // { productId: { product, qty } }
+  cart:       {},
   activePage: '',
   realtimeSub: null,
   notifications: [],
@@ -433,7 +433,6 @@ export const App = {
 
   applyTranslations() {
     const l = State.lang;
-    // Step 2
     setText('s2-label',           t('step1_label'));
     setText('s2-title',           t('step1_title'));
     setText('role-retailer-name', t('role_retailer'));
@@ -444,7 +443,6 @@ export const App = {
     setText('tab-register',       t('tab_register'));
     setText('tab-login',          t('tab_login'));
 
-    // Step 3
     setText('s3-label',    t('step3_label'));
     setText('s3-title',    t('step3_title'));
     setText('lbl-store',   t('lbl_store'));
@@ -457,31 +455,25 @@ export const App = {
     setText('lbl-pass2',   t('lbl_pass2'));
     setText('reg-submit-text', t('btn_register'));
 
-    // Distributor placeholders for reg-coverage
     const cov = el('reg-coverage');
     if (cov) cov.placeholder = l === 'sw' ? 'mfano: Kariakoo, Ilala, Kinondoni' : 'e.g. Kariakoo, Ilala, Kinondoni';
 
-    // Step 4
     setText('s4-label',        t('step4_label'));
     setText('s4-title',        t('step4_title'));
     setText('lbl-login-user',  t('lbl_login_user'));
     setText('lbl-login-pass',  t('lbl_login_pass'));
     setText('login-submit-text', t('btn_login'));
 
-    // Logout
     setText('lbl-logout', t('lbl_logout'));
 
-    // Notifications
     setText('notif-header',    t('notif_title'));
     setText('notif-empty-msg', t('notif_empty'));
 
-    // Cart
     setText('cart-title',       t('cart_title'));
     setText('cart-total-lbl',   t('cart_total'));
     setText('place-order-text', t('place_order'));
     setText('cart-payment-note',t('cart_payment'));
 
-    // Placeholders
     const setP = (id, text) => { const e = el(id); if (e) e.placeholder = text; };
     setP('reg-name',  l === 'sw' ? 'mfano: Mama Fatuma Duka' : 'e.g. Grace Mini Market');
     setP('reg-user',  l === 'sw' ? 'jina lako la kipekee'   : 'your unique username');
@@ -492,7 +484,6 @@ export const App = {
     setP('login-user', l === 'sw' ? 'jina la mtumiaji'      : 'your username');
     setP('login-pass', l === 'sw' ? 'nywila yako'           : 'your password');
 
-    // Build category checkboxes
     this.buildCatGrid();
   },
 
@@ -573,12 +564,11 @@ export const App = {
       location:      el('reg-loc').value.trim(),
       role:          State.role,
       coverage_area: el('reg-coverage')?.value.trim() || null,
-      // categories column removed - database doesn't have this column
       lang:          State.lang,
       is_approved:   true,
     };
 
-    // Save categories to localStorage if needed later
+    // Save categories to localStorage if needed (for future use)
     if (cats.length && State.role === 'distributor') {
       localStorage.setItem('dist_categories', JSON.stringify(cats));
     }
@@ -631,7 +621,6 @@ export const App = {
   },
 
   logout() {
-    // Cleanup realtime
     if (State.realtimeSub) {
       supabase.removeChannel(State.realtimeSub);
       State.realtimeSub = null;
@@ -652,7 +641,6 @@ export const App = {
     el('app-main').style.display = '';
 
     const u = State.user;
-    // Sidebar user info
     setText('sb-name', u.store_name);
     el('sb-avatar').innerText = u.store_name.charAt(0).toUpperCase();
 
@@ -701,11 +689,9 @@ export const App = {
   navigate(page) {
     State.activePage = page;
 
-    // Active nav
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     el(`nav-${page}`)?.classList.add('active');
 
-    // Topbar
     const titleMap = {
       marketplace: ['topbar_marketplace', 'topbar_sub_market'],
       my_orders:   ['topbar_my_orders',   'topbar_sub_orders'],
@@ -720,7 +706,6 @@ export const App = {
     setText('topbar-title', t(titleKey));
     setText('topbar-sub',   t(subKey));
 
-    // Cart FAB — only on marketplace
     if (page === 'marketplace') {
       el('cart-fab').style.display = 'flex';
       this.updateCartUI();
@@ -728,7 +713,6 @@ export const App = {
       el('cart-fab').style.display = 'none';
     }
 
-    // Render page
     const renders = {
       marketplace: () => this.renderMarketplace(),
       my_orders:   () => this.renderMyOrders(),
@@ -749,7 +733,6 @@ export const App = {
 
     const u = State.user;
 
-    // Listen to orders table
     const channel = supabase
       .channel(`orders-${u.id}`)
       .on(
@@ -764,11 +747,9 @@ export const App = {
               time: new Date().toLocaleTimeString(State.lang === 'sw' ? 'sw-TZ' : 'en-GB', { hour: '2-digit', minute: '2-digit' }),
             });
             showToast(t('toast_new_order'), 'info');
-            // Refresh if on orders/dashboard page
             if (['orders', 'dashboard'].includes(State.activePage)) {
               this.navigate(State.activePage);
             }
-            // Update badge
             this.updateOrderBadge();
           }
         }
@@ -833,7 +814,6 @@ export const App = {
     State.notifOpen = !State.notifOpen;
     el('notif-dropdown')?.classList.toggle('open', State.notifOpen);
     if (State.notifOpen) {
-      // Clear badge
       const dot = el('notif-dot');
       if (dot) dot.style.display = 'none';
     }
@@ -874,7 +854,6 @@ export const App = {
       </div>
     `);
 
-    // Build category filters
     const { data: products } = await supabase
       .from('products')
       .select('*')
@@ -884,7 +863,6 @@ export const App = {
     App._allProducts = products || [];
     App._activeFilter = 'all';
 
-    // Build filter pills
     const cats = [...new Set((products || []).map(p => p.category))].filter(Boolean);
     const filtersEl = el('cat-filters');
     if (filtersEl) {
@@ -988,17 +966,11 @@ export const App = {
     const count = items.reduce((s, x) => s + x.qty, 0);
     const total = items.reduce((s, x) => s + x.product.price * x.qty, 0);
 
-    // FAB badge
     setText('cart-count', count);
     el('cart-fab').style.display = count > 0 || State.activePage === 'marketplace' ? 'flex' : 'none';
-
-    // Cart subtitle
     setText('cart-subtitle', `${count} ${t('cart_sub')}`);
-
-    // Total
     setText('cart-total', fmt(total));
 
-    // Items list
     const list = el('cart-items-list');
     if (!list) return;
 
@@ -1034,7 +1006,6 @@ export const App = {
     const items = Object.values(State.cart);
     if (items.length === 0) { showToast(t('err_cart_empty'), 'error'); return; }
 
-    // Group by distributor
     const byDist = {};
     items.forEach(({ product: p, qty }) => {
       if (!byDist[p.distributor_id]) byDist[p.distributor_id] = [];
@@ -1064,7 +1035,6 @@ export const App = {
 
       if (oErr) { hasError = true; continue; }
 
-      // Insert order items
       const orderItems = distItems.map(({ product: p, qty }) => ({
         order_id:     order.id,
         product_id:   p.id,
@@ -1076,7 +1046,6 @@ export const App = {
 
       await supabase.from('order_items').insert(orderItems);
 
-      // Deduct stock
       for (const { product: p, qty } of distItems) {
         await supabase
           .from('products')
@@ -1089,11 +1058,9 @@ export const App = {
 
     if (hasError) { showToast(t('err_generic'), 'error'); return; }
 
-    // Clear cart
     State.cart = {};
     el('cart-panel')?.classList.remove('open');
 
-    // Show success
     this.renderSuccessScreen();
     showToast(t('toast_order_placed'), 'success');
   },
@@ -1203,7 +1170,6 @@ export const App = {
     const revenue     = todayOrders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total_price), 0);
     const uniqueRet   = new Set((retailers || []).map(r => r.retailer_id)).size;
 
-    // Update badges
     this.updateOrderBadge();
 
     setHtml('app-view', `
@@ -1241,7 +1207,7 @@ export const App = {
                 <th>${t('total')}</th>
                 <th>${t('status')}</th>
                 <th>${t('action')}</th>
-               </tr></thead>
+              </tr></thead>
               <tbody id="dash-orders-body"></tbody>
             </table>
           </div>`
@@ -1360,7 +1326,6 @@ export const App = {
     const msg = status === 'confirmed' ? t('toast_order_confirmed') : status === 'delivered' ? t('toast_order_delivered') : '✅ Done';
     showToast(msg, 'success');
 
-    // Update row in place
     const statusCell = el(`status-${orderId}`);
     const actionsCell = el(`actions-${orderId}`);
     if (statusCell)  statusCell.innerHTML  = this.statusPill(status);
@@ -1450,7 +1415,7 @@ export const App = {
           <div class="inv-meta" style="margin-top:2px">${catLabel(p.category)}</div>
         </div>
         <div style="text-align:right">
-          <div class="inv-stock ${p.stock_qty < 10 ? 'style="color:var(--amber)"' : ''}">${p.stock_qty}</div>
+          <div class="inv-stock">${p.stock_qty}</div>
           <div style="font-size:0.65rem;color:var(--muted);margin-top:2px">${State.lang === 'sw' ? 'stoki' : 'in stock'}</div>
         </div>
       </div>
@@ -1550,7 +1515,6 @@ export const App = {
       return;
     }
 
-    // Aggregate by retailer
     const map = {};
     orders.forEach(o => {
       const r = o.retailer;
@@ -1598,13 +1562,8 @@ export const App = {
   },
 };
 
-// ═══════════════════════════════════════════════════════
-//  GLOBAL BINDINGS
-// ═══════════════════════════════════════════════════════
-
 window.App = App;
 
-// Close notif dropdown on outside click
 document.addEventListener('click', (e) => {
   if (!el('notif-bell')?.contains(e.target) && !el('notif-dropdown')?.contains(e.target)) {
     State.notifOpen = false;
