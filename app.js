@@ -512,53 +512,74 @@ export const App = {
   // ── LAUNCH ──────────────────────────────
 
   launchApp() {
-    el('onboarding').style.display = 'none';
-    el('app-main').style.display = '';
+    const onb = el('onboarding');
+    const app = el('app-main');
+    if (!onb || !app) { console.error('BW: DOM elements missing'); return; }
+
+    onb.style.display = 'none';
+    app.style.display = 'block';
 
     const u = State.user;
-    setText('sb-name', u.store_name);
-    el('sb-avatar').innerText = u.store_name.charAt(0).toUpperCase();
+    if (!u) { console.error('BW: no user in State'); return; }
+
+    // Sidebar user info
+    const sbName = el('sb-name');
+    if (sbName) sbName.innerText = u.store_name || '—';
+    const sbAvatar = el('sb-avatar');
+    if (sbAvatar) sbAvatar.innerText = (u.store_name || 'U').charAt(0).toUpperCase();
 
     const badge = el('sb-role-badge');
     if (badge) {
-      badge.className = `role-badge badge-${u.role}`;
+      badge.className = 'role-badge badge-' + u.role;
       badge.innerText = u.role === 'retailer'
         ? (State.lang === 'sw' ? 'Duka' : 'Retailer')
         : (State.lang === 'sw' ? 'Msambazaji' : 'Distributor');
     }
 
-    // Sync lang buttons
-    el('sb-lang-sw')?.classList.toggle('active', State.lang === 'sw');
-    el('sb-lang-en')?.classList.toggle('active', State.lang === 'en');
+    const lsw = el('sb-lang-sw'); if (lsw) lsw.classList.toggle('active', State.lang === 'sw');
+    const len = el('sb-lang-en'); if (len) len.classList.toggle('active', State.lang === 'en');
 
     this.buildSidebar();
-    this.setupRealtime();
 
-    this.navigate(u.role === 'retailer' ? 'marketplace' : 'dashboard');
+    // Small delay to let DOM settle before setting up realtime + navigating
+    setTimeout(() => {
+      this.setupRealtime();
+      const firstPage = u.role === 'retailer' ? 'marketplace' : 'dashboard';
+      this.navigate(firstPage);
+    }, 50);
   },
 
   buildSidebar() {
     const u = State.user;
-    const items = u.role === 'retailer'
-      ? [
-          { id: 'marketplace', icon: '🛍️', label: t('nav_marketplace') },
-          { id: 'my_orders',   icon: '📦', label: t('nav_my_orders') },
-        ]
-      : [
-          { id: 'dashboard', icon: '📊', label: t('nav_dashboard'), badge: true },
-          { id: 'orders',    icon: '📋', label: t('nav_orders'),    badge: true },
-          { id: 'products',  icon: '🏷️', label: t('nav_products') },
-          { id: 'inventory', icon: '📦', label: t('nav_inventory') },
-          { id: 'retailers', icon: '🏪', label: t('nav_retailers') },
-        ];
+    if (!u) return;
 
-    el('sidebar-nav').innerHTML = items.map(item => `
+    const nav = el('sidebar-nav');
+    if (!nav) { console.error('BW: sidebar-nav not found'); return; }
+
+    const retailerItems = [
+      { id: 'marketplace', icon: '🛍️', label: t('nav_marketplace') },
+      { id: 'my_orders',   icon: '📦', label: t('nav_my_orders') },
+    ];
+
+    const distItems = [
+      { id: 'dashboard', icon: '📊', label: t('nav_dashboard'), badge: true },
+      { id: 'orders',    icon: '📋', label: t('nav_orders'),    badge: true },
+      { id: 'products',  icon: '🏷️', label: t('nav_products') },
+      { id: 'inventory', icon: '📦', label: t('nav_inventory') },
+      { id: 'retailers', icon: '🏪', label: t('nav_retailers') },
+    ];
+
+    const items = u.role === 'retailer' ? retailerItems : distItems;
+
+    nav.innerHTML = items.map(item => `
       <button class="nav-item" id="nav-${item.id}" onclick="App.navigate('${item.id}')">
         <span class="nav-icon">${item.icon}</span>
         <span>${item.label}</span>
         ${item.badge ? `<span class="nav-badge" id="badge-${item.id}" style="display:none">0</span>` : ''}
       </button>
     `).join('');
+
+    console.log('BW: sidebar built for', u.role, '— items:', items.length);
   },
 
   navigate(page) {
@@ -596,7 +617,16 @@ export const App = {
       retailers:   () => this.renderRetailers(),
     };
 
-    renders[page]?.();
+    const viewEl = el('app-view');
+    if (!viewEl) { console.error('BW: app-view element missing'); return; }
+
+    const renderFn = renders[page];
+    if (renderFn) {
+      console.log('BW: rendering page →', page);
+      renderFn();
+    } else {
+      console.error('BW: no render function for page', page);
+    }
   },
 
   // ── REALTIME ────────────────────────────
@@ -988,22 +1018,36 @@ export const App = {
   // ── DASHBOARD ───────────────────────────
 
   async renderDashboard() {
-    setHtml('app-view', loader());
+    const viewEl = el('app-view');
+    if (!viewEl) return;
+
+    viewEl.innerHTML = loader();
 
     const today = new Date(); today.setHours(0,0,0,0);
+    const uid = State.user.id;
 
-    const [{ data: orders }, { data: products }, { data: allOrders }] = await Promise.all([
-      supabase.from('orders').select('*').eq('distributor_id', State.user.id).gte('created_at', today.toISOString()),
-      supabase.from('products').select('*').eq('distributor_id', State.user.id),
-      supabase.from('orders').select('retailer_id').eq('distributor_id', State.user.id),
-    ]);
+    let todayOrders = [], products = [], allOrders = [];
 
-    const todayOrders = orders || [];
-    const pending = todayOrders.filter(o => o.status === 'pending').length;
-    const revenue = todayOrders.filter(o => o.status !== 'cancelled').reduce((s,o) => s + Number(o.total_price), 0);
-    const uniqueRet = new Set((allOrders || []).map(r => r.retailer_id)).size;
-    const lowStock = (products || []).filter(p => p.stock_qty > 0 && p.stock_qty < 10).length;
-    const outStock = (products || []).filter(p => p.stock_qty === 0).length;
+    try {
+      const [r1, r2, r3] = await Promise.all([
+        supabase.from('orders').select('*').eq('distributor_id', uid).gte('created_at', today.toISOString()),
+        supabase.from('products').select('*').eq('distributor_id', uid),
+        supabase.from('orders').select('retailer_id').eq('distributor_id', uid),
+      ]);
+      if (r1.error) console.warn('BW orders error:', r1.error.message);
+      if (r2.error) console.warn('BW products error:', r2.error.message);
+      todayOrders = r1.data || [];
+      products    = r2.data || [];
+      allOrders   = r3.data || [];
+    } catch(err) {
+      console.error('BW dashboard fetch error:', err);
+    }
+
+    const pending   = todayOrders.filter(o => o.status === 'pending').length;
+    const revenue   = todayOrders.filter(o => o.status !== 'cancelled').reduce((s,o) => s + Number(o.total_price), 0);
+    const uniqueRet = new Set(allOrders.map(r => r.retailer_id)).size;
+    const lowStock  = products.filter(p => p.stock_qty > 0 && p.stock_qty < 10).length;
+    const outStock  = products.filter(p => p.stock_qty === 0).length;
 
     this.updateOrderBadge();
 
@@ -1069,13 +1113,18 @@ export const App = {
   async renderDistOrders() {
     setHtml('app-view', loader());
 
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*, retailer:profiles!orders_retailer_id_fkey(store_name, location, phone_number)')
-      .eq('distributor_id', State.user.id)
-      .order('created_at', { ascending: false });
+    let data = [];
+    try {
+      const { data: rows, error } = await supabase
+        .from('orders')
+        .select('*, retailer:profiles!orders_retailer_id_fkey(store_name, location, phone_number)')
+        .eq('distributor_id', State.user.id)
+        .order('created_at', { ascending: false });
+      if (error) console.warn('BW orders fetch:', error.message);
+      data = rows || [];
+    } catch(e) { console.error('BW renderDistOrders:', e); }
 
-    if (error || !data || !data.length) {
+    if (!data.length) {
       setHtml('app-view', `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">${t('no_orders')}</div><div class="empty-sub">${t('no_orders_sub')}</div></div>`);
       this.updateOrderBadge();
       return;
@@ -1169,6 +1218,7 @@ export const App = {
   // ── PRODUCTS ────────────────────────────
 
   async renderProducts() {
+    if (!el('app-view')) return;
     setHtml('app-view', `
       <div style="display:grid;grid-template-columns:320px 1fr;gap:1.5rem;align-items:start">
         <div class="card card-pad">
@@ -1221,15 +1271,20 @@ export const App = {
   },
 
   async loadMyProducts() {
-    const { data } = await supabase
-      .from('products').select('*')
-      .eq('distributor_id', State.user.id)
-      .order('created_at', { ascending: false });
+    let data = [];
+    try {
+      const { data: rows, error } = await supabase
+        .from('products').select('*')
+        .eq('distributor_id', State.user.id)
+        .order('created_at', { ascending: false });
+      if (error) console.warn('BW products load:', error.message);
+      data = rows || [];
+    } catch(e) { console.error('BW loadMyProducts:', e); }
 
     const list = el('my-products-list');
     if (!list) return;
 
-    if (!data || !data.length) {
+    if (!data.length) {
       list.innerHTML = `<div class="empty-state"><div class="empty-icon">🏷️</div><div class="empty-title">${t('no_products')}</div><div class="empty-sub">${t('no_products_sub')}</div></div>`;
       return;
     }
@@ -1283,12 +1338,17 @@ export const App = {
   async renderInventory() {
     setHtml('app-view', loader());
 
-    const { data } = await supabase
-      .from('products').select('*')
-      .eq('distributor_id', State.user.id)
-      .order('stock_qty', { ascending: true });
+    let data = [];
+    try {
+      const { data: rows, error } = await supabase
+        .from('products').select('*')
+        .eq('distributor_id', State.user.id)
+        .order('stock_qty', { ascending: true });
+      if (error) console.warn('BW inventory:', error.message);
+      data = rows || [];
+    } catch(e) { console.error('BW renderInventory:', e); }
 
-    if (!data || !data.length) {
+    if (!data.length) {
       setHtml('app-view', `<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">${t('no_products')}</div><div class="empty-sub">${t('no_products_sub')}</div></div>`);
       return;
     }
@@ -1364,12 +1424,17 @@ export const App = {
   async renderRetailers() {
     setHtml('app-view', loader());
 
-    const { data: orders } = await supabase
-      .from('orders')
-      .select('*, retailer:profiles!orders_retailer_id_fkey(id, store_name, location, phone_number)')
-      .eq('distributor_id', State.user.id);
+    let orders = [];
+    try {
+      const { data: rows, error } = await supabase
+        .from('orders')
+        .select('*, retailer:profiles!orders_retailer_id_fkey(id, store_name, location, phone_number)')
+        .eq('distributor_id', State.user.id);
+      if (error) console.warn('BW retailers:', error.message);
+      orders = rows || [];
+    } catch(e) { console.error('BW renderRetailers:', e); }
 
-    if (!orders || !orders.length) {
+    if (!orders.length) {
       setHtml('app-view', `<div class="empty-state"><div class="empty-icon">🏪</div><div class="empty-title">${t('no_retailers')}</div><div class="empty-sub">${t('no_retailers_sub')}</div></div>`);
       return;
     }
