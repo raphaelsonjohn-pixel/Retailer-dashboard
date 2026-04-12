@@ -2,556 +2,459 @@
 <html lang="sw">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#15803d"/>
 <title>BomaWave</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --green:#15803d;--green-mid:#16a34a;--green-light:#dcfce7;--green-dim:#bbf7d0;--green-dark:#14532d;
-  --blue:#1d4ed8;--blue-mid:#2563eb;--blue-light:#dbeafe;--blue-dark:#1e3a8a;
-  --amber:#b45309;--amber-light:#fef3c7;
-  --red:#b91c1c;--red-light:#fee2e2;
-  --purple:#7c3aed;--purple-light:#ede9fe;
-  --bg:#f0fdf4;--bg2:#f8fafc;--surface:#fff;
-  --border:#d1fae5;--border2:#e2e8f0;
-  --text:#0f172a;--muted:#64748b;
-  --sidebar-w:256px;--bottom-nav-h:64px;
-  --radius:0.75rem;--radius-lg:1.125rem;
+  --g900:#14532d;--g800:#166534;--g700:#15803d;--g600:#16a34a;--g500:#22c55e;
+  --g400:#4ade80;--g100:#dcfce7;--g50:#f0fdf4;
+  --b900:#1e3a8a;--b800:#1d4ed8;--b700:#2563eb;--b400:#60a5fa;--b100:#dbeafe;--b50:#eff6ff;
+  --w:#fff;--bg:#f0fdf4;--s100:#f1f5f9;--s200:#e2e8f0;--s300:#cbd5e1;
+  --s500:#64748b;--s700:#334155;--s900:#0f172a;
+  --red:#dc2626;--redl:#fee2e2;--amber:#d97706;--ambl:#fef3c7;
+  --sidebar-w:260px;--nav-h:64px;
+  --r:.75rem;--rl:1rem;--rxl:1.5rem;
+  --sh:0 4px 16px rgba(0,0,0,.1);--shl:0 12px 40px rgba(0,0,0,.15);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--s900);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent;}
 ::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-thumb{background:#c8e6c9;border-radius:4px;}
+::-webkit-scrollbar-thumb{background:var(--g400);border-radius:4px;}
 
-/* ── ONBOARDING ─────────────────────────────────────────── */
-#onboarding{position:fixed;inset:0;z-index:200;display:flex;background:#0f172a;overflow:hidden;}
-.ob-left{
-  width:440px;flex-shrink:0;position:relative;overflow:hidden;
-  display:flex;flex-direction:column;justify-content:space-between;
-}
-.ob-left-bg{
-  position:absolute;inset:0;
-  background-image:url('home.jpg');
-  background-size:cover;background-position:center top;
-  filter:brightness(.42) saturate(1.15);
-}
-.ob-left::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(
-    to bottom,
-    rgba(15,23,42,.5) 0%,
-    rgba(15,23,42,.25) 35%,
-    rgba(15,23,42,.6) 68%,
-    rgba(6,78,59,.95) 100%
-  );
-  z-index:1;
-}
-.ob-brand{position:relative;z-index:2;padding:2.25rem 2.25rem 0;}
-.ob-logo{display:flex;align-items:center;gap:.75rem;margin-bottom:.35rem;}
-.ob-logo-img{
-  width:46px;height:46px;border-radius:11px;
-  object-fit:contain;background:#1e3a8a;
-  padding:5px;flex-shrink:0;
-  box-shadow:0 4px 16px rgba(0,0,0,.4);
-}
-.ob-logo-name{font-family:'Playfair Display',serif;font-size:1.85rem;color:#fff;
-  text-shadow:0 2px 10px rgba(0,0,0,.5);}
-.ob-tagline{font-size:.67rem;font-weight:700;color:rgba(255,255,255,.48);
-  text-transform:uppercase;letter-spacing:2.5px;margin-left:1px;}
-.ob-hero{position:relative;z-index:2;padding:0 2.25rem;}
-.ob-hero h1{font-size:2.15rem;font-weight:800;color:#fff;line-height:1.18;margin-bottom:.75rem;
-  text-shadow:0 2px 16px rgba(0,0,0,.55);}
-.ob-hero h1 span{color:#4ade80;}
-.ob-hero p{font-size:.86rem;color:rgba(255,255,255,.65);line-height:1.7;}
-.ob-pills{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:1.1rem;position:relative;z-index:2;padding:0 2.25rem;}
-.ob-pill{padding:4px 11px;border-radius:20px;font-size:.68rem;font-weight:700;
-  background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);
-  border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(4px);}
-.ob-foot{font-size:.67rem;color:rgba(255,255,255,.28);position:relative;z-index:2;
-  padding:0 2.25rem 1.75rem;}
+/* ── ONBOARDING ──────────────────────────────────────────── */
+#onboarding{position:fixed;inset:0;z-index:200;display:flex;background:var(--s900);overflow:hidden;}
+.ob-left{width:440px;flex-shrink:0;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;}
+.ob-bg{position:absolute;inset:0;background-image:url('home.jpg');background-size:cover;background-position:center 20%;filter:brightness(.38) saturate(1.2);}
+.ob-left::after{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(160deg,rgba(6,78,59,.75) 0%,rgba(15,23,42,.35) 40%,rgba(15,23,42,.65) 70%,rgba(6,78,59,.97) 100%);}
+.ob-brand{position:relative;z-index:2;padding:2.5rem 2.5rem 0;display:flex;flex-direction:column;gap:.3rem;}
+.ob-logo{display:flex;align-items:center;gap:.75rem;}
+.ob-logo-img{width:48px;height:48px;border-radius:12px;object-fit:contain;background:var(--b900);padding:5px;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+.ob-logo-name{font-family:'Playfair Display',serif;font-size:2rem;color:var(--w);text-shadow:0 2px 12px rgba(0,0,0,.5);}
+.ob-tagline{font-size:.65rem;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:3px;}
+.ob-hero{position:relative;z-index:2;padding:0 2.5rem;}
+.ob-hero h1{font-size:2.3rem;font-weight:800;color:var(--w);line-height:1.15;margin-bottom:.75rem;text-shadow:0 2px 20px rgba(0,0,0,.6);}
+.ob-hero h1 em{color:var(--g400);font-style:normal;}
+.ob-hero p{font-size:.84rem;color:rgba(255,255,255,.6);line-height:1.75;}
+.ob-pills{display:flex;gap:.4rem;flex-wrap:wrap;position:relative;z-index:2;padding:1rem 2.5rem 0;}
+.ob-pill{padding:5px 12px;border-radius:20px;font-size:.68rem;font-weight:700;background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(8px);}
+.ob-foot{position:relative;z-index:2;padding:0 2.5rem 2rem;font-size:.65rem;color:rgba(255,255,255,.25);}
 
-.ob-right{flex:1;display:flex;align-items:flex-start;justify-content:center;
-  padding:1.5rem;background:var(--bg);overflow-y:auto;}
-.ob-card{width:100%;max-width:430px;background:#fff;border-radius:1.5rem;
-  box-shadow:0 20px 60px rgba(0,0,0,.08);overflow:visible;margin:auto 0;}
-.ob-card-head{background:linear-gradient(135deg,var(--green-dark),var(--green-mid));
-  padding:1.25rem 1.75rem;display:flex;align-items:center;gap:.6rem;border-radius:1.5rem 1.5rem 0 0;}
-.ob-card-head-text{font-size:.95rem;font-weight:700;color:#fff;}
-.ob-card-head-sub{font-size:.72rem;color:rgba(255,255,255,.65);margin-top:1px;}
-.ob-card-body{padding:1.5rem 1.75rem;}
-.prog-bar{height:3px;background:var(--green-light);border-radius:2px;margin-bottom:1.25rem;overflow:hidden;}
-.prog-fill{height:100%;background:var(--green-mid);border-radius:2px;transition:width .4s;}
-.step{display:none;flex-direction:column;gap:.875rem;}
+.ob-right{flex:1;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--bg);overflow-y:auto;}
+.ob-card{width:100%;max-width:420px;background:var(--w);border-radius:var(--rxl);box-shadow:var(--shl);overflow:hidden;}
+.ob-head{background:linear-gradient(135deg,var(--g900),var(--g700));padding:1.25rem 1.75rem;display:flex;align-items:center;gap:.75rem;}
+.ob-head-logo{width:34px;height:34px;border-radius:8px;object-fit:contain;background:var(--b900);padding:3px;}
+.ob-head-title{font-size:.95rem;font-weight:800;color:var(--w);}
+.ob-head-sub{font-size:.7rem;color:rgba(255,255,255,.6);margin-top:1px;}
+.ob-body{padding:1.75rem;}
+
+/* Progress */
+.prog-wrap{margin-bottom:1.5rem;}
+.prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;}
+.prog-lbl{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--g700);}
+.prog-pct{font-size:.65rem;color:var(--s500);}
+.prog-bar{height:3px;background:var(--g100);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--g700),var(--g500));border-radius:2px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+
+/* Steps */
+.step{display:none;flex-direction:column;gap:1rem;}
 .step.active{display:flex;}
-.step-eye{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--green-mid);}
-.step-h{font-size:1.2rem;font-weight:700;color:var(--text);line-height:1.3;}
+.step-h{font-size:1.18rem;font-weight:800;color:var(--s900);line-height:1.3;}
+.step-sub{font-size:.78rem;color:var(--s500);margin-top:-.25rem;}
 
-.lang-btn{width:100%;padding:.9rem 1.1rem;border-radius:.875rem;border:2px solid var(--border2);
-  background:var(--bg2);cursor:pointer;display:flex;align-items:center;gap:.875rem;
-  font-family:'DM Sans',sans-serif;transition:all .2s;text-align:left;}
-.lang-btn:hover{border-color:var(--green-mid);background:var(--green-light);transform:translateY(-1px);}
-.lang-flag{font-size:1.6rem;}
-.lang-name{font-size:.88rem;font-weight:700;color:var(--text);}
-.lang-sub{font-size:.7rem;color:var(--muted);margin-top:1px;}
+/* Form */
+.fg{display:flex;flex-direction:column;gap:.3rem;}
+.fl{font-size:.68rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:.75px;}
+.fl span{color:var(--red);margin-left:2px;}
+.iw{position:relative;}
+.fi{width:100%;padding:.75rem 1rem;border:1.5px solid var(--s300);border-radius:.65rem;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--s900);background:var(--s100);outline:none;transition:all .2s;}
+.fi:focus{border-color:var(--g600);background:var(--w);box-shadow:0 0 0 3px rgba(22,163,74,.1);}
+.fi::placeholder{color:var(--s300);}
+.fi.err{border-color:var(--red);background:var(--redl);}
+select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .9rem center;padding-right:2.5rem;}
+.pfx{position:absolute;left:0;top:0;bottom:0;padding:0 .875rem;display:flex;align-items:center;gap:.4rem;pointer-events:none;z-index:1;border-right:1.5px solid var(--s300);}
+.pfx-flag{font-size:1.05rem;}
+.pfx-code{font-size:.82rem;font-weight:700;color:var(--s700);}
+.fi-phone{padding-left:5.8rem!important;}
+.eye{position:absolute;right:.875rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--s500);display:flex;align-items:center;padding:.25rem;border-radius:.3rem;transition:color .15s;}
+.eye:hover{color:var(--s900);}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;}
 
-.role-card{width:100%;padding:1rem 1.1rem;border-radius:.875rem;border:2px solid var(--border2);
-  background:var(--bg2);cursor:pointer;display:flex;align-items:center;gap:.75rem;
-  font-family:'DM Sans',sans-serif;transition:all .2s;}
-.role-card:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.08);}
-.role-card.retailer:hover,.role-card.retailer.selected{border-color:var(--green-mid);background:var(--green-light);}
-.role-card.distributor:hover,.role-card.distributor.selected{border-color:var(--blue-mid);background:var(--blue-light);}
-.role-icon-wrap{width:42px;height:42px;border-radius:10px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
-.role-card.retailer .role-icon-wrap{background:var(--green-light);}
-.role-card.distributor .role-icon-wrap{background:var(--blue-light);}
-.role-info{flex:1;}.role-name{font-size:.88rem;font-weight:700;color:var(--text);}
-.role-desc{font-size:.72rem;color:var(--muted);margin-top:1px;}
-.role-arrow{color:var(--muted);font-size:.9rem;}
+/* Lang btns */
+.lang-btn{width:100%;padding:.875rem 1.1rem;border-radius:.75rem;border:2px solid var(--s300);background:var(--s100);cursor:pointer;display:flex;align-items:center;gap:.875rem;font-family:'DM Sans',sans-serif;transition:all .2s;text-align:left;}
+.lang-btn:hover{border-color:var(--g600);background:var(--g100);transform:translateY(-1px);}
+.lang-flag{font-size:1.75rem;}
+.lang-name{font-size:.9rem;font-weight:700;color:var(--s900);}
+.lang-sub{font-size:.7rem;color:var(--s500);margin-top:1px;}
 
-.auth-tabs{display:flex;background:var(--bg2);border-radius:.5rem;padding:3px;border:1px solid var(--border2);}
-.auth-tab{flex:1;padding:.5rem;border-radius:.35rem;border:none;background:none;cursor:pointer;
-  font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;color:var(--muted);transition:all .2s;}
-.auth-tab.active{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+/* Role cards */
+.rc{width:100%;padding:1.1rem 1.25rem;border-radius:.875rem;border:2px solid var(--s300);background:var(--s100);cursor:pointer;display:flex;align-items:center;gap:.875rem;font-family:'DM Sans',sans-serif;transition:all .2s;text-align:left;}
+.rc:hover{transform:translateY(-1px);box-shadow:var(--sh);}
+.rc.retailer:hover,.rc.retailer.sel{border-color:var(--g600);background:var(--g100);}
+.rc.distributor:hover,.rc.distributor.sel{border-color:var(--b700);background:var(--b100);}
+.rci{width:44px;height:44px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.rc.retailer .rci{background:var(--g100);color:var(--g700);}
+.rc.distributor .rci{background:var(--b100);color:var(--b700);}
+.rc-name{font-size:.9rem;font-weight:700;color:var(--s900);}
+.rc-desc{font-size:.72rem;color:var(--s500);margin-top:2px;}
 
-.form-group{display:flex;flex-direction:column;gap:.28rem;}
-.form-label{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.75px;}
-.form-input{width:100%;padding:.72rem .9rem;border:1.5px solid var(--border2);border-radius:.65rem;
-  font-family:'DM Sans',sans-serif;font-size:.88rem;color:var(--text);background:var(--bg2);outline:none;transition:all .2s;}
-.form-input:focus{border-color:var(--green-mid);background:#fff;box-shadow:0 0 0 3px rgba(22,163,74,.08);}
-.form-input::placeholder{color:#cbd5e1;}
-select.form-input{appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right .875rem center;padding-right:2.25rem;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;}
-
+/* Cat grid */
 .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.35rem;}
-.cat-check{display:flex;align-items:center;gap:.35rem;padding:.45rem .6rem;
-  border:1.5px solid var(--border2);border-radius:.5rem;cursor:pointer;
-  font-size:.75rem;font-weight:600;color:var(--text);transition:all .15s;user-select:none;}
-.cat-check input{display:none;}
-.cat-check:hover{border-color:var(--blue-mid);}
-.cat-check.checked{border-color:var(--blue-mid);background:var(--blue-light);color:var(--blue-mid);}
-.cat-icon{font-size:.85rem;}
+.cat-chip{display:flex;align-items:center;gap:.4rem;padding:.45rem .65rem;border:1.5px solid var(--s300);border-radius:.5rem;cursor:pointer;font-size:.75rem;font-weight:600;color:var(--s700);transition:all .15s;user-select:none;background:var(--w);}
+.cat-chip input{display:none;}
+.cat-chip:hover{border-color:var(--b700);}
+.cat-chip.on{border-color:var(--b700);background:var(--b100);color:var(--b800);}
 
-.btn-primary{width:100%;padding:.8rem 1.25rem;background:var(--green-mid);color:#fff;border:none;
-  border-radius:.65rem;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700;
-  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.4rem;}
-.btn-primary:hover{background:var(--green-dark);transform:translateY(-1px);box-shadow:0 6px 20px rgba(22,163,74,.3);}
-.btn-primary:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none;}
-.btn-secondary{padding:.8rem 1rem;border:1.5px solid var(--border2);background:#fff;border-radius:.65rem;
-  font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700;color:var(--text);cursor:pointer;transition:all .2s;}
-.btn-secondary:hover{border-color:var(--muted);background:var(--bg2);}
-.btn-ghost{background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;
-  font-size:.8rem;font-weight:600;cursor:pointer;text-align:center;padding:.35rem;transition:color .15s;}
-.btn-ghost:hover{color:var(--text);}
-.btn-sm{padding:.45rem .875rem;font-size:.75rem;font-weight:700;border-radius:.5rem;cursor:pointer;
-  font-family:'DM Sans',sans-serif;border:1.5px solid var(--border2);background:#fff;color:var(--text);transition:all .15s;}
-.btn-sm:hover{border-color:var(--green-mid);color:var(--green-mid);}
-.btn-sm.green{background:var(--green-mid);color:#fff;border-color:var(--green-mid);}
-.btn-sm.green:hover{background:var(--green-dark);}
-.btn-sm.red{border-color:var(--red);color:var(--red);}
-.btn-sm.red:hover{background:var(--red);color:#fff;}
-.btn-sm.blue{border-color:var(--blue-mid);color:var(--blue-mid);}
-.btn-sm.blue:hover{background:var(--blue-mid);color:#fff;}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1.25rem;border-radius:.65rem;border:none;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;}
+.btn:active{transform:scale(.97);}
+.btn-p{background:linear-gradient(135deg,var(--g700),var(--g600));color:var(--w);width:100%;}
+.btn-p:hover{background:linear-gradient(135deg,var(--g900),var(--g700));box-shadow:0 6px 20px rgba(22,163,74,.35);}
+.btn-p:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-s{background:var(--w);border:1.5px solid var(--s300);color:var(--s700);}
+.btn-s:hover{border-color:var(--s500);background:var(--s100);}
+.btn-g{background:none;border:none;color:var(--s500);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;text-align:center;padding:.35rem;transition:color .15s;}
+.btn-g:hover{color:var(--s900);}
+.bsm{padding:.45rem .875rem;font-size:.75rem;font-weight:700;border-radius:.5rem;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid var(--s300);background:var(--w);color:var(--s700);transition:all .15s;display:inline-flex;align-items:center;gap:.3rem;}
+.bsm:hover{border-color:var(--g600);color:var(--g700);}
+.bsm.g{background:var(--g700);color:var(--w);border-color:var(--g700);}
+.bsm.g:hover{background:var(--g900);}
+.bsm.b{background:var(--b700);color:var(--w);border-color:var(--b700);}
+.bsm.b:hover{background:var(--b900);}
+.bsm.r{border-color:var(--red);color:var(--red);}
+.bsm.r:hover{background:var(--red);color:var(--w);}
+.bsm.a{border-color:var(--amber);color:var(--amber);}
+
+/* OTP boxes */
+.otp-row{display:flex;gap:.5rem;justify-content:center;}
+.ob{width:48px;height:58px;text-align:center;font-size:1.5rem;font-weight:800;border:2px solid var(--s300);border-radius:.65rem;background:var(--s100);font-family:'DM Sans',sans-serif;color:var(--s900);outline:none;transition:all .15s;caret-color:transparent;}
+.ob:focus{border-color:var(--g600);background:var(--w);box-shadow:0 0 0 3px rgba(22,163,74,.12);}
+.ob.on{border-color:var(--g600);background:var(--g100);}
+.ob.err{border-color:var(--red);background:var(--redl);animation:shake .3s ease;}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}60%{transform:translateX(5px)}}
+
+/* PIN */
+.pin-dots{display:flex;justify-content:center;gap:.875rem;margin:.5rem 0 .25rem;}
+.pd{width:16px;height:16px;border-radius:50%;border:2px solid var(--s300);background:transparent;transition:all .2s;}
+.pd.on{background:var(--g700);border-color:var(--g700);}
+.pd.err{background:var(--red);border-color:var(--red);}
+.pin-err{text-align:center;font-size:.75rem;color:var(--red);font-weight:600;min-height:1.3em;}
+.pkp{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;max-width:270px;margin:0 auto;}
+.pk{height:62px;border-radius:.875rem;border:1.5px solid var(--s200);background:var(--w);font-family:'DM Sans',sans-serif;font-size:1.4rem;font-weight:700;color:var(--s900);cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.pk:active{background:var(--g100);border-color:var(--g600);transform:scale(.93);}
+.pk-ghost{background:transparent;border-color:transparent;box-shadow:none;font-size:.72rem;color:var(--s500);}
+.pk-ghost:active{background:var(--s100);}
+.pk-del{font-size:1.1rem;color:var(--s500);}
+
+/* Resend */
+.resend-wrap{text-align:center;font-size:.75rem;}
+.rt{color:var(--s500);}
+.rb{color:var(--g700);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:700;display:none;text-decoration:underline;}
 
 /* ── APP SHELL ──────────────────────────────────────────── */
 #app-main{display:none;min-height:100vh;}
-
-/* Sidebar (desktop) */
-.sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);
-  background:#0f172a;display:flex;flex-direction:column;z-index:100;
-  transition:transform .3s;}
-.sb-brand{padding:1.25rem 1.1rem 1rem;border-bottom:1px solid rgba(255,255,255,.06);
-  display:flex;align-items:center;gap:.6rem;}
-.sb-logo-icon{width:34px;height:34px;border-radius:8px;background:var(--green-mid);
-  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
-.sb-logo-name{font-family:'Playfair Display',serif;font-size:1.25rem;color:#fff;}
-.sb-user{padding:.75rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.06);
-  display:flex;align-items:center;gap:.6rem;}
-.user-avatar{width:36px;height:36px;border-radius:50%;
-  background:linear-gradient(135deg,var(--green-mid),#0d9488);
-  display:flex;align-items:center;justify-content:center;
-  font-size:.82rem;font-weight:800;color:#fff;flex-shrink:0;}
-.user-name-text{font-size:.8rem;font-weight:700;color:#fff;line-height:1.3;}
-.role-badge{display:inline-block;font-size:.6rem;font-weight:700;
-  padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
-.badge-retailer{background:rgba(22,163,74,.2);color:#4ade80;}
-.badge-distributor{background:rgba(37,99,235,.2);color:#93c5fd;}
-.badge-admin{background:rgba(124,58,237,.2);color:#c4b5fd;}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--s900);display:flex;flex-direction:column;z-index:100;transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.sb-brand{padding:1.25rem 1.1rem 1rem;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:.65rem;}
+.sb-li{width:34px;height:34px;border-radius:8px;object-fit:contain;background:var(--b900);padding:3px;}
+.sb-ln{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--w);}
+.sb-user{padding:.75rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:.65rem;}
+.uav{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--g700),var(--b700));display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;color:var(--w);flex-shrink:0;}
+.un{font-size:.82rem;font-weight:700;color:var(--w);line-height:1.3;}
+.rbadge{display:inline-block;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;}
+.rb-ret{background:rgba(22,163,74,.2);color:#4ade80;}
+.rb-dist{background:rgba(37,99,235,.2);color:#93c5fd;}
+.rb-adm{background:rgba(124,58,237,.2);color:#c4b5fd;}
 .sb-nav{padding:.6rem;flex:1;overflow-y:auto;}
-.nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;border-radius:.45rem;
-  cursor:pointer;color:rgba(255,255,255,.5);font-size:.82rem;font-weight:600;
-  transition:all .15s;border:none;background:none;width:100%;text-align:left;position:relative;}
-.nav-item:hover{color:#fff;background:rgba(255,255,255,.06);}
-.nav-item.active{color:#fff;background:rgba(22,163,74,.2);border:1px solid rgba(22,163,74,.2);}
-.nav-item.active .nav-icon{color:#4ade80;}
-.nav-icon{font-size:.95rem;width:18px;text-align:center;flex-shrink:0;}
-.nav-badge{margin-left:auto;background:var(--amber);color:#fff;font-size:.6rem;font-weight:800;
-  padding:1px 5px;border-radius:20px;min-width:18px;text-align:center;}
-.sb-footer{padding:.75rem 1.1rem;border-top:1px solid rgba(255,255,255,.06);}
-.lang-switch{display:flex;gap:2px;background:rgba(255,255,255,.06);border-radius:.4rem;
-  padding:2px;margin-bottom:.6rem;}
-.lang-switch-btn{flex:1;padding:4px 8px;border-radius:.3rem;border:none;background:none;
-  font-family:'DM Sans',sans-serif;font-size:.7rem;font-weight:700;color:rgba(255,255,255,.4);
-  cursor:pointer;transition:all .15s;}
-.lang-switch-btn.active{background:var(--green-mid);color:#fff;}
-.logout-btn{width:100%;display:flex;align-items:center;gap:.5rem;padding:.55rem .7rem;
-  border-radius:.45rem;border:none;background:none;cursor:pointer;color:rgba(255,255,255,.35);
-  font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;transition:all .15s;}
-.logout-btn:hover{color:#fca5a5;background:rgba(239,68,68,.08);}
-
-/* Main content */
+.ni{display:flex;align-items:center;gap:.65rem;padding:.65rem .75rem;border-radius:.5rem;cursor:pointer;color:rgba(255,255,255,.5);font-size:.83rem;font-weight:600;transition:all .15s;border:none;background:none;width:100%;text-align:left;}
+.ni:hover{color:var(--w);background:rgba(255,255,255,.07);}
+.ni.on{color:var(--w);background:rgba(22,163,74,.18);border:1px solid rgba(22,163,74,.25);}
+.ni.on .nic{color:var(--g400);}
+.nic{width:18px;text-align:center;flex-shrink:0;display:flex;align-items:center;}
+.nb{margin-left:auto;background:var(--amber);color:var(--w);font-size:.58rem;font-weight:800;padding:2px 6px;border-radius:20px;min-width:18px;text-align:center;}
+.sb-foot{padding:.75rem 1.1rem;border-top:1px solid rgba(255,255,255,.06);}
+.lsw{display:flex;gap:2px;background:rgba(255,255,255,.07);border-radius:.4rem;padding:2px;margin-bottom:.6rem;}
+.lsw-b{flex:1;padding:4px 8px;border-radius:.3rem;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;color:rgba(255,255,255,.4);cursor:pointer;transition:all .15s;}
+.lsw-b.on{background:var(--g700);color:var(--w);}
+.lo{width:100%;display:flex;align-items:center;gap:.5rem;padding:.55rem .7rem;border-radius:.45rem;border:none;background:none;cursor:pointer;color:rgba(255,255,255,.35);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;transition:all .15s;}
+.lo:hover{color:#fca5a5;background:rgba(239,68,68,.08);}
 .main-content{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column;}
-.topbar{position:sticky;top:0;z-index:50;background:rgba(240,253,244,.94);
-  backdrop-filter:blur(16px);border-bottom:1px solid var(--border);
-  padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;}
-.topbar-left{display:flex;align-items:center;gap:.6rem;}
-.topbar-icon{width:34px;height:34px;border-radius:8px;background:var(--green-light);
-  display:flex;align-items:center;justify-content:center;font-size:.95rem;}
-.topbar-title{font-size:.95rem;font-weight:700;color:var(--text);}
-.topbar-sub{font-size:.7rem;color:var(--muted);margin-top:1px;}
-.topbar-right{display:flex;align-items:center;gap:.6rem;position:relative;}
-.hamburger{display:none;width:36px;height:36px;border-radius:.5rem;background:#fff;
-  border:1.5px solid var(--border2);align-items:center;justify-content:center;
-  cursor:pointer;font-size:1.1rem;}
-.notif-btn{width:36px;height:36px;background:#fff;border:1.5px solid var(--border2);
-  border-radius:.6rem;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;font-size:.95rem;transition:all .2s;position:relative;}
-.notif-btn:hover{border-color:var(--green-mid);}
-.notif-dot{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;border-radius:9px;
-  background:var(--red);border:2px solid var(--bg);font-size:.52rem;font-weight:800;color:#fff;
-  display:flex;align-items:center;justify-content:center;padding:0 2px;}
-.notif-dropdown{position:absolute;top:calc(100% + 8px);right:0;width:300px;background:#fff;
-  border:1px solid var(--border2);border-radius:.875rem;box-shadow:0 16px 48px rgba(0,0,0,.12);
-  z-index:300;overflow:hidden;display:none;}
-.notif-dropdown.open{display:block;}
-.notif-head{padding:.75rem 1.1rem;border-bottom:1px solid var(--border2);font-size:.8rem;font-weight:800;
-  display:flex;align-items:center;justify-content:space-between;}
-.notif-clear{font-size:.7rem;color:var(--green-mid);cursor:pointer;background:none;border:none;
-  font-family:'DM Sans',sans-serif;font-weight:600;}
-.notif-item{padding:.65rem 1.1rem;border-bottom:1px solid #f8fafc;display:flex;gap:.6rem;}
-.notif-item.unread{background:#f0fdf4;}
-.notif-icon{font-size:1.1rem;flex-shrink:0;margin-top:2px;}
-.notif-text{font-size:.75rem;color:var(--text);font-weight:600;line-height:1.4;}
-.notif-time{font-size:.65rem;color:var(--muted);margin-top:2px;}
-.notif-empty{padding:1.75rem;text-align:center;font-size:.8rem;color:var(--muted);}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(240,253,244,.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--g100);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+.tbl{display:flex;align-items:center;gap:.65rem;}
+.tbic{width:36px;height:36px;border-radius:9px;background:var(--g100);display:flex;align-items:center;justify-content:center;color:var(--g700);}
+.tbt{font-size:.95rem;font-weight:800;color:var(--s900);}
+.tbs{font-size:.7rem;color:var(--s500);margin-top:1px;}
+.tbr{display:flex;align-items:center;gap:.5rem;position:relative;}
+.hbg{display:none;width:38px;height:38px;border-radius:.5rem;background:var(--w);border:1.5px solid var(--s300);align-items:center;justify-content:center;cursor:pointer;color:var(--s700);}
+.nb-btn{width:38px;height:38px;background:var(--w);border:1.5px solid var(--s300);border-radius:.6rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--s700);transition:all .2s;position:relative;}
+.nb-btn:hover{border-color:var(--g600);color:var(--g700);}
+.ndot{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;border-radius:9px;background:var(--red);border:2px solid var(--bg);font-size:.52rem;font-weight:800;color:var(--w);display:flex;align-items:center;justify-content:center;padding:0 2px;}
+.ndd{position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--w);border:1px solid var(--s300);border-radius:var(--rl);box-shadow:var(--shl);z-index:300;overflow:hidden;display:none;}
+.ndd.open{display:block;}
+.ndh{padding:.75rem 1.1rem;border-bottom:1px solid var(--s100);font-size:.8rem;font-weight:800;display:flex;align-items:center;justify-content:space-between;}
+.ndc{font-size:.7rem;color:var(--g700);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;font-weight:600;}
+.ndi{padding:.65rem 1.1rem;border-bottom:1px solid var(--s100);display:flex;gap:.6rem;}
+.ndi.unread{background:var(--g50);}
+.ndt{font-size:.75rem;color:var(--s900);font-weight:600;line-height:1.4;}
+.ndtime{font-size:.65rem;color:var(--s500);margin-top:2px;}
+.nde{padding:2rem;text-align:center;font-size:.8rem;color:var(--s500);}
+.pc{padding:1.5rem;flex:1;padding-bottom:calc(var(--nav-h) + 1.5rem);}
+.bn{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:var(--w);border-top:1px solid var(--s200);z-index:100;align-items:stretch;}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;color:var(--s500);transition:all .15s;padding:.4rem .2rem;position:relative;}
+.bni.on{color:var(--g700);}
+.bni-lbl{font-size:.62rem;font-weight:600;line-height:1;}
+.bni-badge{position:absolute;top:4px;right:calc(50% - 14px);min-width:14px;height:14px;border-radius:7px;background:var(--amber);color:var(--w);font-size:.5rem;font-weight:800;display:none;align-items:center;justify-content:center;border:2px solid var(--w);}
+.sovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;}
+.cfab{position:fixed;bottom:calc(var(--nav-h) + 1rem);right:1.25rem;background:linear-gradient(135deg,var(--g700),var(--g600));border:none;border-radius:50%;cursor:pointer;box-shadow:0 8px 28px rgba(22,163,74,.45);z-index:90;display:none;align-items:center;justify-content:center;width:56px;height:56px;color:var(--w);transition:all .2s;}
+.cfab:hover{transform:scale(1.08);}
+.cfb{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:var(--amber);border:2px solid var(--w);font-size:.6rem;font-weight:800;color:var(--w);display:flex;align-items:center;justify-content:center;padding:0 3px;}
+.cpanel{position:fixed;top:0;right:0;bottom:0;width:340px;background:var(--w);border-left:1px solid var(--s200);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 40px rgba(0,0,0,.1);}
+.cpanel.open{transform:translateX(0);}
+.cphead{padding:1.1rem 1.25rem;border-bottom:1px solid var(--s200);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,var(--g900),var(--g700));}
+.cpt{font-size:.9rem;font-weight:800;color:var(--w);}
+.cps{font-size:.7rem;color:rgba(255,255,255,.65);margin-top:1px;}
+.cpclose{width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.15);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--w);}
+.cpitems{flex:1;overflow-y:auto;padding:.75rem;}
+.cpi{display:flex;align-items:center;gap:.65rem;padding:.65rem;background:var(--s100);border-radius:.65rem;margin-bottom:.45rem;border:1px solid var(--g100);}
+.cpi-img{width:40px;height:40px;border-radius:.4rem;object-fit:cover;flex-shrink:0;background:var(--bg);}
+.cpi-em{width:40px;height:40px;border-radius:.4rem;background:var(--g50);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.cpi-name{font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cpi-price{font-size:.72rem;color:var(--g700);font-weight:700;margin-top:1px;}
+.cpi-moq{font-size:.63rem;color:var(--amber);font-weight:600;margin-top:2px;}
+.cpfoot{padding:.875rem 1.1rem;border-top:1px solid var(--s200);}
+.cptr{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;}
+.cptl{font-size:.82rem;color:var(--s500);font-weight:600;}
+.cptv{font-size:1.2rem;font-weight:800;color:var(--g700);}
 
-.page-content{padding:1.5rem;flex:1;padding-bottom:calc(var(--bottom-nav-h) + 1rem);}
+/* Stats */
+.sr{display:grid;grid-template-columns:repeat(4,1fr);gap:.875rem;margin-bottom:1.25rem;}
+.sc{background:var(--w);border:1px solid var(--s200);border-radius:var(--rl);padding:1.1rem 1.1rem .875rem;position:relative;overflow:hidden;}
+.sc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;}
+.sc.g::after{background:linear-gradient(90deg,var(--g700),var(--g500));}
+.sc.b::after{background:linear-gradient(90deg,var(--b700),var(--b400));}
+.sc.a::after{background:linear-gradient(90deg,var(--amber),#f59e0b);}
+.sc.r::after{background:linear-gradient(90deg,var(--red),#ef4444);}
+.sic{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:.75rem;}
+.sc.g .sic{background:var(--g100);color:var(--g700);}
+.sc.b .sic{background:var(--b100);color:var(--b700);}
+.sc.a .sic{background:var(--ambl);color:var(--amber);}
+.sc.r .sic{background:var(--redl);color:var(--red);}
+.sl{font-size:.65rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:1px;margin-bottom:.2rem;}
+.sv{font-size:1.5rem;font-weight:800;letter-spacing:-1px;line-height:1;}
+.sc.g .sv{color:var(--g900);}
+.sc.b .sv{color:var(--b900);}
+.sc.a .sv{color:var(--amber);}
+.sc.r .sv{color:var(--red);}
 
-/* ── BOTTOM NAV (mobile) ────────────────────────────────── */
-.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-h);
-  background:#fff;border-top:1px solid var(--border2);z-index:100;
-  display:none;align-items:stretch;}
-.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;
-  color:var(--muted);transition:all .15s;padding:.4rem .2rem;}
-.bn-item.active{color:var(--green-mid);}
-.bn-icon{font-size:1.25rem;line-height:1;}
-.bn-label{font-size:.62rem;font-weight:600;line-height:1;}
-.bn-badge{position:relative;}
-.bn-badge-dot{position:absolute;top:-3px;right:-6px;width:14px;height:14px;border-radius:50%;
-  background:var(--amber);color:#fff;font-size:.5rem;font-weight:800;
-  display:flex;align-items:center;justify-content:center;border:2px solid #fff;}
+/* Card */
+.card{background:var(--w);border:1px solid var(--s200);border-radius:var(--rl);overflow:hidden;}
+.cp{padding:1.25rem;}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;}
+.st{font-size:.9rem;font-weight:800;color:var(--s900);}
+.sa{font-size:.75rem;font-weight:700;color:var(--g700);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;}
 
-/* ── MOBILE OVERLAY ─────────────────────────────────────── */
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;}
+/* Table */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.dt{width:100%;border-collapse:collapse;min-width:480px;}
+.dt th{text-align:left;padding:.65rem 1rem;font-size:.63rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--s200);background:var(--s100);white-space:nowrap;}
+.dt td{padding:.8rem 1rem;border-bottom:1px solid var(--s100);font-size:.82rem;vertical-align:middle;}
+.dt tr:last-child td{border-bottom:none;}
+.dt tr:hover td{background:var(--g50);}
 
-/* ── STATS ──────────────────────────────────────────────── */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.875rem;margin-bottom:1.25rem;}
-.stat-card{background:#fff;border:1px solid var(--border2);border-radius:var(--radius-lg);
-  padding:1.1rem 1.1rem .875rem;position:relative;overflow:hidden;}
-.stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;}
-.stat-card.green::after{background:linear-gradient(90deg,var(--green-mid),var(--green-dark));}
-.stat-card.amber::after{background:linear-gradient(90deg,#f59e0b,#b45309);}
-.stat-card.blue::after{background:linear-gradient(90deg,var(--blue-mid),var(--blue-dark));}
-.stat-card.red::after{background:linear-gradient(90deg,#ef4444,var(--red));}
-.stat-card.purple::after{background:linear-gradient(90deg,#8b5cf6,var(--purple));}
-.stat-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;
-  justify-content:center;font-size:1rem;margin-bottom:.75rem;}
-.stat-card.green .stat-icon{background:var(--green-light);}
-.stat-card.amber .stat-icon{background:var(--amber-light);}
-.stat-card.blue  .stat-icon{background:var(--blue-light);}
-.stat-card.red   .stat-icon{background:var(--red-light);}
-.stat-card.purple .stat-icon{background:var(--purple-light);}
-.stat-label{font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.2rem;}
-.stat-value{font-size:1.6rem;font-weight:700;letter-spacing:-1px;line-height:1;}
-.stat-card.green .stat-value{color:var(--green-dark);}
-.stat-card.amber .stat-value{color:var(--amber);}
-.stat-card.blue  .stat-value{color:var(--blue-dark);}
-.stat-card.red   .stat-value{color:var(--red);}
-.stat-card.purple .stat-value{color:var(--purple);}
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:.65rem;font-weight:700;white-space:nowrap;}
+.p-pen{background:var(--ambl);color:var(--amber);}
+.p-con{background:var(--b100);color:var(--b900);}
+.p-del{background:var(--g100);color:var(--g900);}
+.p-can{background:var(--redl);color:var(--red);}
+.p-paid{background:var(--g100);color:var(--g900);}
+.p-unp{background:var(--redl);color:var(--red);}
+.p-par{background:var(--ambl);color:var(--amber);}
 
-/* ── SECTION ────────────────────────────────────────────── */
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
-.section-title{font-size:.88rem;font-weight:700;color:var(--text);}
-.section-action{font-size:.75rem;font-weight:700;color:var(--green-mid);
-  background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;}
+/* Products */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:.875rem;}
+.pcard{background:var(--w);border:2px solid var(--s200);border-radius:var(--rl);padding:1rem;transition:all .2s;position:relative;}
+.pcard:hover{border-color:var(--g600);transform:translateY(-2px);box-shadow:0 8px 24px rgba(22,163,74,.12);}
+.pcard.in{border-color:var(--g600);background:linear-gradient(to bottom,var(--w),var(--g50));}
+.pimg{width:100%;aspect-ratio:1;object-fit:cover;border-radius:.5rem;margin-bottom:.65rem;background:var(--s100);}
+.ppla{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:2.75rem;background:var(--g50);border-radius:.5rem;margin-bottom:.65rem;color:var(--g700);}
+.pcat{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--s500);margin-bottom:.15rem;}
+.pname{font-size:.85rem;font-weight:700;margin-bottom:.1rem;line-height:1.3;color:var(--s900);}
+.punit{font-size:.7rem;color:var(--s500);margin-bottom:.2rem;}
+.pmoq{font-size:.65rem;color:var(--amber);font-weight:700;margin-bottom:.5rem;}
+.pfoot{display:flex;align-items:center;justify-content:space-between;gap:.4rem;}
+.pprice{font-size:.9rem;font-weight:800;color:var(--g700);}
+.sbadge{position:absolute;top:.65rem;right:.65rem;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:20px;}
+.s-ok{background:var(--g100);color:var(--g900);}
+.s-low{background:var(--ambl);color:var(--amber);}
+.s-out{background:var(--redl);color:var(--red);}
 
-/* ── CARD ───────────────────────────────────────────────── */
-.card{background:#fff;border:1px solid var(--border2);border-radius:var(--radius-lg);overflow:hidden;}
-.card-pad{padding:1.25rem;}
-
-/* ── TABLE ──────────────────────────────────────────────── */
-.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.data-table{width:100%;border-collapse:collapse;min-width:500px;}
-.data-table th{text-align:left;padding:.65rem .875rem;font-size:.62rem;font-weight:700;
-  color:var(--muted);text-transform:uppercase;letter-spacing:1px;
-  border-bottom:1px solid var(--border2);background:var(--bg2);white-space:nowrap;}
-.data-table td{padding:.75rem .875rem;border-bottom:1px solid #f8fafc;font-size:.8rem;vertical-align:middle;}
-.data-table tr:last-child td{border-bottom:none;}
-.data-table tr:hover td{background:var(--bg2);}
-
-/* ── STATUS PILLS ───────────────────────────────────────── */
-.pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:700;}
-.pill-pending{background:var(--amber-light);color:var(--amber);}
-.pill-confirmed{background:var(--blue-light);color:var(--blue-dark);}
-.pill-delivered{background:var(--green-light);color:var(--green-dark);}
-.pill-cancelled{background:var(--red-light);color:var(--red);}
-.pill-paid{background:var(--green-light);color:var(--green-dark);}
-.pill-unpaid{background:var(--red-light);color:var(--red);}
-.pill-partial{background:var(--amber-light);color:var(--amber);}
-.pill-green{background:var(--green-light);color:var(--green-dark);}
-.pill-red{background:var(--red-light);color:var(--red);}
-
-/* ── PRODUCT GRID ───────────────────────────────────────── */
-.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.875rem;}
-.product-card{background:#fff;border:2px solid var(--border2);border-radius:var(--radius-lg);
-  padding:1rem;transition:all .2s;position:relative;}
-.product-card:hover{border-color:var(--green-mid);transform:translateY(-2px);
-  box-shadow:0 6px 20px rgba(22,163,74,.1);}
-.product-card.in-cart{border-color:var(--green-mid);background:linear-gradient(to bottom,#fff,#f0fdf4);}
-.product-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:.5rem;margin-bottom:.6rem;background:var(--bg2);}
-.product-img-placeholder{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-  font-size:2.5rem;background:var(--bg2);border-radius:.5rem;margin-bottom:.6rem;}
-.product-category{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:.15rem;}
-.product-name{font-size:.82rem;font-weight:700;margin-bottom:.1rem;line-height:1.3;}
-.product-unit{font-size:.7rem;color:var(--muted);margin-bottom:.6rem;}
-.product-footer{display:flex;align-items:center;justify-content:space-between;gap:.4rem;}
-.product-price{font-size:.88rem;font-weight:800;color:var(--green-mid);}
-.stock-badge{position:absolute;top:.6rem;right:.6rem;font-size:.6rem;font-weight:700;padding:2px 6px;border-radius:20px;}
-.stock-ok{background:var(--green-light);color:var(--green-dark);}
-.stock-low{background:var(--amber-light);color:var(--amber);}
-.stock-out{background:var(--red-light);color:var(--red);}
-
-/* Add/Qty buttons */
-.add-btn{width:28px;height:28px;border-radius:6px;background:var(--green-mid);border:none;
-  color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-weight:700;transition:all .15s;flex-shrink:0;}
-.add-btn:hover{background:var(--green-dark);transform:scale(1.1);}
-.qty-control{display:flex;align-items:center;gap:.3rem;}
-.qty-btn{width:24px;height:24px;border-radius:5px;border:1.5px solid var(--border2);background:#fff;
-  color:var(--text);font-size:.82rem;cursor:pointer;display:flex;align-items:center;
-  justify-content:center;font-weight:700;transition:all .15s;}
-.qty-btn:hover{border-color:var(--green-mid);color:var(--green-mid);}
-.qty-num{font-size:.82rem;font-weight:800;min-width:18px;text-align:center;}
+/* Qty */
+.adbtn{width:30px;height:30px;border-radius:7px;background:var(--g700);border:none;color:var(--w);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:all .15s;flex-shrink:0;}
+.adbtn:hover{background:var(--g900);transform:scale(1.1);}
+.qc{display:flex;align-items:center;gap:.3rem;}
+.qb{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--s300);background:var(--w);color:var(--s700);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:all .15s;}
+.qb:hover{border-color:var(--g600);color:var(--g700);}
+.qn{font-size:.85rem;font-weight:800;min-width:20px;text-align:center;}
 
 /* Filter pills */
-.filter-pills{display:flex;gap:.35rem;flex-wrap:nowrap;overflow-x:auto;
-  padding-bottom:.35rem;margin-bottom:1rem;-webkit-overflow-scrolling:touch;}
-.filter-pill{padding:5px 11px;border-radius:20px;border:1.5px solid var(--border2);
-  background:#fff;color:var(--muted);font-size:.72rem;font-weight:700;cursor:pointer;
-  font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap;flex-shrink:0;}
-.filter-pill:hover{border-color:var(--green-mid);color:var(--green-mid);}
-.filter-pill.active{background:var(--green-mid);color:#fff;border-color:var(--green-mid);}
+.fps{display:flex;gap:.35rem;flex-wrap:nowrap;overflow-x:auto;padding-bottom:.4rem;margin-bottom:1rem;-webkit-overflow-scrolling:touch;}
+.fp{padding:5px 13px;border-radius:20px;border:1.5px solid var(--s300);background:var(--w);color:var(--s500);font-size:.73rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap;flex-shrink:0;}
+.fp:hover{border-color:var(--g600);color:var(--g700);}
+.fp.on{background:var(--g700);color:var(--w);border-color:var(--g700);}
 
-/* Cart FAB */
-.cart-fab{position:fixed;bottom:calc(var(--bottom-nav-h) + 1rem);right:1.25rem;
-  background:var(--green-mid);border:none;border-radius:50%;cursor:pointer;font-size:1.25rem;
-  box-shadow:0 8px 24px rgba(22,163,74,.45);z-index:90;transition:all .2s;
-  display:flex;align-items:center;justify-content:center;width:54px;height:54px;}
-.cart-fab:hover{transform:scale(1.08);}
-.cart-fab-badge{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;border-radius:10px;
-  background:var(--amber);border:2px solid #fff;font-size:.58rem;font-weight:800;color:#fff;
-  display:flex;align-items:center;justify-content:center;padding:0 3px;}
+/* POS */
+.ptabs{display:flex;background:var(--s100);border-radius:.65rem;padding:3px;border:1px solid var(--s200);margin-bottom:1.25rem;overflow-x:auto;}
+.ptab{flex:1;padding:.55rem .75rem;border-radius:.5rem;border:none;background:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:700;color:var(--s500);transition:all .2s;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:.35rem;}
+.ptab.on{background:var(--w);color:var(--s900);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.pform{background:var(--w);border:1px solid var(--s200);border-radius:var(--rl);padding:1.25rem;margin-bottom:1.1rem;}
+.pftitle{font-size:.85rem;font-weight:800;color:var(--s900);margin-bottom:1rem;}
 
-/* Cart panel */
-.cart-panel{position:fixed;top:0;right:0;bottom:0;width:320px;background:#fff;
-  border-left:1px solid var(--border2);z-index:200;display:flex;flex-direction:column;
-  transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
-  box-shadow:-6px 0 32px rgba(0,0,0,.08);}
-.cart-panel.open{transform:translateX(0);}
-.cart-head{padding:1.1rem 1.25rem;border-bottom:1px solid var(--border2);
-  display:flex;align-items:center;justify-content:space-between;
-  background:linear-gradient(135deg,var(--green-dark),var(--green-mid));}
-.cart-title{font-size:.9rem;font-weight:800;color:#fff;}
-.cart-subtitle{font-size:.7rem;color:rgba(255,255,255,.65);margin-top:1px;}
-.cart-close{width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.15);
-  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:.82rem;color:#fff;transition:all .15s;}
-.cart-close:hover{background:rgba(255,255,255,.25);}
-.cart-items{flex:1;overflow-y:auto;padding:.75rem;}
-.cart-item{display:flex;align-items:center;gap:.6rem;padding:.65rem;background:var(--bg2);
-  border-radius:.65rem;margin-bottom:.45rem;border:1px solid var(--border);}
-.cart-item-img{width:36px;height:36px;border-radius:.4rem;object-fit:cover;flex-shrink:0;background:var(--bg);}
-.cart-item-emoji{width:36px;height:36px;border-radius:.4rem;background:var(--bg);
-  display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
-.cart-item-info{flex:1;min-width:0;}
-.cart-item-name{font-size:.75rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cart-item-price{font-size:.7rem;color:var(--green-mid);font-weight:700;margin-top:1px;}
-.cart-foot{padding:.875rem 1.1rem;border-top:1px solid var(--border2);}
-.cart-total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;}
-.cart-total-label{font-size:.8rem;color:var(--muted);font-weight:600;}
-.cart-total-value{font-size:1.15rem;font-weight:800;color:var(--green-mid);}
-.cart-note{background:var(--blue-light);border:1px solid #bfdbfe;border-radius:.55rem;
-  padding:.55rem .75rem;font-size:.72rem;font-weight:600;color:var(--blue-dark);
-  margin-bottom:.75rem;line-height:1.5;}
+/* Period */
+.pertabs{display:flex;gap:.35rem;margin-bottom:1rem;flex-wrap:wrap;}
+.pertab{padding:.45rem .875rem;border-radius:20px;border:1.5px solid var(--s300);background:var(--w);color:var(--s500);font-size:.75rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.pertab.on{background:var(--g700);color:var(--w);border-color:var(--g700);}
 
-/* ── POS / RECORDS ──────────────────────────────────────── */
-.pos-tabs{display:flex;gap:0;background:var(--bg2);border-radius:.65rem;padding:3px;
-  border:1px solid var(--border2);margin-bottom:1.25rem;overflow-x:auto;}
-.pos-tab{flex:1;padding:.55rem .75rem;border-radius:.5rem;border:none;background:none;
-  cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;
-  color:var(--muted);transition:all .2s;white-space:nowrap;}
-.pos-tab.active{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+/* Report */
+.rsec{background:var(--w);border:1px solid var(--s200);border-radius:var(--rl);padding:1.25rem;margin-bottom:1rem;}
+.rsec-t{font-size:.78rem;font-weight:800;color:var(--s900);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.875rem;padding-bottom:.5rem;border-bottom:1px solid var(--s100);}
+.rrow{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--s100);}
+.rrow:last-child{border-bottom:none;}
+.rl{font-size:.8rem;color:var(--s500);}
+.rv{font-size:.85rem;font-weight:700;color:var(--s900);}
+.rv.g{color:var(--g700);}
+.rv.r{color:var(--red);}
+.rv.a{color:var(--amber);}
+.rrow.div{border-top:2px solid var(--s200);padding-top:.5rem;margin-top:.25rem;}
+.rrow.div .rl{font-size:.88rem;font-weight:800;color:var(--s900);}
+.rrow.div .rv{font-size:1.05rem;font-weight:800;}
 
-.pos-form{background:#fff;border:1px solid var(--border2);border-radius:var(--radius-lg);
-  padding:1.1rem;margin-bottom:1.1rem;}
-.pos-form-title{font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.875rem;}
+/* Debt card */
+.dcard{background:var(--w);border:1px solid var(--s200);border-radius:var(--rl);padding:1rem;margin-bottom:.65rem;}
+.dprog{height:5px;background:var(--s100);border-radius:3px;margin:.5rem 0;}
+.dprogf{height:100%;border-radius:3px;background:var(--g700);}
 
-/* Report period selector */
-.period-tabs{display:flex;gap:.35rem;margin-bottom:1.1rem;}
-.period-tab{padding:.45rem .875rem;border-radius:20px;border:1.5px solid var(--border2);
-  background:#fff;color:var(--muted);font-size:.75rem;font-weight:700;cursor:pointer;
-  font-family:'DM Sans',sans-serif;transition:all .15s;}
-.period-tab.active{background:var(--green-mid);color:#fff;border-color:var(--green-mid);}
+/* Receipt */
+.receipt{background:var(--w);border:1px solid var(--s200);border-radius:var(--rl);padding:1.5rem;margin-bottom:1rem;}
+.receipt-logo{display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:2px solid var(--s900);}
+.receipt-logo img{width:34px;height:34px;border-radius:7px;object-fit:contain;background:var(--b900);padding:3px;}
+.receipt-logo-name{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;}
+.receipt-title{font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:2px;margin-bottom:.35rem;}
+.receipt-ref{font-size:.72rem;color:var(--s500);margin-bottom:.875rem;}
+.receipt-parties{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:.875rem;padding-bottom:.875rem;border-bottom:1px solid var(--s200);}
+.rp-lbl{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--s500);margin-bottom:.2rem;}
+.rp-name{font-size:.85rem;font-weight:700;}
+.rp-info{font-size:.72rem;color:var(--s500);}
+.ri{display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--s100);font-size:.8rem;}
+.ri:last-child{border-bottom:none;}
+.ri-name{font-weight:600;color:var(--s900);}
+.ri-qty{color:var(--s500);font-size:.75rem;}
+.ri-price{font-weight:700;}
+.rtotal{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-top:2px solid var(--s900);margin-top:.5rem;}
+.rtl{font-size:.9rem;font-weight:800;}
+.rtv{font-size:1.1rem;font-weight:800;color:var(--g700);}
+.rfoot{text-align:center;margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--s200);font-size:.7rem;color:var(--s500);}
 
-/* Report card */
-.report-section{background:#fff;border:1px solid var(--border2);border-radius:var(--radius-lg);
-  padding:1.1rem;margin-bottom:1rem;}
-.report-section-title{font-size:.78rem;font-weight:800;color:var(--text);
-  text-transform:uppercase;letter-spacing:.5px;margin-bottom:.75rem;
-  padding-bottom:.5rem;border-bottom:1px solid var(--border2);}
-.report-row{display:flex;justify-content:space-between;align-items:center;
-  padding:.4rem 0;border-bottom:1px solid #f8fafc;}
-.report-row:last-child{border-bottom:none;}
-.report-label{font-size:.78rem;color:var(--muted);}
-.report-value{font-size:.82rem;font-weight:700;color:var(--text);}
-.report-value.green{color:var(--green-mid);}
-.report-value.red{color:var(--red);}
-.report-value.amber{color:var(--amber);}
-
-/* Debt cards */
-.debt-card{background:#fff;border:1px solid var(--border2);border-radius:var(--radius-lg);
-  padding:1rem;margin-bottom:.6rem;}
-.debt-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;}
-.debt-name{font-size:.85rem;font-weight:700;}
-.debt-meta{font-size:.72rem;color:var(--muted);margin-top:1px;}
-.debt-progress{height:4px;background:var(--border2);border-radius:2px;margin:.6rem 0;}
-.debt-progress-fill{height:100%;border-radius:2px;background:var(--green-mid);}
+/* Share buttons */
+.share-btns{display:flex;gap:.65rem;flex-wrap:wrap;}
+.share-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1rem;border-radius:.65rem;border:none;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;}
+.share-btn.pdf{background:var(--g700);color:var(--w);}
+.share-btn.pdf:hover{background:var(--g900);}
+.share-btn.wa{background:#25d366;color:var(--w);}
+.share-btn.wa:hover{background:#128c7e;}
+.share-btn.sms{background:var(--b700);color:var(--w);}
+.share-btn.sms:hover{background:var(--b900);}
 
 /* Image upload */
-.img-upload-wrap{border:2px dashed var(--border2);border-radius:.75rem;padding:1.25rem;
-  text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2);}
-.img-upload-wrap:hover{border-color:var(--green-mid);background:var(--green-light);}
-.img-upload-wrap input{display:none;}
-.img-preview{width:100%;height:140px;object-fit:cover;border-radius:.5rem;display:none;}
+.iup{border:2px dashed var(--s300);border-radius:.75rem;padding:1.25rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--s100);}
+.iup:hover{border-color:var(--g600);background:var(--g50);}
+.iup input{display:none;}
+.iprev{width:100%;height:140px;object-fit:cover;border-radius:.5rem;display:none;}
 
-/* Inventory table stock edit */
-.stock-edit{display:flex;align-items:center;gap:.35rem;}
-.stock-edit input{width:65px;padding:4px 7px;border:1.5px solid var(--border2);border-radius:5px;
-  font-family:'DM Sans',sans-serif;font-size:.78rem;color:var(--text);background:var(--bg2);outline:none;}
-.stock-edit input:focus{border-color:var(--green-mid);}
+/* Stock edit */
+.sedit{display:flex;align-items:center;gap:.4rem;}
+.sedit input{width:70px;padding:5px 8px;border:1.5px solid var(--s300);border-radius:.5rem;font-family:'DM Sans',sans-serif;font-size:.8rem;color:var(--s900);background:var(--s100);outline:none;}
+.sedit input:focus{border-color:var(--g600);}
+
+/* Search */
+.sw{position:relative;}
+.sic{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--s500);pointer-events:none;display:flex;align-items:center;}
+.sw .fi{padding-left:2.25rem;}
 
 /* Alert */
-.alert{padding:.65rem .875rem;border-radius:.6rem;font-size:.78rem;font-weight:600;
-  display:flex;gap:.4rem;align-items:flex-start;line-height:1.5;margin-bottom:.875rem;}
-.alert-info{background:var(--blue-light);color:var(--blue-dark);border:1px solid #bfdbfe;}
-.alert-warn{background:var(--amber-light);color:var(--amber);border:1px solid #fde68a;}
-.alert-success{background:var(--green-light);color:var(--green-dark);border:1px solid var(--green-dim);}
-.alert-error{background:var(--red-light);color:var(--red);border:1px solid #fecaca;}
+.alert{padding:.75rem 1rem;border-radius:.65rem;font-size:.8rem;font-weight:600;display:flex;gap:.5rem;align-items:flex-start;line-height:1.55;margin-bottom:.875rem;}
+.al-i{background:var(--b100);color:var(--b900);border:1px solid #bfdbfe;}
+.al-w{background:var(--ambl);color:var(--amber);border:1px solid #fde68a;}
+.al-s{background:var(--g100);color:var(--g900);border:1px solid var(--g400);}
+.al-e{background:var(--redl);color:var(--red);border:1px solid #fecaca;}
 
-/* Empty state */
-.empty-state{text-align:center;padding:3rem 1.5rem;}
-.empty-icon{font-size:2.2rem;margin-bottom:.75rem;opacity:.4;}
-.empty-title{font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.3rem;}
-.empty-sub{font-size:.78rem;color:var(--muted);}
+/* Empty */
+.empty{text-align:center;padding:3rem 1.5rem;}
+.empty-ic{font-size:2.5rem;margin-bottom:.875rem;opacity:.4;}
+.empty-t{font-size:.95rem;font-weight:800;color:var(--s900);margin-bottom:.35rem;}
+.empty-s{font-size:.8rem;color:var(--s500);}
 
-/* Success screen */
-.success-screen{display:flex;flex-direction:column;align-items:center;
-  justify-content:center;text-align:center;padding:3rem 1.5rem;}
-.success-ring{width:68px;height:68px;border-radius:50%;background:var(--green-light);
-  display:flex;align-items:center;justify-content:center;font-size:1.9rem;
-  margin-bottom:1.1rem;animation:pop .45s cubic-bezier(.34,1.56,.64,1);}
+/* Success */
+.sscr{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:3rem 1.5rem;}
+.sring{width:72px;height:72px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;margin-bottom:1.1rem;animation:pop .45s cubic-bezier(.34,1.56,.64,1);}
 @keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
-.success-title{font-size:1.3rem;font-weight:800;margin-bottom:.35rem;}
-.success-sub{color:var(--muted);font-size:.82rem;margin-bottom:1.1rem;}
-.success-ref{background:var(--green-light);border:1.5px solid var(--green-dim);border-radius:.65rem;
-  padding:.55rem 1.25rem;font-size:.82rem;font-weight:800;color:var(--green-dark);
-  letter-spacing:1px;margin-bottom:1.25rem;}
+.st-title{font-size:1.35rem;font-weight:800;margin-bottom:.4rem;}
+.st-ref{background:var(--g100);border:1.5px solid var(--g400);border-radius:.65rem;padding:.55rem 1.5rem;font-size:.85rem;font-weight:800;color:var(--g900);letter-spacing:1.5px;margin-bottom:1.25rem;}
 
 /* Toast */
-#toast-container{position:fixed;top:1rem;right:1rem;z-index:1000;
-  display:flex;flex-direction:column;gap:.35rem;pointer-events:none;}
-.toast{display:flex;align-items:center;gap:.6rem;padding:.65rem 1rem;background:#fff;
-  border:1px solid var(--border2);border-radius:.65rem;
-  box-shadow:0 6px 24px rgba(0,0,0,.1);font-size:.78rem;font-weight:600;
-  max-width:280px;animation:toastIn .28s ease,toastOut .28s ease 3.7s forwards;pointer-events:all;}
+#twrap{position:fixed;top:1rem;right:1rem;z-index:1000;display:flex;flex-direction:column;gap:.4rem;pointer-events:none;}
+.toast{display:flex;align-items:center;gap:.65rem;padding:.7rem 1rem;background:var(--w);border:1px solid var(--s200);border-radius:.65rem;box-shadow:var(--shl);font-size:.8rem;font-weight:600;max-width:290px;animation:toastIn .28s ease,toastOut .28s 3.7s ease forwards;pointer-events:all;}
 @keyframes toastIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 @keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateX(20px)}}
-.toast.success{border-left:3px solid var(--green-mid);}
-.toast.error{border-left:3px solid var(--red);}
-.toast.info{border-left:3px solid var(--blue-mid);}
+.toast.s{border-left:3px solid var(--g700);}
+.toast.e{border-left:3px solid var(--red);}
+.toast.i{border-left:3px solid var(--b700);}
 
-/* Spinner */
-.spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
-  border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;}
-.spinner.dark{border-color:rgba(22,163,74,.2);border-top-color:var(--green-mid);}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* Spin */
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:var(--w);border-radius:50%;animation:rot .7s linear infinite;display:inline-block;vertical-align:middle;}
+.spin.d{border-color:rgba(22,163,74,.2);border-top-color:var(--g700);}
+@keyframes rot{to{transform:rotate(360deg)}}
 
-/* Misc */
-.mono{font-family:monospace;font-size:.75rem;color:var(--muted);}
-.search-wrap{position:relative;}
-.search-wrap .search-icon{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);
-  font-size:.8rem;color:var(--muted);pointer-events:none;}
-.search-wrap .form-input{padding-left:2.1rem;}
+.mono{font-size:.75rem;color:var(--s500);}
 
-/* Print styles */
+/* Print */
 @media print{
   #app-main>*:not(.main-content){display:none!important;}
-  .sidebar,.bottom-nav,.topbar,.cart-fab,.cart-panel,#toast-container,.notif-dropdown{display:none!important;}
+  .sidebar,.bn,.topbar,.cfab,.cpanel,#twrap,.ndd,.no-print{display:none!important;}
   .main-content{margin-left:0!important;}
-  .page-content{padding:.5rem!important;}
-  .print-header{display:block!important;}
-  body{background:#fff;}
+  .pc{padding:.5rem!important;}
+  body{background:var(--w);}
+  .receipt{border:none;box-shadow:none;}
 }
-.print-header{display:none;}
 
-/* ── RESPONSIVE ─────────────────────────────────────────── */
-@media(max-width:1024px){
-  .stats-row{grid-template-columns:repeat(2,1fr);}
-}
+/* Responsive */
+@media(max-width:1100px){.sr{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:768px){
-  .sidebar{transform:translateX(-100%);width:240px;}
-  .sidebar.mobile-open{transform:translateX(0);}
-  .sidebar-overlay.active{display:block;}
+  .sidebar{transform:translateX(-100%);width:260px;}
+  .sidebar.open{transform:translateX(0);}
+  .sovl.active{display:block;}
   .main-content{margin-left:0;}
-  .bottom-nav{display:flex;}
-  .hamburger{display:flex;}
+  .bn{display:flex;}
+  .hbg{display:flex;}
   .topbar{padding:.65rem 1rem;}
-  .page-content{padding:1rem;padding-bottom:calc(var(--bottom-nav-h) + .75rem);}
-  .stats-row{grid-template-columns:repeat(2,1fr);gap:.65rem;}
-  .product-grid{grid-template-columns:repeat(2,1fr);gap:.65rem;}
-  .cart-panel{width:100%;}
-  .cart-fab{bottom:calc(var(--bottom-nav-h) + .75rem);right:1rem;}
-  .form-row{grid-template-columns:1fr;}
+  .pc{padding:1rem;padding-bottom:calc(var(--nav-h) + 1rem);}
+  .sr{grid-template-columns:repeat(2,1fr);gap:.65rem;}
+  .pgrid{grid-template-columns:repeat(2,1fr);gap:.65rem;}
+  .cpanel{width:100%;}
+  .cfab{bottom:calc(var(--nav-h) + .875rem);right:1rem;}
+  .fr{grid-template-columns:1fr;}
+  .fr3{grid-template-columns:1fr 1fr;}
   .ob-left{display:none;}
-  /* Mobile: ob-right gets a subtle top band with logo */
-  .ob-right{
-    background:linear-gradient(180deg,#0f172a 0px,#0f172a 72px,var(--bg) 72px);
-    padding-top:0;
-  }
-  .ob-card{margin-top:0;border-radius:0 0 1.5rem 1.5rem;}
-  /* Mobile hero strip above card */
-  .ob-right::before{
-    content:'';display:block;height:72px;width:100%;
-    background:url('home.jpg') center 25% / cover no-repeat;
-    filter:brightness(.35);
-    position:absolute;top:0;left:0;right:0;z-index:0;
-  }
+  .ob-right{padding:0;background:var(--s900);}
+  .ob-card{border-radius:0;min-height:100vh;box-shadow:none;}
+  .ob-head{border-radius:0;}
+  .share-btns{flex-direction:column;}
 }
 @media(max-width:420px){
-  .stats-row{grid-template-columns:1fr 1fr;}
-  .stat-value{font-size:1.3rem;}
+  .sr{grid-template-columns:1fr 1fr;}
+  .sv{font-size:1.25rem;}
+  .ob{width:42px;height:52px;font-size:1.3rem;}
 }
 </style>
 </head>
@@ -560,47 +463,43 @@ select.form-input{appearance:none;
 <!-- ══ ONBOARDING ══════════════════════════════════════════ -->
 <div id="onboarding">
   <div class="ob-left">
-    <!-- Hero background image -->
-    <div class="ob-left-bg"></div>
-    <!-- Brand / Logo -->
+    <div class="ob-bg"></div>
     <div class="ob-brand">
       <div class="ob-logo">
-        <img src="logo.jpg" class="ob-logo-img" alt="BomaWave logo"
-          onerror="this.style.display='none';document.getElementById('ob-logo-fallback').style.display='flex'"/>
-        <div id="ob-logo-fallback" style="display:none;width:46px;height:46px;border-radius:11px;
-          background:var(--blue-dark);align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">📦</div>
+        <img src="logo.jpg" class="ob-logo-img" alt="BomaWave" onerror="this.style.display='none'"/>
         <span class="ob-logo-name">BomaWave</span>
       </div>
       <p class="ob-tagline">FMCG · Tanzania</p>
     </div>
-    <!-- Hero copy -->
     <div class="ob-hero">
-      <h1>Bidhaa haraka,<br><span>faida zaidi.</span></h1>
-      <p>Order. Confirm. Deliver.<br>Asset-light, software-heavy.</p>
+      <h1>Bidhaa haraka,<br><em>faida zaidi.</em></h1>
+      <p>Platform ya FMCG iliyoundwa kwa Tanzania — real-time, rahisi, ya kuaminika.</p>
     </div>
     <div class="ob-pills">
       <span class="ob-pill">⚡ Real-time</span>
       <span class="ob-pill">🇹🇿 Made for DSM</span>
-      <span class="ob-pill">📦 Asset-light</span>
-      <span class="ob-pill">💰 Faida zaidi</span>
+      <span class="ob-pill">📱 Mobile First</span>
     </div>
     <p class="ob-foot">© 2025 BomaWave · Dar es Salaam</p>
   </div>
   <div class="ob-right">
     <div class="ob-card">
-      <div class="ob-card-head">
-        <img src="logo.jpg" style="width:32px;height:32px;border-radius:7px;object-fit:contain;
-          background:#1e3a8a;padding:3px;flex-shrink:0"
-          onerror="this.outerHTML='<div style=\'width:32px;height:32px;border-radius:7px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:14px\'>📦</div>'"
-          alt="logo"/>
-        <div><div class="ob-card-head-text">BomaWave</div><div class="ob-card-head-sub">FMCG Ordering Platform · Tanzania</div></div>
+      <div class="ob-head">
+        <img src="logo.jpg" class="ob-head-logo" alt="logo" onerror="this.style.display='none'"/>
+        <div><div class="ob-head-title">BomaWave</div><div class="ob-head-sub">FMCG Ordering Platform · Tanzania</div></div>
       </div>
-      <div class="ob-card-body">
-        <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:25%"></div></div>
+      <div class="ob-body">
+        <div class="prog-wrap">
+          <div class="prog-top">
+            <span class="prog-lbl" id="plbl">Hatua 1</span>
+            <span class="prog-pct" id="ppct">10%</span>
+          </div>
+          <div class="prog-bar"><div class="prog-fill" id="pfill" style="width:10%"></div></div>
+        </div>
 
-        <!-- Step 1: Language -->
-        <div class="step active" id="step-1">
-          <div><p class="step-eye">Hatua 1 / Step 1</p><h2 class="step-h">Chagua Lugha · Select Language</h2></div>
+        <!-- STEP 1: LANGUAGE -->
+        <div class="step active" id="s1">
+          <h2 class="step-h">Chagua Lugha · Select Language</h2>
           <button class="lang-btn" onclick="App.setLang('sw')">
             <span class="lang-flag">🇹🇿</span>
             <div><div class="lang-name">Kiswahili</div><div class="lang-sub">Endelea kwa Kiswahili</div></div>
@@ -611,231 +510,477 @@ select.form-input{appearance:none;
           </button>
         </div>
 
-        <!-- Step 2: Role -->
-        <div class="step" id="step-2">
-          <div><p class="step-eye" id="s2-eye">Hatua 2</p><h2 class="step-h" id="s2-title">Wewe ni nani?</h2></div>
-          <div class="auth-tabs">
-            <button class="auth-tab active" id="tab-register" onclick="App.setAuthMode('register')">Akaunti Mpya</button>
-            <button class="auth-tab" id="tab-login" onclick="App.setAuthMode('login')">Ingia</button>
+        <!-- STEP 2: ROLE + NEW/EXISTING -->
+        <div class="step" id="s2">
+          <div>
+            <h2 class="step-h" id="s2h">Wewe ni nani?</h2>
+            <p class="step-sub" id="s2sub">Chagua aina ya akaunti yako</p>
           </div>
-          <button class="role-card retailer" id="role-btn-retailer" onclick="App.pickRole('retailer')">
-            <div class="role-icon-wrap">🏪</div>
-            <div class="role-info">
-              <div class="role-name" id="role-retailer-name">Duka (Retailer)</div>
-              <div class="role-desc" id="role-retailer-desc">Naagiza bidhaa kwa duka langu</div>
+          <button class="rc retailer" id="rb-ret" onclick="App.pickRole('retailer')">
+            <div class="rci">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             </div>
-            <span id="check-retailer" style="display:none;color:var(--green-mid);font-size:1.1rem">✓</span>
-            <span class="role-arrow" id="arrow-retailer">→</span>
-          </button>
-          <button class="role-card distributor" id="role-btn-distributor" onclick="App.pickRole('distributor')">
-            <div class="role-icon-wrap">🚚</div>
-            <div class="role-info">
-              <div class="role-name" id="role-dist-name">Msambazaji</div>
-              <div class="role-desc" id="role-dist-desc">Nasambaza bidhaa kwa maduka</div>
+            <div style="flex:1">
+              <div class="rc-name" id="rn-ret">Duka (Retailer)</div>
+              <div class="rc-desc" id="rd-ret">Naagiza bidhaa kwa duka langu</div>
             </div>
-            <span id="check-distributor" style="display:none;color:var(--blue-mid);font-size:1.1rem">✓</span>
-            <span class="role-arrow" id="arrow-distributor">→</span>
+            <span id="ck-ret" style="display:none;color:var(--g700);font-size:1.1rem;font-weight:800">✓</span>
           </button>
-          <button class="btn-primary" id="role-next-btn" style="display:none" onclick="App.proceedFromRole()">
-            <span id="role-next-text">Endelea →</span>
+          <button class="rc distributor" id="rb-dist" onclick="App.pickRole('distributor')">
+            <div class="rci">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            </div>
+            <div style="flex:1">
+              <div class="rc-name" id="rn-dist">Msambazaji</div>
+              <div class="rc-desc" id="rd-dist">Nasambaza bidhaa kwa maduka</div>
+            </div>
+            <span id="ck-dist" style="display:none;color:var(--b700);font-size:1.1rem;font-weight:800">✓</span>
           </button>
-          <button class="btn-ghost" onclick="App.goStep(1)" id="s2-back">← Rudi Nyuma</button>
+          <button class="btn btn-p" id="rnext" style="display:none" onclick="App.proceedFromRole()">
+            <span id="rnext-txt">Endelea →</span>
+          </button>
+          <div style="text-align:center;margin-top:-.25rem">
+            <span style="font-size:.78rem;color:var(--s500)" id="have-acc-txt">Una akaunti tayari?</span>
+            <button class="btn-g" onclick="App.goStep(8)" id="login-link" style="display:inline;padding:.25rem .5rem;font-size:.78rem;font-weight:700;color:var(--g700)">Ingia →</button>
+          </div>
+          <button class="btn-g" onclick="App.goStep(1)">← Rudi Nyuma</button>
         </div>
 
-        <!-- Step 3: Register -->
-        <div class="step" id="step-3">
-          <div><p class="step-eye" id="s3-eye">Hatua 3</p><h2 class="step-h" id="s3-title">Tengeneza Akaunti</h2></div>
-          <form onsubmit="App.handleRegister(event)" style="display:flex;flex-direction:column;gap:.65rem">
-            <div class="form-group">
-              <label class="form-label" id="lbl-store">Jina la Duka</label>
-              <input class="form-input" id="reg-name" required placeholder="mfano: Mama Fatuma Duka"/>
+        <!-- STEP 3: RETAILER DETAILS -->
+        <div class="step" id="s3">
+          <div>
+            <h2 class="step-h" id="s3h">Maelezo ya Duka</h2>
+            <p class="step-sub" id="s3sub">Jaza maelezo yako</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.75rem">
+            <div class="fg">
+              <label class="fl" id="l-store">Jina la Duka <span>*</span></label>
+              <input class="fi" id="reg-name" placeholder="mfano: Mama Fatuma Duka"/>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" id="lbl-user">Username</label>
-                <input class="form-input" id="reg-user" required placeholder="jina la kipekee" autocomplete="off"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label" id="lbl-phone">Simu</label>
-                <input class="form-input" id="reg-phone" type="tel" placeholder="+255 7XX XXX XXX"/>
-              </div>
-            </div>
-            <!-- Location -->
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" id="lbl-region">Mkoa</label>
-                <select class="form-input" id="reg-region" onchange="App.onRegionChange()" required>
-                  <option value=""></option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label" id="lbl-district">Wilaya</label>
-                <select class="form-input" id="reg-district" onchange="App.onDistrictChange()" required>
-                  <option value=""></option>
-                </select>
+            <div class="fg">
+              <label class="fl" id="l-phone">Namba ya Simu <span>*</span></label>
+              <div class="iw">
+                <div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
+                <input class="fi fi-phone" id="reg-phone" type="tel" inputmode="numeric"
+                  placeholder="712 345 678" maxlength="9"
+                  oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
               </div>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" id="lbl-ward">Kata</label>
-                <select class="form-input" id="reg-ward">
-                  <option value=""></option>
-                </select>
+            <div class="fg">
+              <label class="fl" id="l-btype">Aina ya Biashara</label>
+              <select class="fi" id="reg-btype">
+                <option value="duka">Duka la Kawaida</option>
+                <option value="kiosk">Kiosk</option>
+                <option value="supermarket">Supermarket</option>
+                <option value="wholesale">Jumla (Wholesale)</option>
+              </select>
+            </div>
+            <div class="fr">
+              <div class="fg">
+                <label class="fl" id="l-region">Mkoa <span>*</span></label>
+                <select class="fi" id="reg-region" onchange="App.onRegionChange()"><option value=""></option></select>
               </div>
-              <div class="form-group">
-                <label class="form-label" id="lbl-street">Mtaa / Street</label>
-                <input class="form-input" id="reg-street" placeholder="mfano: Msimbazi St"/>
+              <div class="fg">
+                <label class="fl" id="l-district">Wilaya <span>*</span></label>
+                <select class="fi" id="reg-district" onchange="App.onDistrictChange()"><option value=""></option></select>
               </div>
             </div>
-            <!-- Distributor extras -->
-            <div id="dist-extra" style="display:none;flex-direction:column;gap:.65rem">
-              <div class="form-group">
-                <label class="form-label" id="lbl-coverage">Maeneo ya Usambazaji</label>
-                <input class="form-input" id="reg-coverage" placeholder="mfano: Kariakoo, Ilala"/>
+            <div class="fr">
+              <div class="fg">
+                <label class="fl" id="l-ward">Kata</label>
+                <select class="fi" id="reg-ward"><option value=""></option></select>
               </div>
-              <div class="form-group">
-                <label class="form-label" id="lbl-cats">Aina za Bidhaa</label>
-                <div class="cat-grid" id="cat-grid"></div>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" id="lbl-pass">Nywila</label>
-                <input class="form-input" id="reg-pass" type="password" required placeholder="herufi 6+" autocomplete="new-password"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label" id="lbl-pass2">Thibitisha</label>
-                <input class="form-input" id="reg-pass2" type="password" required placeholder="rudia nywila" autocomplete="new-password"/>
+              <div class="fg">
+                <label class="fl" id="l-street">Mtaa</label>
+                <input class="fi" id="reg-street" placeholder="mfano: Msimbazi St"/>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:auto 1fr;gap:.65rem;margin-top:.25rem">
-              <button type="button" class="btn-secondary" onclick="App.goStep(2)" style="padding:.8rem .875rem">←</button>
-              <button type="submit" class="btn-primary" id="reg-submit">
-                <span id="reg-submit-text">Kamilisha</span>
+            <div class="fg">
+              <label class="fl" id="l-pin">PIN ya Siri (tarakimu 4) <span>*</span></label>
+              <div class="iw">
+                <input class="fi" id="reg-pin" type="password" inputmode="numeric" maxlength="4"
+                  placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
+                <button type="button" class="eye" onclick="App.eyeToggle('reg-pin','ep1')" tabindex="-1">
+                  <svg id="ep1" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="fl" id="l-pin2">Thibitisha PIN <span>*</span></label>
+              <div class="iw">
+                <input class="fi" id="reg-pin2" type="password" inputmode="numeric" maxlength="4"
+                  placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
+                <button type="button" class="eye" onclick="App.eyeToggle('reg-pin2','ep2')" tabindex="-1">
+                  <svg id="ep2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:.75rem;margin-top:.25rem">
+              <button class="btn btn-s" onclick="App.goStep(2)" style="padding:.8rem">←</button>
+              <button class="btn btn-p" id="reg-btn" onclick="App.submitDetails()">
+                <span id="reg-btn-txt">Endelea — Tuma OTP</span>
               </button>
             </div>
-          </form>
+          </div>
         </div>
 
-        <!-- Step 4: Login -->
-        <div class="step" id="step-4">
-          <div><p class="step-eye" id="s4-eye">Ingia</p><h2 class="step-h" id="s4-title">Karibu Tena!</h2></div>
-          <form onsubmit="App.handleLogin(event)" style="display:flex;flex-direction:column;gap:.65rem">
-            <div class="form-group">
-              <label class="form-label" id="lbl-login-user">Username</label>
-              <input class="form-input" id="login-user" required autocomplete="username" placeholder="jina la mtumiaji"/>
+        <!-- STEP 4: DISTRIBUTOR DETAILS -->
+        <div class="step" id="s4">
+          <div>
+            <h2 class="step-h" id="s4h">Maelezo ya Usambazaji</h2>
+            <p class="step-sub" id="s4sub">Jaza maelezo yako kamili</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.75rem">
+            <div class="fg">
+              <label class="fl" id="l-dstore">Jina la Biashara <span>*</span></label>
+              <input class="fi" id="dreg-name" placeholder="mfano: Kariakoo Wholesale Ltd"/>
             </div>
-            <div class="form-group">
-              <label class="form-label" id="lbl-login-pass">Nywila</label>
-              <input class="form-input" id="login-pass" type="password" required autocomplete="current-password" placeholder="nywila yako"/>
+            <div class="fg">
+              <label class="fl" id="l-dphone">Namba ya Simu <span>*</span></label>
+              <div class="iw">
+                <div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
+                <input class="fi fi-phone" id="dreg-phone" type="tel" inputmode="numeric"
+                  placeholder="712 345 678" maxlength="9"
+                  oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
+              </div>
             </div>
-            <div style="display:grid;grid-template-columns:auto 1fr;gap:.65rem;margin-top:.25rem">
-              <button type="button" class="btn-secondary" onclick="App.goStep(2)" style="padding:.8rem .875rem">←</button>
-              <button type="submit" class="btn-primary" id="login-submit">
-                <span id="login-submit-text">Ingia</span>
+            <div class="fr">
+              <div class="fg">
+                <label class="fl" id="l-dregion">Mkoa <span>*</span></label>
+                <select class="fi" id="dreg-region" onchange="App.onDRegionChange()"><option value=""></option></select>
+              </div>
+              <div class="fg">
+                <label class="fl" id="l-ddistrict">Wilaya <span>*</span></label>
+                <select class="fi" id="dreg-district" onchange="App.onDDistrictChange()"><option value=""></option></select>
+              </div>
+            </div>
+            <div class="fr">
+              <div class="fg">
+                <label class="fl" id="l-dward">Kata</label>
+                <select class="fi" id="dreg-ward"><option value=""></option></select>
+              </div>
+              <div class="fg">
+                <label class="fl" id="l-dstreet">Mtaa</label>
+                <input class="fi" id="dreg-street" placeholder="mfano: Msimbazi St"/>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="fl" id="l-coverage">Maeneo ya Usambazaji</label>
+              <input class="fi" id="dreg-coverage" placeholder="mfano: Kariakoo, Ilala, Kinondoni"/>
+            </div>
+            <div class="fg">
+              <label class="fl" id="l-mindel">Kiwango cha Chini cha Agizo (TZS)</label>
+              <input class="fi" id="dreg-mindel" type="number" min="0" placeholder="mfano: 50000"/>
+              <span style="font-size:.67rem;color:var(--s500);margin-top:2px" id="l-mindel-hint">Agizo chini ya kiwango hiki halitakubaliwa</span>
+            </div>
+            <div class="fg">
+              <label class="fl" id="l-cats">Aina za Bidhaa</label>
+              <div class="cat-grid" id="cat-grid"></div>
+            </div>
+            <div class="fg">
+              <label class="fl" id="l-dpin">PIN ya Siri (tarakimu 4) <span>*</span></label>
+              <div class="iw">
+                <input class="fi" id="dreg-pin" type="password" inputmode="numeric" maxlength="4"
+                  placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
+                <button type="button" class="eye" onclick="App.eyeToggle('dreg-pin','ep3')" tabindex="-1">
+                  <svg id="ep3" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="fl" id="l-dpin2">Thibitisha PIN <span>*</span></label>
+              <div class="iw">
+                <input class="fi" id="dreg-pin2" type="password" inputmode="numeric" maxlength="4"
+                  placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
+                <button type="button" class="eye" onclick="App.eyeToggle('dreg-pin2','ep4')" tabindex="-1">
+                  <svg id="ep4" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:.75rem;margin-top:.25rem">
+              <button class="btn btn-s" onclick="App.goStep(2)" style="padding:.8rem">←</button>
+              <button class="btn btn-p" id="dreg-btn" onclick="App.submitDDetails()">
+                <span id="dreg-btn-txt">Endelea — Tuma OTP</span>
               </button>
             </div>
-          </form>
+          </div>
         </div>
+
+        <!-- STEP 5: OTP VERIFY (Registration) -->
+        <div class="step" id="s5">
+          <div>
+            <h2 class="step-h" id="s5h">Weka Nambari ya SMS</h2>
+            <p class="step-sub">Imetumwa kwa: <strong id="otp-phone" style="color:var(--g700)"></strong></p>
+          </div>
+          <div class="otp-row">
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob0" oninput="App.oi(0,this)" onkeydown="App.ok(0,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob1" oninput="App.oi(1,this)" onkeydown="App.ok(1,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob2" oninput="App.oi(2,this)" onkeydown="App.ok(2,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob3" oninput="App.oi(3,this)" onkeydown="App.ok(3,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob4" oninput="App.oi(4,this)" onkeydown="App.ok(4,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob5" oninput="App.oi(5,this)" onkeydown="App.ok(5,event)"/>
+          </div>
+          <button class="btn btn-p" id="vbtn" onclick="App.verifyRegOTP()">
+            <span id="vtxt">Thibitisha</span>
+          </button>
+          <div class="resend-wrap">
+            <span class="rt" id="rtimer"></span>
+            <button class="rb" id="rbtn" onclick="App.resendRegOTP()"><span id="rtxt">Tuma Tena</span></button>
+          </div>
+          <button class="btn-g" onclick="App.goBack5()">← Rudi Nyuma</button>
+        </div>
+
+        <!-- STEP 6: COMPLETE (new user created — go to PIN) -->
+
+        <!-- STEP 7: PIN LOGIN -->
+        <div class="step" id="s7">
+          <div style="text-align:center">
+            <h2 class="step-h" id="s7h">Karibu!</h2>
+            <p class="step-sub" id="s7sub"></p>
+          </div>
+          <div class="pin-dots">
+            <div class="pd" id="pd0"></div><div class="pd" id="pd1"></div>
+            <div class="pd" id="pd2"></div><div class="pd" id="pd3"></div>
+          </div>
+          <div class="pin-err" id="perr"></div>
+          <div class="pkp">
+            <button class="pk" onclick="App.pk('1')">1</button>
+            <button class="pk" onclick="App.pk('2')">2</button>
+            <button class="pk" onclick="App.pk('3')">3</button>
+            <button class="pk" onclick="App.pk('4')">4</button>
+            <button class="pk" onclick="App.pk('5')">5</button>
+            <button class="pk" onclick="App.pk('6')">6</button>
+            <button class="pk" onclick="App.pk('7')">7</button>
+            <button class="pk" onclick="App.pk('8')">8</button>
+            <button class="pk" onclick="App.pk('9')">9</button>
+            <button class="pk pk-ghost" onclick="App.goStep(10)" id="fp-btn"><span id="fp-txt">Nimesahau</span></button>
+            <button class="pk" onclick="App.pk('0')">0</button>
+            <button class="pk pk-del" onclick="App.pdel()">⌫</button>
+          </div>
+        </div>
+
+        <!-- STEP 8: LOGIN — phone entry -->
+        <div class="step" id="s8">
+          <div>
+            <h2 class="step-h" id="s8h">Ingia</h2>
+            <p class="step-sub" id="s8sub">Weka namba yako ya simu</p>
+          </div>
+          <div class="fg">
+            <label class="fl" id="l-lphone">Namba ya Simu</label>
+            <div class="iw">
+              <div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
+              <input class="fi fi-phone" id="lphone" type="tel" inputmode="numeric"
+                placeholder="712 345 678" maxlength="9"
+                oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"
+                onkeydown="if(event.key==='Enter')App.sendLoginOTP()"/>
+            </div>
+          </div>
+          <button class="btn btn-p" onclick="App.sendLoginOTP()">
+            <span id="lotp-txt">Tuma Nambari ya Uthibitisho</span>
+          </button>
+          <div style="text-align:center">
+            <button class="btn-g" onclick="App.goStep(2)" id="no-acc-btn">
+              <span id="no-acc-txt">Huna akaunti? Jiandikishe →</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 9: LOGIN OTP -->
+        <div class="step" id="s9">
+          <div>
+            <h2 class="step-h" id="s9h">Weka Nambari ya SMS</h2>
+            <p class="step-sub">Imetumwa kwa: <strong id="lotp-phone" style="color:var(--g700)"></strong></p>
+          </div>
+          <div class="otp-row">
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb0" oninput="App.loi(0,this)" onkeydown="App.lok(0,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb1" oninput="App.loi(1,this)" onkeydown="App.lok(1,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb2" oninput="App.loi(2,this)" onkeydown="App.lok(2,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb3" oninput="App.loi(3,this)" onkeydown="App.lok(3,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb4" oninput="App.loi(4,this)" onkeydown="App.lok(4,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb5" oninput="App.loi(5,this)" onkeydown="App.lok(5,event)"/>
+          </div>
+          <button class="btn btn-p" id="lvbtn" onclick="App.verifyLoginOTP()">
+            <span id="lvtxt">Thibitisha</span>
+          </button>
+          <div class="resend-wrap">
+            <span class="rt" id="lrtimer"></span>
+            <button class="rb" id="lrbtn" onclick="App.resendLoginOTP()"><span id="lrtxt">Tuma Tena</span></button>
+          </div>
+          <button class="btn-g" onclick="App.goStep(8)">← Badilisha namba</button>
+        </div>
+
+        <!-- STEP 10: FORGOT PIN -->
+        <div class="step" id="s10">
+          <div>
+            <h2 class="step-h" id="s10h">Nimesahau PIN</h2>
+            <p class="step-sub" id="s10sub">Weka namba uliyotumia kusajili</p>
+          </div>
+          <div class="fg">
+            <label class="fl">Namba ya Simu</label>
+            <div class="iw">
+              <div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
+              <input class="fi fi-phone" id="fphone" type="tel" inputmode="numeric"
+                placeholder="712 345 678" maxlength="9"
+                oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
+            </div>
+          </div>
+          <button class="btn btn-p" onclick="App.sendForgotOTP()">
+            <span id="fotp-txt">Tuma OTP</span>
+          </button>
+          <button class="btn-g" onclick="App.goStep(7)">← Rudi</button>
+        </div>
+
+        <!-- STEP 11: FORGOT OTP -->
+        <div class="step" id="s11">
+          <div>
+            <h2 class="step-h" id="s11h">Weka Nambari ya SMS</h2>
+            <p class="step-sub">Imetumwa kwa: <strong id="fotp-phone" style="color:var(--g700)"></strong></p>
+          </div>
+          <div class="otp-row">
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb0" oninput="App.foi(0,this)" onkeydown="App.fok(0,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb1" oninput="App.foi(1,this)" onkeydown="App.fok(1,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb2" oninput="App.foi(2,this)" onkeydown="App.fok(2,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb3" oninput="App.foi(3,this)" onkeydown="App.fok(3,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb4" oninput="App.foi(4,this)" onkeydown="App.fok(4,event)"/>
+            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb5" oninput="App.foi(5,this)" onkeydown="App.fok(5,event)"/>
+          </div>
+          <button class="btn btn-p" id="fvbtn" onclick="App.verifyForgotOTP()">
+            <span id="fvtxt">Thibitisha</span>
+          </button>
+        </div>
+
+        <!-- STEP 12: SET NEW PIN -->
+        <div class="step" id="s12">
+          <div>
+            <h2 class="step-h" id="s12h">Weka PIN Mpya</h2>
+            <p class="step-sub" id="s12sub">Thibitisho limefaulu. Weka PIN mpya.</p>
+          </div>
+          <div class="fg">
+            <label class="fl">PIN Mpya <span style="color:var(--red)">*</span></label>
+            <div class="iw">
+              <input class="fi" id="npin" type="password" inputmode="numeric" maxlength="4"
+                placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
+              <button type="button" class="eye" onclick="App.eyeToggle('npin','enp1')" tabindex="-1">
+                <svg id="enp1" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="fg">
+            <label class="fl">Thibitisha PIN <span style="color:var(--red)">*</span></label>
+            <div class="iw">
+              <input class="fi" id="npin2" type="password" inputmode="numeric" maxlength="4"
+                placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
+              <button type="button" class="eye" onclick="App.eyeToggle('npin2','enp2')" tabindex="-1">
+                <svg id="enp2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <button class="btn btn-p" onclick="App.resetPin()">
+            <span id="rpintxt">Hifadhi PIN Mpya</span>
+          </button>
+        </div>
+
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══ SIDEBAR OVERLAY ════════════════════════════════════ -->
-<div class="sidebar-overlay" id="sidebar-overlay" onclick="App.closeSidebar()"></div>
+<!-- overlays -->
+<div class="sovl" id="sovl" onclick="App.closeSidebar()"></div>
 
-<!-- ══ MAIN APP ═══════════════════════════════════════════ -->
+<!-- APP -->
 <div id="app-main">
   <aside class="sidebar" id="sidebar">
     <div class="sb-brand">
-      <div class="sb-logo-icon">🌿</div>
-      <span class="sb-logo-name">BomaWave</span>
+      <img src="logo.jpg" class="sb-li" alt="logo" onerror="this.style.display='none'"/>
+      <span class="sb-ln">BomaWave</span>
     </div>
     <div class="sb-user">
-      <div class="user-avatar" id="sb-avatar">U</div>
+      <div class="uav" id="sbav">U</div>
       <div>
-        <div class="user-name-text" id="sb-name">—</div>
-        <span class="role-badge" id="sb-role-badge">—</span>
+        <div class="un" id="sbn">—</div>
+        <span class="rbadge" id="sbb">—</span>
       </div>
     </div>
-    <nav class="sb-nav" id="sidebar-nav"></nav>
-    <div class="sb-footer">
-      <div class="lang-switch">
-        <button class="lang-switch-btn active" id="sb-lang-sw" onclick="App.switchLang('sw')">SW</button>
-        <button class="lang-switch-btn" id="sb-lang-en" onclick="App.switchLang('en')">EN</button>
+    <nav class="sb-nav" id="sbnav"></nav>
+    <div class="sb-foot">
+      <div class="lsw">
+        <button class="lsw-b on" id="lsw-sw" onclick="App.switchLang('sw')">SW</button>
+        <button class="lsw-b" id="lsw-en" onclick="App.switchLang('en')">EN</button>
       </div>
-      <button class="logout-btn" onclick="App.logout()">
-        <span>🚪</span><span id="lbl-logout">Toka</span>
+      <button class="lo" onclick="App.logout()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span id="lbl-lo">Toka</span>
       </button>
     </div>
   </aside>
 
   <div class="main-content">
     <header class="topbar">
-      <div class="topbar-left">
-        <button class="hamburger" id="hamburger-btn" onclick="App.toggleSidebar()">☰</button>
-        <div class="topbar-icon" id="topbar-icon">📊</div>
+      <div class="tbl">
+        <button class="hbg" id="hbg" onclick="App.toggleSidebar()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="tbic" id="tbic">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </div>
         <div>
-          <div class="topbar-title" id="topbar-title">Dashboard</div>
-          <div class="topbar-sub" id="topbar-sub"></div>
+          <div class="tbt" id="tbt">Dashboard</div>
+          <div class="tbs" id="tbs"></div>
         </div>
       </div>
-      <div class="topbar-right">
-        <button class="notif-btn" id="notif-bell" onclick="App.toggleNotif()">
-          🔔<span class="notif-dot" id="notif-dot" style="display:none">0</span>
+      <div class="tbr">
+        <button class="nb-btn" id="nbb" onclick="App.toggleNotif()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="ndot" id="ndot" style="display:none">0</span>
         </button>
-        <div class="notif-dropdown" id="notif-dropdown">
-          <div class="notif-head">
-            <span id="notif-header">Arifa</span>
-            <button class="notif-clear" onclick="App.clearNotifs()">Futa Zote</button>
+        <div class="ndd" id="ndd">
+          <div class="ndh">
+            <span id="ndd-h">Arifa</span>
+            <button class="ndc" onclick="App.clearNotifs()">Futa Zote</button>
           </div>
-          <div id="notif-list"><div class="notif-empty" id="notif-empty-msg">Hakuna arifa</div></div>
+          <div id="nlist"><div class="nde" id="ne-txt">Hakuna arifa</div></div>
         </div>
       </div>
     </header>
-
-    <main class="page-content" id="app-view"></main>
+    <main class="pc" id="av"></main>
   </div>
-
-  <!-- Bottom nav (mobile) -->
-  <nav class="bottom-nav" id="bottom-nav"></nav>
+  <nav class="bn" id="bn"></nav>
 </div>
 
-<!-- Cart FAB -->
-<button class="cart-fab" id="cart-fab" style="display:none" onclick="App.toggleCart()">
-  🛒<span class="cart-fab-badge" id="cart-count">0</span>
+<button class="cfab" id="cfab" onclick="App.toggleCart()">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+  <span class="cfb" id="cc">0</span>
 </button>
 
-<!-- Cart Panel -->
-<div class="cart-panel" id="cart-panel">
-  <div class="cart-head">
+<div class="cpanel" id="cpanel">
+  <div class="cphead">
     <div>
-      <div class="cart-title" id="cart-title">Agizo Lako</div>
-      <div class="cart-subtitle" id="cart-subtitle"></div>
+      <div class="cpt" id="cp-t">Agizo Lako</div>
+      <div class="cps" id="cp-s"></div>
     </div>
-    <button class="cart-close" onclick="App.toggleCart()">✕</button>
+    <button class="cpclose" onclick="App.toggleCart()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
   </div>
-  <div class="cart-items" id="cart-items-list">
-    <div class="empty-state"><div class="empty-icon">🛒</div><div class="empty-sub" id="cart-empty-msg">Bado hujachagua bidhaa</div></div>
+  <div class="cpitems" id="cplist">
+    <div class="empty"><div class="empty-ic">🛒</div><div class="empty-s" id="ce-txt">Bado hujachagua bidhaa</div></div>
   </div>
-  <div class="cart-foot">
-    <div class="cart-total-row">
-      <span class="cart-total-label" id="cart-total-lbl">Jumla</span>
-      <span class="cart-total-value" id="cart-total">TZS 0</span>
+  <div class="cpfoot">
+    <div class="cptr">
+      <span class="cptl" id="ct-lbl">Jumla</span>
+      <span class="cptv" id="ct-val">TZS 0</span>
     </div>
-    <div class="cart-note" id="cart-payment-note">Malipo yanafanywa moja kwa moja na Msambazaji.</div>
-    <button class="btn-primary" id="place-order-btn" onclick="App.placeOrder()">
-      <span id="place-order-text">Tuma Agizo</span>
+    <div class="alert al-i no-print" style="margin-bottom:.75rem;font-size:.72rem" id="cp-note">
+      Malipo yanafanywa moja kwa moja na Msambazaji baada ya kuthibitishwa.
+    </div>
+    <button class="btn btn-p" id="po-btn" onclick="App.placeOrder()">
+      <span id="po-txt">Tuma Agizo</span>
     </button>
   </div>
 </div>
 
-<div id="toast-container"></div>
-
-<!-- Print-only header -->
-<div class="print-header" id="print-header"></div>
-
+<div id="twrap"></div>
 <script type="module" src="app.js"></script>
 </body>
 </html>
