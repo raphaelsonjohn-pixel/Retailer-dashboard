@@ -2,10 +2,13 @@
 // BomaWave v3.0 — app.js
 // Phone OTP Auth · MOQ · Receipts · Invoices · POS · Reports
 // ══════════════════════════════════════════════════════════════
-import { supabase as sb } from './supabase.js';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/otp';
-const SB_KEY = 'sb_publishable_yJni7Xxl78x24V1mJvLjVg_RAWAsGOt';
+const SB_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1dHJubmxibXV4Z2didmZ3cnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder';
+const OTP_URL = `${SB_URL}/functions/v1/otp`;
+
+const sb = createClient(SB_URL, SB_KEY);
 
 // ── State ────────────────────────────────────────────────────
 let S = {
