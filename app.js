@@ -1,2410 +1,1826 @@
-/**
- * BomaWave v2.0 — Complete App Controller
- * POS · Admin · Mobile Nav · Image Upload · Location
- */
-import { supabase } from './supabase.js';
+// ══════════════════════════════════════════════════════════════
+// BomaWave v3.0 — app.js
+// Phone OTP Auth · MOQ · Receipts · Invoices · POS · Reports
+// ══════════════════════════════════════════════════════════════
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-// ═══════════════════════════════════════════════════════════
-//  TRANSLATIONS
-// ═══════════════════════════════════════════════════════════
-const T = {
-sw:{
-  // Onboarding
-  step2_eye:'Hatua 2',step2_title:'Wewe ni nani?',
-  role_retailer:'Duka (Retailer)',role_retailer_desc:'Naagiza bidhaa kwa duka langu',
-  role_dist:'Msambazaji',role_dist_desc:'Nasambaza bidhaa kwa maduka',
-  back:'← Rudi Nyuma',tab_register:'Akaunti Mpya',tab_login:'Ingia',
-  step3_eye:'Hatua 3',step3_title:'Tengeneza Akaunti',
-  lbl_store:'Jina la Duka',lbl_user:'Username',lbl_phone:'Simu',
-  lbl_region:'Mkoa',lbl_district:'Wilaya',lbl_ward:'Kata',lbl_street:'Mtaa',
-  lbl_coverage:'Maeneo ya Usambazaji',lbl_cats:'Aina za Bidhaa',
-  lbl_pass:'Nywila',lbl_pass2:'Thibitisha Nywila',
-  btn_register:'Kamilisha Usajili',btn_loading:'Subiri...',
-  step4_eye:'Ingia',step4_title:'Karibu Tena!',
-  lbl_login_user:'Username',lbl_login_pass:'Nywila',btn_login:'Ingia',
-  lbl_logout:'Toka',
-  // Nav
-  nav_home:'Nyumbani',nav_marketplace:'Soko',nav_records:'Kumbukumbu',
-  nav_my_orders:'Maagizo Yangu',nav_dashboard:'Dashibodi',
-  nav_orders:'Maagizo Yangu',nav_products:'Bidhaa Zangu',
-  nav_inventory:'Hifadhi',nav_retailers:'Maduka Yangu',nav_more:'Zaidi',
-  nav_users:'Watumiaji',nav_all_orders:'Maagizo Yote',nav_analytics:'Takwimu',
-  // Topbar
-  topbar_home:'Nyumbani',topbar_sub_home:'Muhtasari wa leo',
-  topbar_marketplace:'Soko la Bidhaa',topbar_sub_market:'Agiza bidhaa kutoka kwa wasambazaji',
-  topbar_records:'Kumbukumbu za Biashara',topbar_sub_records:'Mauzo, gharama, madeni na ripoti',
-  topbar_my_orders:'Maagizo Yangu',topbar_sub_my_orders:'Historia ya maagizo yako',
-  topbar_dashboard:'Dashibodi',topbar_sub_dash:'Muhtasari wa biashara yako leo',
-  topbar_orders:'Maagizo Yaliyoingia',topbar_sub_orders:'Maagizo mapya kutoka kwa maduka',
-  topbar_products:'Bidhaa Zangu',topbar_sub_products:'Simamia bidhaa unazouza',
-  topbar_inventory:'Hifadhi (Stoki)',topbar_sub_inventory:'Angalia stoki iliyobaki',
-  topbar_retailers:'Maduka Yangu',topbar_sub_retailers:'Maduka yanayonunua kwako',
-  topbar_users:'Watumiaji Wote',topbar_sub_users:'Simamia watumiaji wa platform',
-  topbar_all_orders:'Maagizo Yote',topbar_sub_all_orders:'Maagizo yote kwenye platform',
-  topbar_analytics:'Takwimu za Platform',topbar_sub_analytics:'Mwelekeo na uchambuzi',
-  // Notifications
-  notif_title:'Arifa',notif_empty:'Hakuna arifa',
-  notif_new_order:'Agizo Jipya!',notif_order_conf:'Agizo Limethibitishwa',
-  notif_order_del:'Bidhaa Zimefikia',
-  // Stats
-  stat_orders_today:'Maagizo Leo',stat_pending:'Yanasubiri',
-  stat_revenue:'Mapato Leo',stat_retailers:'Maduka Yaliyonunua',
-  stat_total_orders:'Maagizo Yote',stat_total_spent:'Jumla Nililotumia',
-  stat_distributors:'Wasambazaji',stat_sales_today:'Mauzo Leo',
-  stat_profit_today:'Faida Leo',stat_debts:'Madeni',
-  stat_total_users:'Watumiaji Wote',stat_total_revenue:'Mapato Platform',
-  stat_active_dist:'Wasambazaji Hai',stat_active_ret:'Maduka Hai',
-  // Marketplace
-  all_categories:'Zote',add_to_cart:'Ongeza',
-  out_of_stock:'Haipatikani',low_stock:'Inakwisha',in_stock:'Inapatikana',
-  unit:'Kitengo',price:'Bei',search_products:'Tafuta bidhaa...',
-  // Cart
-  cart_title:'Agizo Lako',cart_sub:'bidhaa zimeongezwa',cart_total:'Jumla',
-  place_order:'Tuma Agizo',cart_empty:'Bado hujachagua bidhaa',
-  cart_payment:'Malipo yanafanywa moja kwa moja na Msambazaji baada ya kuthibitishwa.',
-  // Orders
-  order_id:'Namba ya Agizo',retailer:'Duka',distributor:'Msambazaji',
-  items:'Bidhaa',total:'Jumla',status:'Hali',date:'Tarehe',action:'Hatua',
-  confirm:'Thibitisha',deliver:'Tuma Bidhaa',cancel:'Ghairi',
-  pending:'Inasubiri',confirmed:'Imethibitishwa',delivered:'Imefikia',cancelled:'Imeghairiwa',
-  no_orders:'Hakuna maagizo bado',no_orders_sub:'Maagizo mapya yataonekana hapa',
-  // Products
-  add_product:'Weka Bidhaa Sokoni',product_name:'Jina la Bidhaa',
-  product_category:'Aina',product_price:'Bei ya Kuuzia (TZS)',
-  product_cost:'Bei ya Kununulia (TZS)',product_unit:'Kitengo',
-  product_qty:'Stoki',product_desc:'Maelezo (si lazima)',
-  product_image:'Picha ya Bidhaa',btn_add_product:'Weka Sokoni',
-  no_products:'Bado hujaweka bidhaa',no_products_sub:'Ongeza bidhaa yako ya kwanza',
-  // Inventory
-  update_stock:'Sasisha Stoki',stock_qty:'Stoki',
-  // Success
-  success_title:'Agizo Limetumwa!',
-  success_sub:'Msambazaji ataliangalia hivi karibuni.',
-  // POS Records
-  pos_sales:'Mauzo',pos_expenses:'Gharama',pos_debts:'Madeni',pos_reports:'Ripoti',
-  add_sale:'Rekodi Uuzaji',sale_product:'Bidhaa Iliyouzwa',sale_qty:'Idadi',
-  sale_buying_price:'Bei ya Kununulia (TZS)',sale_selling_price:'Bei ya Kuuzia (TZS)',
-  sale_date:'Tarehe',sale_notes:'Maelezo (si lazima)',btn_save_sale:'Hifadhi Uuzaji',
-  add_expense:'Rekodi Gharama',expense_cat:'Aina ya Gharama',
-  expense_desc:'Maelezo',expense_amount:'Kiasi (TZS)',expense_date:'Tarehe',
-  btn_save_expense:'Hifadhi Gharama',
-  add_debt:'Rekodi Deni',debt_customer:'Jina la Mteja',debt_phone:'Simu ya Mteja',
-  debt_amount:'Kiasi cha Deni (TZS)',debt_desc:'Bidhaa / Maelezo',
-  debt_due:'Tarehe ya Kulipa',btn_save_debt:'Hifadhi Deni',
-  btn_mark_paid:'Lipa',debt_remaining:'Kilichobaki',
-  report_period:'Kipindi cha Ripoti',period_today:'Leo',period_week:'Wiki Hii',
-  period_month:'Mwezi Huu',period_custom:'Kipindi Maalum',
-  report_from:'Kuanzia',report_to:'Hadi',btn_generate:'Tengeneza Ripoti',
-  btn_print:'Chapisha / PDF',
-  report_sales_summary:'Muhtasari wa Mauzo',report_expense_summary:'Muhtasari wa Gharama',
-  report_profit_summary:'Muhtasari wa Faida/Hasara',report_top_products:'Bidhaa Zinazotoka Zaidi',
-  report_debts_summary:'Muhtasari wa Madeni',
-  total_revenue:'Mapato Yote',total_expenses:'Gharama Zote',
-  gross_profit:'Faida Ghafi',net_profit:'Faida Halisi',
-  total_debts:'Madeni Yote',paid_debts:'Yaliyolipwa',unpaid_debts:'Ambayo Hayajalipwa',
-  no_sales:'Hakuna mauzo bado',no_expenses:'Hakuna gharama bado',no_debts:'Hakuna madeni bado',
-  product_ranking:'Nafasi',times_sold:'Mara Zilizouzwa',
-  // Expense categories
-  exp_rent:'Kodi ya Duka',exp_transport:'Nauli / Usafiri',exp_staff:'Mshahara',
-  exp_utilities:'Umeme / Maji',exp_packaging:'Vifungashio',exp_other:'Nyingine',
-  // Admin
-  approve:'Ruhusu',suspend:'Simamisha',all_users:'Watumiaji Wote',
-  user_type:'Aina',location:'Eneo',joined:'Alijiunga',
-  platform_gmv:'Jumla ya Mauzo',platform_orders:'Maagizo Yote',
-  // Errors
-  err_pass_match:'Nywila hazifanani.',err_username:'Username tayari lipo.',
-  err_login:'Username au nywila si sahihi.',err_generic:'Kosa limetokea. Jaribu tena.',
-  err_cart_empty:'Chagua bidhaa kwanza.',err_select_location:'Chagua mkoa na wilaya kwanza.',
-  // Toast
-  toast_order_placed:'Agizo limetumwa!',toast_order_confirmed:'Agizo limethibitishwa.',
-  toast_order_delivered:'Bidhaa zimetumwa.',toast_product_added:'Bidhaa imewekwa sokoni.',
-  toast_new_order:'Agizo jipya limeingia!',toast_stock_updated:'Stoki imesasishwa.',
-  toast_sale_saved:'Uuzaji umehifadhiwa.',toast_expense_saved:'Gharama imehifadhiwa.',
-  toast_debt_saved:'Deni limehifadhiwa.',toast_debt_paid:'Deni limelipwa.',
-  // Misc
-  total_orders:'Maagizo',total_spent:'Jumla (TZS)',last_order:'Agizo la Mwisho',
-  view_all:'Angalia Zote →',go_market:'Nenda Sokoni',
-  cat_beverages:'Vinywaji',cat_flour:'Unga na Nafaka',cat_oil:'Mafuta',
-  cat_sugar:'Sukari na Chumvi',cat_soap:'Sabuni',cat_personal:'Usafi wa Mwili',
-  cat_dairy:'Maziwa',cat_other:'Nyingine',
-  upload_photo:'Piga Picha / Chagua Picha',change_photo:'Badilisha Picha',
-  img_uploading:'Inapakia picha...',
-  // More menu
-  more_menu:'Menyu Zaidi',
-},
-en:{
-  step2_eye:'Step 2',step2_title:'Who are you?',
-  role_retailer:'Shop (Retailer)',role_retailer_desc:'I order goods for my shop',
-  role_dist:'Distributor',role_dist_desc:'I supply goods to shops',
-  back:'← Go Back',tab_register:'New Account',tab_login:'Sign In',
-  step3_eye:'Step 3',step3_title:'Create Account',
-  lbl_store:'Store / Business Name',lbl_user:'Username',lbl_phone:'Phone',
-  lbl_region:'Region',lbl_district:'District',lbl_ward:'Ward',lbl_street:'Street',
-  lbl_coverage:'Coverage Area',lbl_cats:'Product Categories',
-  lbl_pass:'Password',lbl_pass2:'Confirm Password',
-  btn_register:'Create Account',btn_loading:'Please wait...',
-  step4_eye:'Sign In',step4_title:'Welcome Back!',
-  lbl_login_user:'Username',lbl_login_pass:'Password',btn_login:'Sign In',
-  lbl_logout:'Sign Out',
-  nav_home:'Home',nav_marketplace:'Marketplace',nav_records:'Records',
-  nav_my_orders:'My Orders',nav_dashboard:'Dashboard',
-  nav_orders:'Orders',nav_products:'My Products',
-  nav_inventory:'Inventory',nav_retailers:'My Retailers',nav_more:'More',
-  nav_users:'Users',nav_all_orders:'All Orders',nav_analytics:'Analytics',
-  topbar_home:'Home',topbar_sub_home:"Today's overview",
-  topbar_marketplace:'Marketplace',topbar_sub_market:'Order goods from distributors',
-  topbar_records:'Business Records',topbar_sub_records:'Sales, expenses, debts and reports',
-  topbar_my_orders:'My Orders',topbar_sub_my_orders:'Your order history',
-  topbar_dashboard:'Dashboard',topbar_sub_dash:"Today's business overview",
-  topbar_orders:'Incoming Orders',topbar_sub_orders:'New orders from shops',
-  topbar_products:'My Products',topbar_sub_products:'Manage your listed products',
-  topbar_inventory:'Inventory',topbar_sub_inventory:'Track remaining stock',
-  topbar_retailers:'My Retailers',topbar_sub_retailers:'Shops that buy from you',
-  topbar_users:'All Users',topbar_sub_users:'Manage platform users',
-  topbar_all_orders:'All Orders',topbar_sub_all_orders:'All orders on the platform',
-  topbar_analytics:'Platform Analytics',topbar_sub_analytics:'Trends and insights',
-  notif_title:'Notifications',notif_empty:'No notifications',
-  notif_new_order:'New Order!',notif_order_conf:'Order Confirmed',notif_order_del:'Order Delivered',
-  stat_orders_today:'Orders Today',stat_pending:'Pending',
-  stat_revenue:"Today's Revenue",stat_retailers:'Active Retailers',
-  stat_total_orders:'Total Orders',stat_total_spent:'Total Spent',
-  stat_distributors:'Distributors',stat_sales_today:'Sales Today',
-  stat_profit_today:"Today's Profit",stat_debts:'Outstanding Debts',
-  stat_total_users:'Total Users',stat_total_revenue:'Platform Revenue',
-  stat_active_dist:'Active Distributors',stat_active_ret:'Active Retailers',
-  all_categories:'All',add_to_cart:'Add',
-  out_of_stock:'Out of Stock',low_stock:'Low Stock',in_stock:'In Stock',
-  unit:'Unit',price:'Price',search_products:'Search products...',
-  cart_title:'Your Order',cart_sub:'items added',cart_total:'Total',
-  place_order:'Place Order',cart_empty:'No items selected yet',
-  cart_payment:'Payment is made directly to the distributor after confirmation.',
-  order_id:'Order ID',retailer:'Shop',distributor:'Distributor',
-  items:'Items',total:'Total',status:'Status',date:'Date',action:'Action',
-  confirm:'Confirm',deliver:'Mark Delivered',cancel:'Cancel',
-  pending:'Pending',confirmed:'Confirmed',delivered:'Delivered',cancelled:'Cancelled',
-  no_orders:'No orders yet',no_orders_sub:'New orders will appear here',
-  add_product:'List a Product',product_name:'Product Name',
-  product_category:'Category',product_price:'Selling Price (TZS)',
-  product_cost:'Buying/Cost Price (TZS)',product_unit:'Selling Unit',
-  product_qty:'Stock Quantity',product_desc:'Description (optional)',
-  product_image:'Product Image',btn_add_product:'List Product',
-  no_products:'No products listed yet',no_products_sub:'Add your first product above',
-  update_stock:'Update Stock',stock_qty:'Stock',
-  success_title:'Order Placed!',success_sub:'The distributor will review your order shortly.',
-  pos_sales:'Sales',pos_expenses:'Expenses',pos_debts:'Debts',pos_reports:'Reports',
-  add_sale:'Record a Sale',sale_product:'Product Sold',sale_qty:'Quantity',
-  sale_buying_price:'Buying Price (TZS)',sale_selling_price:'Selling Price (TZS)',
-  sale_date:'Date',sale_notes:'Notes (optional)',btn_save_sale:'Save Sale',
-  add_expense:'Record an Expense',expense_cat:'Expense Category',
-  expense_desc:'Description',expense_amount:'Amount (TZS)',expense_date:'Date',
-  btn_save_expense:'Save Expense',
-  add_debt:'Record a Debt',debt_customer:'Customer Name',debt_phone:'Customer Phone',
-  debt_amount:'Debt Amount (TZS)',debt_desc:'Items / Description',
-  debt_due:'Due Date',btn_save_debt:'Save Debt',
-  btn_mark_paid:'Mark Paid',debt_remaining:'Remaining',
-  report_period:'Report Period',period_today:'Today',period_week:'This Week',
-  period_month:'This Month',period_custom:'Custom Range',
-  report_from:'From',report_to:'To',btn_generate:'Generate Report',btn_print:'Print / Save PDF',
-  report_sales_summary:'Sales Summary',report_expense_summary:'Expense Summary',
-  report_profit_summary:'Profit & Loss',report_top_products:'Top Selling Products',
-  report_debts_summary:'Debts Summary',
-  total_revenue:'Total Revenue',total_expenses:'Total Expenses',
-  gross_profit:'Gross Profit',net_profit:'Net Profit',
-  total_debts:'Total Debts',paid_debts:'Paid',unpaid_debts:'Outstanding',
-  no_sales:'No sales recorded yet',no_expenses:'No expenses recorded yet',no_debts:'No debts recorded yet',
-  product_ranking:'Rank',times_sold:'Times Sold',
-  exp_rent:'Shop Rent',exp_transport:'Transport',exp_staff:'Staff Salary',
-  exp_utilities:'Utilities',exp_packaging:'Packaging',exp_other:'Other',
-  approve:'Approve',suspend:'Suspend',all_users:'All Users',
-  user_type:'Type',location:'Location',joined:'Joined',
-  platform_gmv:'Total GMV',platform_orders:'Total Orders',
-  total_orders:'Orders',total_spent:'Total (TZS)',last_order:'Last Order',
-  view_all:'View All →',go_market:'Go to Marketplace',
-  cat_beverages:'Beverages',cat_flour:'Flour & Grains',cat_oil:'Cooking Oil',
-  cat_sugar:'Sugar & Salt',cat_soap:'Soap & Detergents',cat_personal:'Personal Care',
-  cat_dairy:'Dairy',cat_other:'Other',
-  upload_photo:'Take Photo / Choose Image',change_photo:'Change Photo',
-  img_uploading:'Uploading image...',more_menu:'More Menu',
-  err_pass_match:'Passwords do not match.',err_username:'Username already taken.',
-  err_login:'Incorrect username or password.',err_generic:'Something went wrong. Try again.',
-  err_cart_empty:'Please select at least one product.',err_select_location:'Please select region and district.',
-  toast_order_placed:'Order placed!',toast_order_confirmed:'Order confirmed.',
-  toast_order_delivered:'Order delivered.',toast_product_added:'Product listed.',
-  toast_new_order:'New order received!',toast_stock_updated:'Stock updated.',
-  toast_sale_saved:'Sale recorded.',toast_expense_saved:'Expense recorded.',
-  toast_debt_saved:'Debt recorded.',toast_debt_paid:'Debt marked as paid.',
-  platform_gmv:'Total GMV',platform_orders:'Total Orders',
-  stat_total_users:'Total Users',stat_total_revenue:'Platform Revenue',
-  stat_active_dist:'Active Distributors',stat_active_ret:'Active Retailers',
-  approve:'Approve',suspend:'Suspend',
-}};
+const SB_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1dHJubmxibXV4Z2didmZ3cnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder';
+const OTP_URL = `${SB_URL}/functions/v1/otp`;
 
-// ═══════════════════════════════════════════════════════════
-//  TANZANIA LOCATION DATA
-// ═══════════════════════════════════════════════════════════
-const TZ_LOCATIONS = {
-  'Dar es Salaam':{ districts:{ 'Ilala':['Kariakoo','Gerezani','Kivukoni','Buguruni','Ukonga'],
-    'Kinondoni':['Msasani','Mikocheni','Sinza','Mwananyamala','Kijitonyama','Magomeni'],
-    'Temeke':['Temeke','Tandika','Mbagala','Mtoni','Chang\'ombe'],
-    'Ubungo':['Ubungo','Kimara','Kibamba','Goba'],
-    'Kigamboni':['Kigamboni','Mjimwema','Somangira']}},
-  'Mwanza':{ districts:{ 'Nyamagana':['Pamba','Isamilo','Igogo','Mahina'],
-    'Ilemela':['Mkolani','Igoma','Butimba','Sangabuye'],
-    'Sengerema':['Sengerema','Nyampande'],
-    'Kwimba':['Ngudu','Sumve']}},
-  'Arusha':{ districts:{ 'Arusha City':['Kaloleni','Sekei','Themi','Kimandolu'],
-    'Arumeru':['Tengeru','Usa River','Moshi Road'],
-    'Meru':['Nkoaranga','Poli']}},
-  'Dodoma':{ districts:{ 'Dodoma City':['Makole','Nzuguni','Kikuyu','Ipagala'],
-    'Bahi':['Bahi','Mundemu'],
-    'Chamwino':['Chamwino','Buigiri']}},
-  'Mbeya':{ districts:{ 'Mbeya City':['Mwanjelwa','Uyole','Itiji','Ilembo'],
-    'Rungwe':['Tukuyu','Mwakaleli'],
-    'Chunya':['Chunya','Matundasi']}},
-  'Tanga':{ districts:{ 'Tanga City':['Ngamiani','Usagara','Makorora'],
-    'Muheza':['Muheza','Amani'],
-    'Korogwe':['Korogwe','Bungu']}},
-  'Morogoro':{ districts:{ 'Morogoro Urban':['Boma','Mwembesongo','Bigwa'],
-    'Kilosa':['Kilosa','Mikumi'],
-    'Mvomero':['Turiani','Mzumbe']}},
-  'Zanzibar':{ districts:{ 'Mjini':['Stone Town','Ng\'ambo','Mlandege'],
-    'Kaskazini A':['Mkokotoni','Donge'],
-    'Kusini':['Koani','Fuoni']}},
+const sb = createClient(SB_URL, SB_KEY);
+
+// ── State ────────────────────────────────────────────────────
+let S = {
+  user: null, lang: 'sw', role: null,
+  pendingPhone: null, pendingData: null,
+  pinBuf: '', cart: [], cartDist: null,
+  page: 'dashboard', notifs: [], resendTimer: null,
+  loginResendTimer: null, forgotResendTimer: null,
+  realtimeCh: null,
 };
 
-// ═══════════════════════════════════════════════════════════
-//  CATEGORIES
-// ═══════════════════════════════════════════════════════════
-const CATEGORIES = [
-  {key:'beverages',icon:'🥤'},{key:'flour',icon:'🌾'},{key:'oil',icon:'🫙'},
-  {key:'sugar',icon:'🍬'},{key:'soap',icon:'🧼'},{key:'personal',icon:'🧴'},
-  {key:'dairy',icon:'🧈'},{key:'other',icon:'📦'},
+// ── Tanzania Location Data ────────────────────────────────────
+const LOC = {
+  'Dar es Salaam': {
+    'Ilala': ['Kariakoo','Gerezani','Upanga','Buguruni','Ilala','Kisutu'],
+    'Kinondoni': ['Sinza','Mwananyamala','Tandale','Kijitonyama','Mikocheni','Msasani'],
+    'Temeke': ['Tandika','Mbagala','Mtoni','Temeke','Charambe'],
+    'Ubungo': ['Ubungo','Kimara','Makuburi','Saranga'],
+    'Kigamboni': ['Kigamboni','Mjimwema','Somangila'],
+  },
+  'Mwanza': {
+    'Nyamagana': ['Pamba','Mahina','Kirumba','Isamilo'],
+    'Ilemela': ['Ilemela','Kiroba','Mkolani'],
+  },
+  'Arusha': {
+    'Arusha Jiji': ['Kaloleni','Sekei','Sokon 1','Sokon 2'],
+    'Arumeru': ['Tengeru','Usa River'],
+  },
+  'Dodoma': {
+    'Dodoma Mjini': ['Makole','Nkuhungu','Kikuyu'],
+    'Bahi': ['Bahi','Nondwa'],
+  },
+  'Mbeya': {
+    'Mbeya Jiji': ['Mwanjelwa','Uyole','Sisimba'],
+    'Mbarali': ['Rujewa','Igawa'],
+  },
+  'Tanga': {
+    'Tanga Jiji': ['Ngamiani','Chumbageni','Makorora'],
+    'Muheza': ['Muheza','Bumbuli'],
+  },
+  'Morogoro': {
+    'Morogoro Mjini': ['Kihonda','Mwembesongo','Mji wa Mwisho'],
+    'Kilosa': ['Kilosa','Gairo'],
+  },
+  'Zanzibar Mjini': {
+    'Mjini': ['Stone Town','Mkunazini','Malindi'],
+    'Magharibi': ['Bububu','Fuoni'],
+  },
+};
+
+const CATS = [
+  {id:'beverages',sw:'Vinywaji',en:'Beverages'},
+  {id:'flour',sw:'Unga',en:'Flour'},
+  {id:'oil',sw:'Mafuta ya Kupikia',en:'Cooking Oil'},
+  {id:'sugar',sw:'Sukari',en:'Sugar'},
+  {id:'soap',sw:'Sabuni',en:'Soap'},
+  {id:'personal',sw:'Usafi wa Mwili',en:'Personal Care'},
+  {id:'dairy',sw:'Maziwa',en:'Dairy'},
+  {id:'other',sw:'Nyingine',en:'Other'},
 ];
-const EXP_CATS = ['rent','transport','staff','utilities','packaging','other'];
 
-// ═══════════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════════
-const State = {
-  lang:'sw', role:'', authMode:'register',
-  user:null, cart:{}, activePage:'', posTab:'sales',
-  realtimeSub:null, notifications:[], notifOpen:false,
-  reportPeriod:'today', reportFrom:'', reportTo:'',
-  _allProducts:[], _activeFilter:'all',
+const CAT_ICONS = {
+  beverages:'🧃', flour:'🌾', oil:'🫙', sugar:'🍚',
+  soap:'🧼', personal:'🪥', dairy:'🥛', other:'📦',
 };
 
-// ═══════════════════════════════════════════════════════════
-//  HELPERS
-// ═══════════════════════════════════════════════════════════
-const t  = k => T[State.lang]?.[k] ?? T.sw?.[k] ?? k;
-const el = id => document.getElementById(id);
-const fmt = n => `TZS ${Number(n||0).toLocaleString('en-TZ')}`;
-const fmtDate = d => new Date(d).toLocaleDateString(State.lang==='sw'?'sw-TZ':'en-GB');
-const genRef = () => 'BW-'+Date.now().toString(36).toUpperCase().slice(-6);
-const catLabel = k => t(`cat_${k}`);
-const catIcon  = k => CATEGORIES.find(x=>x.key===k)?.icon||'📦';
-const today = () => new Date().toISOString().split('T')[0];
-
-function setHtml(id,html){ const e=el(id); if(e) e.innerHTML=html; }
-function setText(id,text){ const e=el(id); if(e) e.innerText=text; }
-
-function loader(){
-  return `<div style="text-align:center;padding:3rem;color:var(--muted)">
-    <span class="spinner dark" style="width:24px;height:24px"></span></div>`;
-}
-
-function showToast(msg, type='success'){
-  const wrap=el('toast-container'); if(!wrap) return;
-  const div=document.createElement('div');
-  div.className=`toast ${type}`;
-  div.textContent=msg;
-  wrap.appendChild(div);
-  setTimeout(()=>div.remove(),4500);
-}
-
-function pill(status){
-  const map={
-    pending:['pill-pending','⏳'],confirmed:['pill-confirmed','✓'],
-    delivered:['pill-delivered','📦'],cancelled:['pill-cancelled','✕'],
-    paid:['pill-paid','✓'],unpaid:['pill-unpaid','!'],partial:['pill-partial','~'],
-  };
-  const [cls,icon]=map[status]||['pill-pending','?'];
-  const label=t(status)||status;
-  return `<span class="pill ${cls}">${icon} ${label}</span>`;
-}
-
-function dateRange(period){
-  const d=new Date();
-  const iso=s=>s.toISOString().split('T')[0];
-  if(period==='today') return {from:iso(d),to:iso(d)};
-  if(period==='week'){
-    const mon=new Date(d); mon.setDate(d.getDate()-d.getDay()+1);
-    return {from:iso(mon),to:iso(d)};
+// ── Translations ─────────────────────────────────────────────
+const T = {
+  sw:{
+    dashboard:'Dashibodi', marketplace:'Soko', myOrders:'Maagizo Yangu',
+    orders:'Maagizo', products:'Bidhaa', pos:'POS', reports:'Ripoti',
+    debts:'Madeni', receipts:'Risiti', invoices:'Ankara',
+    users:'Watumiaji', analytics:'Uchambuzi',
+    addProduct:'Ongeza Bidhaa', placeOrder:'Tuma Agizo',
+    total:'Jumla', today:'Leo', week:'Wiki', month:'Mwezi',
+    profit:'Faida', revenue:'Mapato', expenses:'Matumizi',
+    logout:'Toka', notifications:'Arifa', allCategories:'Aina Zote',
+    pending:'Inasubiri', confirmed:'Imethibitishwa',
+    delivered:'Imetolewa', cancelled:'Imefutwa',
+    search:'Tafuta...', noProducts:'Hakuna bidhaa',
+    noOrders:'Hakuna maagizo', cartEmpty:'Kikapu kiko tupu',
+    moqWarning:'Kiwango cha chini',
+    orderSuccess:'Agizo limetumwa!',
+    selectDist:'Chagua Msambazaji',
+    nearbyFirst:'Karibu nawe kwanza',
+    printReceipt:'Chapisha Risiti (PDF)',
+    shareInvoice:'Shiriki Ankara',
+    shareWhatsApp:'WhatsApp',
+    shareSMS:'SMS',
+    printPDF:'Chapisha PDF',
+    invoiceText:'Ankara ya BomaWave',
+  },
+  en:{
+    dashboard:'Dashboard', marketplace:'Marketplace', myOrders:'My Orders',
+    orders:'Orders', products:'Products', pos:'POS', reports:'Reports',
+    debts:'Debts', receipts:'Receipts', invoices:'Invoices',
+    users:'Users', analytics:'Analytics',
+    addProduct:'Add Product', placeOrder:'Place Order',
+    total:'Total', today:'Today', week:'Week', month:'Month',
+    profit:'Profit', revenue:'Revenue', expenses:'Expenses',
+    logout:'Logout', notifications:'Notifications', allCategories:'All Categories',
+    pending:'Pending', confirmed:'Confirmed',
+    delivered:'Delivered', cancelled:'Cancelled',
+    search:'Search...', noProducts:'No products',
+    noOrders:'No orders', cartEmpty:'Cart is empty',
+    moqWarning:'Minimum order qty',
+    orderSuccess:'Order sent!',
+    selectDist:'Select Distributor',
+    nearbyFirst:'Nearby first',
+    printReceipt:'Print Receipt (PDF)',
+    shareInvoice:'Share Invoice',
+    shareWhatsApp:'WhatsApp',
+    shareSMS:'SMS',
+    printPDF:'Print PDF',
+    invoiceText:'BomaWave Invoice',
   }
-  if(period==='month'){
-    return {from:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`,to:iso(d)};
-  }
-  return {from:State.reportFrom||iso(d),to:State.reportTo||iso(d)};
+};
+const t = (k) => T[S.lang]?.[k] ?? k;
+
+// ── Helpers ──────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => 'TZS ' + Number(n||0).toLocaleString();
+const fmtNum = (n) => Number(n||0).toLocaleString();
+const today = () => new Date().toISOString().slice(0,10);
+const genRef = (prefix='BW') => prefix + Date.now().toString(36).toUpperCase();
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+function toast(msg, type='s') {
+  const wrap = $('twrap');
+  const el = document.createElement('div');
+  const icons = {s:'✅', e:'❌', i:'ℹ️'};
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 4100);
 }
 
-// ═══════════════════════════════════════════════════════════
-//  APP
-// ═══════════════════════════════════════════════════════════
-export const App = {
+function setBusy(id, busy, txt='') {
+  const btn = $(id);
+  if (!btn) return;
+  btn.disabled = busy;
+  const span = btn.querySelector('span');
+  if (!span) return;
+  if (busy) {
+    span.dataset.orig = span.textContent;
+    span.innerHTML = `<span class="spin"></span>`;
+  } else {
+    span.textContent = txt || span.dataset.orig || '';
+  }
+}
 
-  // ── LANGUAGE ──────────────────────────────────────────
+function setText(id, txt) { const el=$(id); if(el) el.textContent=txt; }
+function setHtml(id, h) { const el=$(id); if(el) el.innerHTML=h; }
 
-  setLang(lang){
-    State.lang=lang;
-    this._applyTranslations();
-    this.goStep(2);
-  },
+// ── LocalStorage session ─────────────────────────────────────
+function saveSession() {
+  localStorage.setItem('bw_v3', JSON.stringify({ user: S.user, lang: S.lang }));
+}
+function loadSession() {
+  try {
+    const d = JSON.parse(localStorage.getItem('bw_v3') || 'null');
+    if (d?.user) { S.user = d.user; S.lang = d.lang || 'sw'; return true; }
+  } catch {}
+  return false;
+}
+function clearSession() { localStorage.removeItem('bw_v3'); }
 
-  switchLang(lang){
-    State.lang=lang;
-    el('sb-lang-sw')?.classList.toggle('active',lang==='sw');
-    el('sb-lang-en')?.classList.toggle('active',lang==='en');
-    if(State.user) this._updateLangInDB(lang);
-    if(State.activePage) this.navigate(State.activePage);
-  },
+// ── OTP API call ─────────────────────────────────────────────
+async function callOTP(payload) {
+  const res = await fetch(OTP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SB_KEY}` },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}
 
-  async _updateLangInDB(lang){
-    await supabase.from('profiles').update({lang}).eq('id',State.user.id);
-    State.user.lang=lang;
-    this._saveSession();
-  },
+// ── Phone normalizer ─────────────────────────────────────────
+function normPhone(raw) {
+  const d = raw.replace(/\D/g,'');
+  if (d.length === 9 && (d[0]==='7'||d[0]==='6')) return '+255'+d;
+  if (d.length === 10 && d[0]==='0') return '+255'+d.slice(1);
+  if (d.length === 12 && d.startsWith('255')) return '+'+d;
+  return null;
+}
 
-  _applyTranslations(){
-    const L=State.lang;
-    // Step labels
-    setText('s2-eye',t('step2_eye')); setText('s2-title',t('step2_title'));
-    setText('role-retailer-name',t('role_retailer')); setText('role-retailer-desc',t('role_retailer_desc'));
-    setText('role-dist-name',t('role_dist')); setText('role-dist-desc',t('role_dist_desc'));
-    setText('s2-back',t('back'));
-    setText('tab-register',t('tab_register')); setText('tab-login',t('tab_login'));
-    setText('s3-eye',t('step3_eye')); setText('s3-title',t('step3_title'));
-    setText('s4-eye',t('step4_eye')); setText('s4-title',t('step4_title'));
-    // Form labels
-    const labels={
-      'lbl-store':'lbl_store','lbl-user':'lbl_user','lbl-phone':'lbl_phone',
-      'lbl-region':'lbl_region','lbl-district':'lbl_district','lbl-ward':'lbl_ward',
-      'lbl-street':'lbl_street','lbl-coverage':'lbl_coverage','lbl-cats':'lbl_cats',
-      'lbl-pass':'lbl_pass','lbl-pass2':'lbl_pass2',
-      'lbl-login-user':'lbl_login_user','lbl-login-pass':'lbl_login_pass',
-      'lbl-logout':'lbl_logout','notif-header':'notif_title','notif-empty-msg':'notif_empty',
-      'cart-title':'cart_title','cart-total-lbl':'cart_total',
-      'cart-payment-note':'cart_payment','cart-empty-msg':'cart_empty',
-    };
-    Object.entries(labels).forEach(([id,key])=>setText(id,t(key)));
-    const btn_reg=el('reg-submit-text'); if(btn_reg) btn_reg.innerText=t('btn_register');
-    const btn_log=el('login-submit-text'); if(btn_log) btn_log.innerText=t('btn_login');
-    const btn_ord=el('place-order-text'); if(btn_ord) btn_ord.innerText=t('place_order');
-    const btn_nxt=el('role-next-text'); if(btn_nxt) btn_nxt.innerText=L==='sw'?'Endelea →':'Continue →';
-    // Placeholders
-    const ph={
-      'reg-name':L==='sw'?'mfano: Mama Fatuma Duka':'e.g. Grace Mini Market',
-      'reg-user':L==='sw'?'jina lako la kipekee':'your unique username',
-      'reg-phone':'+255 7XX XXX XXX','reg-street':L==='sw'?'mfano: Msimbazi St':'e.g. Main Street',
-      'reg-coverage':L==='sw'?'mfano: Kariakoo, Ilala':'e.g. Kariakoo, Ilala',
-      'reg-pass':L==='sw'?'angalau herufi 6':'at least 6 characters',
-      'reg-pass2':L==='sw'?'rudia nywila':'repeat password',
-      'login-user':L==='sw'?'jina la mtumiaji':'your username',
-      'login-pass':L==='sw'?'nywila yako':'your password',
-    };
-    Object.entries(ph).forEach(([id,v])=>{const e=el(id);if(e)e.placeholder=v;});
-    this._buildCatGrid();
-    this._populateRegions();
-  },
+// ══════════════════════════════════════════════════════════════
+//  STEP NAVIGATION
+// ══════════════════════════════════════════════════════════════
+const STEP_NAMES = {
+  sw: { 1:'Lugha',2:'Aina',3:'Maelezo (Duka)',4:'Maelezo (Msambazaji)',
+        5:'OTP',7:'PIN',8:'Ingia',9:'OTP ya Kuingia',
+        10:'Nimesahau PIN',11:'OTP ya PIN',12:'PIN Mpya' },
+  en: { 1:'Language',2:'Role',3:'Details (Shop)',4:'Details (Distributor)',
+        5:'OTP',7:'PIN',8:'Login',9:'Login OTP',
+        10:'Forgot PIN',11:'Forgot OTP',12:'New PIN' },
+};
+const STEP_MAX = { 1:10,2:20,3:50,4:50,5:75,7:90,8:30,9:60,10:30,11:60,12:85 };
 
-  // ── LOCATION DROPDOWNS ────────────────────────────────
+function goStep(n) {
+  document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+  const el = $(`s${n}`);
+  if (el) el.classList.add('active');
+  const pct = STEP_MAX[n] || 10;
+  const name = STEP_NAMES[S.lang]?.[n] || `Hatua ${n}`;
+  setText('plbl', name);
+  setText('ppct', pct+'%');
+  $('pfill').style.width = pct+'%';
+}
 
-  _populateRegions(){
-    const sel=el('reg-region'); if(!sel) return;
-    const empty=State.lang==='sw'?'— Chagua Mkoa —':'— Select Region —';
-    sel.innerHTML=`<option value="">${empty}</option>`+
-      Object.keys(TZ_LOCATIONS).map(r=>`<option value="${r}">${r}</option>`).join('');
-  },
+// ── Init location dropdowns ──────────────────────────────────
+function fillSelect(id, options, placeholder='—') {
+  const sel = $(id);
+  if (!sel) return;
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  options.forEach(o => { const opt=document.createElement('option');opt.value=o;opt.textContent=o;sel.appendChild(opt); });
+}
 
-  onRegionChange(){
-    const region=el('reg-region')?.value;
-    const distSel=el('reg-district'); if(!distSel) return;
-    const wardSel=el('reg-ward');
-    const empty=State.lang==='sw'?'— Chagua Wilaya —':'— Select District —';
-    distSel.innerHTML=`<option value="">${empty}</option>`;
-    if(wardSel) wardSel.innerHTML=`<option value=""></option>`;
-    if(!region||!TZ_LOCATIONS[region]) return;
-    Object.keys(TZ_LOCATIONS[region].districts).forEach(d=>{
-      distSel.innerHTML+=`<option value="${d}">${d}</option>`;
+function initLocDropdowns(regionId, districtId, wardId) {
+  fillSelect(regionId, Object.keys(LOC), S.lang==='sw'?'Chagua Mkoa':'Select Region');
+  fillSelect(districtId, [], S.lang==='sw'?'— Chagua Wilaya —':'— Select District —');
+  if (wardId) fillSelect(wardId, [], S.lang==='sw'?'— Chagua Kata —':'— Select Ward —');
+}
+
+// ── Category grid ────────────────────────────────────────────
+function buildCatGrid() {
+  const grid = $('cat-grid');
+  if (!grid) return;
+  grid.innerHTML = CATS.map(c => `
+    <label class="cat-chip" id="chip-${c.id}">
+      <input type="checkbox" value="${c.id}"/>
+      ${CAT_ICONS[c.id]} ${S.lang==='sw'?c.sw:c.en}
+    </label>`).join('');
+  grid.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('change', () => {
+      inp.parentElement.classList.toggle('on', inp.checked);
     });
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  PUBLIC App OBJECT
+// ════════════════════════════════════════════════════════════
+window.App = {
+
+  // ── Language ─────────────────────────────────────────────
+  setLang(lang) {
+    S.lang = lang;
+    initLocDropdowns('reg-region','reg-district','reg-ward');
+    initLocDropdowns('dreg-region','dreg-district','dreg-ward');
+    buildCatGrid();
+    goStep(2);
   },
 
-  onDistrictChange(){
-    const region=el('reg-region')?.value;
-    const district=el('reg-district')?.value;
-    const wardSel=el('reg-ward'); if(!wardSel) return;
-    const empty=State.lang==='sw'?'— Chagua Kata —':'— Select Ward —';
-    wardSel.innerHTML=`<option value="">${empty}</option>`;
-    if(!region||!district) return;
-    const wards=TZ_LOCATIONS[region]?.districts[district]||[];
-    wards.forEach(w=>{ wardSel.innerHTML+=`<option value="${w}">${w}</option>`; });
+  switchLang(lang) {
+    S.lang = lang;
+    if (S.user) { saveSession(); App.renderApp(); }
+    $('lsw-sw').classList.toggle('on', lang==='sw');
+    $('lsw-en').classList.toggle('on', lang==='en');
   },
 
-  // ── CATEGORY GRID ─────────────────────────────────────
-
-  _buildCatGrid(){
-    const grid=el('cat-grid'); if(!grid) return;
-    grid.innerHTML=CATEGORIES.map(c=>`
-      <label class="cat-check" id="cat-label-${c.key}" for="cat-cb-${c.key}">
-        <input type="checkbox" id="cat-cb-${c.key}" value="${c.key}"
-          onchange="App.onCatChange('${c.key}')" style="display:none"/>
-        <span class="cat-icon">${c.icon}</span>
-        <span>${catLabel(c.key)}</span>
-      </label>`).join('');
+  // ── Role ─────────────────────────────────────────────────
+  pickRole(role) {
+    S.role = role;
+    $('rb-ret').classList.toggle('sel', role==='retailer');
+    $('rb-dist').classList.toggle('sel', role==='distributor');
+    $('ck-ret').style.display = role==='retailer'?'':'none';
+    $('ck-dist').style.display = role==='distributor'?'':'none';
+    $('rnext').style.display = 'flex';
   },
 
-  onCatChange(key){
-    const inp=el(`cat-cb-${key}`); const lbl=el(`cat-label-${key}`);
-    if(inp&&lbl) lbl.classList.toggle('checked',inp.checked);
+  proceedFromRole() {
+    if (!S.role) return;
+    goStep(S.role==='retailer' ? 3 : 4);
   },
 
-  _getSelectedCats(){
-    return CATEGORIES.filter(c=>el(`cat-cb-${c.key}`)?.checked).map(c=>c.key);
+  goToRegister() { goStep(2); },
+
+  // ── Location changes ────────────────────────────────────
+  onRegionChange() {
+    const r = $('reg-region').value;
+    const dists = r ? Object.keys(LOC[r]||{}) : [];
+    fillSelect('reg-district', dists, '— Wilaya —');
+    fillSelect('reg-ward', [], '— Kata —');
+  },
+  onDistrictChange() {
+    const r = $('reg-region').value, d = $('reg-district').value;
+    const wards = (r&&d) ? (LOC[r]?.[d]||[]) : [];
+    fillSelect('reg-ward', wards, '— Kata —');
+  },
+  onDRegionChange() {
+    const r = $('dreg-region').value;
+    const dists = r ? Object.keys(LOC[r]||{}) : [];
+    fillSelect('dreg-district', dists, '— Wilaya —');
+    fillSelect('dreg-ward', [], '— Kata —');
+  },
+  onDDistrictChange() {
+    const r = $('dreg-region').value, d = $('dreg-district').value;
+    const wards = (r&&d) ? (LOC[r]?.[d]||[]) : [];
+    fillSelect('dreg-ward', wards, '— Kata —');
   },
 
-  // ── STEP NAVIGATION ───────────────────────────────────
-
-  goStep(n){
-    for(let i=1;i<=4;i++) el(`step-${i}`)?.classList.remove('active');
-    el(`step-${n}`)?.classList.add('active');
-    const pct={1:25,2:50,3:85,4:70}[n]||25;
-    const pf=el('prog-fill'); if(pf) pf.style.width=pct+'%';
+  // ── Eye toggle ──────────────────────────────────────────
+  eyeToggle(inputId, iconId) {
+    const inp = $(inputId), ico = $(iconId);
+    if (!inp || !ico) return;
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    ico.innerHTML = show
+      ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`
+      : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
   },
 
-  pickRole(role){
-    State.role=role;
-    document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected'));
-    el(`role-btn-${role}`)?.classList.add('selected');
-    ['retailer','distributor'].forEach(r=>{
-      const ck=el(`check-${r}`); const ar=el(`arrow-${r}`);
-      if(ck) ck.style.display=r===role?'inline':'none';
-      if(ar) ar.style.display=r===role?'none':'inline';
-    });
-    const nb=el('role-next-btn'); if(nb) nb.style.display='';
-    const nt=el('role-next-text');
-    if(nt) nt.innerText=State.lang==='sw'?'Endelea →':'Continue →';
-  },
+  // ── Retailer registration ──────────────────────────────
+  async submitDetails() {
+    const name = $('reg-name').value.trim();
+    const rawPhone = $('reg-phone').value.trim();
+    const pin = $('reg-pin').value.trim();
+    const pin2 = $('reg-pin2').value.trim();
 
-  proceedFromRole(){
-    if(!State.role) return;
-    const de=el('dist-extra');
-    if(de) de.style.display=State.role==='distributor'?'flex':'none';
-    this._buildCatGrid();
-    this._applyTranslations();
-    this.goStep(State.authMode==='login'?4:3);
-  },
+    if (!name) return toast('Weka jina la duka', 'e');
+    const phone = normPhone(rawPhone);
+    if (!phone) return toast('Namba ya simu si sahihi', 'e');
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) return toast('PIN lazima iwe tarakimu 4', 'e');
+    if (pin !== pin2) return toast('PIN hazilingani', 'e');
 
-  setAuthMode(mode){
-    State.authMode=mode;
-    el('tab-register')?.classList.toggle('active',mode==='register');
-    el('tab-login')?.classList.toggle('active',mode==='login');
-  },
-
-  // ── AUTH ──────────────────────────────────────────────
-
-  async handleRegister(e){
-    e.preventDefault();
-    const pass=el('reg-pass').value;
-    const pass2=el('reg-pass2').value;
-    const username=el('reg-user').value.trim().toLowerCase();
-    if(pass!==pass2){showToast('❌ '+t('err_pass_match'),'error');return;}
-    if(pass.length<6){showToast('❌ '+t('err_pass_match').replace('hazifanani','lazima iwe 6+'),'error');return;}
-    const region=el('reg-region')?.value;
-    const district=el('reg-district')?.value;
-    if(!region||!district){showToast('⚠️ '+t('err_select_location'),'error');return;}
-    const payload={
-      username,password:pass,store_name:el('reg-name').value.trim(),
-      phone_number:el('reg-phone').value.trim()||null,
-      role:State.role,region,district,
-      ward:el('reg-ward')?.value||null,
-      street:el('reg-street')?.value.trim()||null,
-      coverage_area:el('reg-coverage')?.value.trim()||null,
-      lang:State.lang,is_approved:true,is_active:true,
+    S.pendingData = {
+      role: 'retailer',
+      store_name: name, phone, pin,
+      region: $('reg-region').value,
+      district: $('reg-district').value,
+      ward: $('reg-ward').value,
+      street: $('reg-street').value,
+      business_type: $('reg-btype').value,
     };
-    const btn=el('reg-submit'); const span=el('reg-submit-text');
-    if(btn) btn.disabled=true;
-    if(span) span.innerHTML='<span class="spinner"></span>';
-    try{
-      const {data:existing}=await supabase.from('profiles').select('id').eq('username',username).maybeSingle();
-      if(existing){showToast('❌ '+t('err_username'),'error');return;}
-      const {data,error}=await supabase.from('profiles').insert([payload]).select().single();
-      if(error){console.error(error);showToast('❌ '+t('err_generic'),'error');return;}
-      State.user=data;
-      this._saveSession();
-      this.launchApp();
-    }catch(err){console.error(err);showToast('❌ '+t('err_generic'),'error');}
-    finally{if(btn)btn.disabled=false;if(span)span.innerText=t('btn_register');}
+    S.pendingPhone = phone;
+
+    setBusy('reg-btn', true);
+    const r = await callOTP({ action:'send_otp', phone });
+    setBusy('reg-btn', false, 'Endelea — Tuma OTP');
+
+    if (!r.success) return toast(r.message || 'Hitilafu', 'e');
+    toast('OTP imetumwa! ✅', 's');
+    setText('otp-phone', phone);
+    App.clearOTPBoxes('ob');
+    App.startResendTimer();
+    goStep(5);
   },
 
-  async handleLogin(e){
-    e.preventDefault();
-    const username=el('login-user').value.trim().toLowerCase();
-    const password=el('login-pass').value;
-    const btn=el('login-submit'); const span=el('login-submit-text');
-    if(btn) btn.disabled=true;
-    if(span) span.innerHTML='<span class="spinner"></span>';
-    try{
-      const {data,error}=await supabase.from('profiles').select('*')
-        .eq('username',username).eq('password',password).maybeSingle();
-      if(error||!data){showToast('❌ '+t('err_login'),'error');return;}
-      State.user=data;
-      State.lang=data.lang||State.lang;
-      this._saveSession();
-      this.launchApp();
-    }catch(err){console.error(err);showToast('❌ '+t('err_generic'),'error');}
-    finally{if(btn)btn.disabled=false;if(span)span.innerText=t('btn_login');}
+  // ── Distributor registration ────────────────────────────
+  async submitDDetails() {
+    const name = $('dreg-name').value.trim();
+    const rawPhone = $('dreg-phone').value.trim();
+    const pin = $('dreg-pin').value.trim();
+    const pin2 = $('dreg-pin2').value.trim();
+
+    if (!name) return toast('Weka jina la biashara', 'e');
+    const phone = normPhone(rawPhone);
+    if (!phone) return toast('Namba ya simu si sahihi', 'e');
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) return toast('PIN lazima iwe tarakimu 4', 'e');
+    if (pin !== pin2) return toast('PIN hazilingani', 'e');
+
+    const checkedCats = [...document.querySelectorAll('#cat-grid input:checked')].map(i=>i.value);
+
+    S.pendingData = {
+      role: 'distributor',
+      store_name: name, phone, pin,
+      region: $('dreg-region').value,
+      district: $('dreg-district').value,
+      ward: $('dreg-ward').value,
+      street: $('dreg-street').value,
+      coverage_area: $('dreg-coverage').value,
+      min_delivery_amount: parseFloat($('dreg-mindel').value||'0'),
+      categories: checkedCats.join(','),
+    };
+    S.pendingPhone = phone;
+
+    setBusy('dreg-btn', true);
+    const r = await callOTP({ action:'send_otp', phone });
+    setBusy('dreg-btn', false, 'Endelea — Tuma OTP');
+
+    if (!r.success) return toast(r.message || 'Hitilafu', 'e');
+    toast('OTP imetumwa! ✅', 's');
+    setText('otp-phone', phone);
+    App.clearOTPBoxes('ob');
+    App.startResendTimer();
+    goStep(5);
   },
 
-  logout(){
-    if(State.realtimeSub){supabase.removeChannel(State.realtimeSub);State.realtimeSub=null;}
-    this._clearSession();
-    State.user=null;State.cart={};State.notifications=[];State.activePage='';
-    el('app-main').style.display='none';
-    el('onboarding').style.display='flex';
-    el('cart-fab').style.display='none';
-    this.goStep(1);
+  // ── Registration OTP boxes ─────────────────────────────
+  oi(i, el) {
+    el.value = el.value.replace(/\D/g,'').slice(-1);
+    el.classList.toggle('on', !!el.value);
+    if (el.value && i < 5) $(`ob${i+1}`)?.focus();
+    if (i===5 && el.value) App.verifyRegOTP();
   },
-
-  // ── SESSION ───────────────────────────────────────────
-
-  _saveSession(){
-    try{localStorage.setItem('bw_v2',JSON.stringify({user:State.user,lang:State.lang}));}catch(e){}
+  ok(i, e) {
+    if (e.key==='Backspace' && !$(`ob${i}`).value && i>0) $(`ob${i-1}`)?.focus();
   },
-  _clearSession(){try{localStorage.removeItem('bw_v2');}catch(e){}},
-  _restoreSession(){
-    try{
-      const raw=localStorage.getItem('bw_v2'); if(!raw) return false;
-      const {user,lang}=JSON.parse(raw);
-      if(!user?.id) return false;
-      State.user=user; State.lang=lang||'sw'; return true;
-    }catch(e){return false;}
-  },
-
-  // ── LAUNCH ────────────────────────────────────────────
-
-  launchApp(){
-    const onb=el('onboarding'); const app=el('app-main');
-    if(!onb||!app) return;
-    onb.style.display='none'; app.style.display='block';
-    const u=State.user; if(!u) return;
-    const sbName=el('sb-name'); if(sbName) sbName.innerText=u.store_name||'—';
-    const sbAv=el('sb-avatar'); if(sbAv) sbAv.innerText=(u.store_name||'U').charAt(0).toUpperCase();
-    const badge=el('sb-role-badge');
-    if(badge){
-      badge.className=`role-badge badge-${u.role}`;
-      badge.innerText=u.role==='retailer'?(State.lang==='sw'?'Duka':'Retailer'):
-                      u.role==='distributor'?(State.lang==='sw'?'Msambazaji':'Distributor'):'Admin';
+  clearOTPBoxes(prefix, count=6) {
+    for (let i=0;i<count;i++) {
+      const el=$(prefix+i); if(el){el.value='';el.classList.remove('on','err');}
     }
-    el('sb-lang-sw')?.classList.toggle('active',State.lang==='sw');
-    el('sb-lang-en')?.classList.toggle('active',State.lang==='en');
-    this._buildSidebar();
-    this._buildBottomNav();
-    setTimeout(()=>{
-      this._setupRealtime();
-      const fp=u.role==='retailer'?'home':u.role==='admin'?'admin_dashboard':'dashboard';
-      this.navigate(fp);
-    },50);
+  },
+  getOTPVal(prefix, count=6) {
+    return Array.from({length:count},(_,i)=>$(`${prefix}${i}`)?.value||'').join('');
   },
 
-  _buildSidebar(){
-    const u=State.user; if(!u) return;
-    const nav=el('sidebar-nav'); if(!nav) return;
-    const items=u.role==='retailer'?[
-      {id:'home',icon:'🏠',label:t('nav_home')},
-      {id:'marketplace',icon:'🛍️',label:t('nav_marketplace')},
-      {id:'records',icon:'📊',label:t('nav_records')},
-      {id:'my_orders',icon:'📦',label:t('nav_my_orders')},
-    ]:u.role==='admin'?[
-      {id:'admin_dashboard',icon:'📊',label:t('nav_dashboard')},
-      {id:'admin_users',icon:'👥',label:t('nav_users')},
-      {id:'admin_orders',icon:'📋',label:t('nav_all_orders')},
-      {id:'admin_analytics',icon:'📈',label:t('nav_analytics')},
-    ]:[
-      {id:'dashboard',icon:'📊',label:t('nav_dashboard'),badge:true},
-      {id:'orders',icon:'📋',label:t('nav_orders'),badge:true},
-      {id:'products',icon:'🏷️',label:t('nav_products')},
-      {id:'inventory',icon:'📦',label:t('nav_inventory')},
-      {id:'retailers',icon:'🏪',label:t('nav_retailers')},
-      {id:'records',icon:'📈',label:t('nav_records')},
-    ];
-    nav.innerHTML=items.map(item=>`
-      <button class="nav-item" id="nav-${item.id}" onclick="App.navigate('${item.id}')">
-        <span class="nav-icon">${item.icon}</span><span>${item.label}</span>
-        ${item.badge?`<span class="nav-badge" id="badge-${item.id}" style="display:none">0</span>`:''}
-      </button>`).join('');
+  startResendTimer() {
+    clearInterval(S.resendTimer);
+    let sec = 60;
+    const timer = $('rtimer'), btn = $('rbtn');
+    timer.style.display=''; btn.style.display='none';
+    timer.textContent = S.lang==='sw' ? `Tuma tena baada ya ${sec}s` : `Resend in ${sec}s`;
+    S.resendTimer = setInterval(()=>{
+      sec--;
+      if(sec<=0){clearInterval(S.resendTimer);timer.style.display='none';btn.style.display='';}
+      else timer.textContent = S.lang==='sw'?`Tuma tena baada ya ${sec}s`:`Resend in ${sec}s`;
+    },1000);
   },
 
-  _buildBottomNav(){
-    const u=State.user; const bn=el('bottom-nav'); if(!bn||!u) return;
-    let items;
-    if(u.role==='retailer'){
-      items=[
-        {id:'home',icon:'🏠',label:t('nav_home')},
-        {id:'marketplace',icon:'🛍️',label:t('nav_marketplace')},
-        {id:'records',icon:'📊',label:t('nav_records')},
-        {id:'my_orders',icon:'📦',label:t('nav_my_orders')},
-      ];
-    } else if(u.role==='admin'){
-      items=[
-        {id:'admin_dashboard',icon:'📊',label:t('nav_dashboard')},
-        {id:'admin_users',icon:'👥',label:t('nav_users')},
-        {id:'admin_orders',icon:'📋',label:t('nav_all_orders')},
-        {id:'admin_analytics',icon:'📈',label:t('nav_analytics')},
-      ];
+  async resendRegOTP() {
+    if (!S.pendingPhone) return;
+    const r = await callOTP({ action:'send_otp', phone: S.pendingPhone });
+    if (r.success) { toast('OTP imetumwa tena','s'); App.startResendTimer(); }
+    else toast(r.message||'Hitilafu','e');
+  },
+
+  async verifyRegOTP() {
+    const code = App.getOTPVal('ob');
+    if (code.length !== 6) return toast('Weka nambari 6 kamili','e');
+    setBusy('vbtn', true);
+    const r = await callOTP({ action:'verify_otp', phone: S.pendingPhone, otp_code: code });
+    if (!r.success) {
+      setBusy('vbtn', false, 'Thibitisha');
+      for(let i=0;i<6;i++) $(`ob${i}`)?.classList.add('err');
+      return toast(r.message||'Nambari si sahihi','e');
+    }
+    // OTP OK — create account
+    const reg = await callOTP({ action:'complete_registration', phone: S.pendingPhone, ...S.pendingData });
+    setBusy('vbtn', false, 'Thibitisha');
+    if (!reg.success) return toast(reg.message||'Tatizo la kuunda akaunti','e');
+    toast('Akaunti imefunguliwa! 🎉','s');
+    S.user = reg.user;
+    saveSession();
+    App.showApp();
+  },
+
+  goBack5() {
+    goStep(S.role==='retailer' ? 3 : 4);
+  },
+
+  // ── Login ────────────────────────────────────────────────
+  async sendLoginOTP() {
+    const raw = $('lphone').value.trim();
+    const phone = normPhone(raw);
+    if (!phone) return toast('Namba ya simu si sahihi','e');
+    S.pendingPhone = phone;
+    setBusy('lotp-txt', false);
+    const r = await callOTP({ action:'send_otp', phone });
+    if (!r.success) return toast(r.message||'Hitilafu','e');
+    toast('OTP imetumwa! ✅','s');
+    setText('lotp-phone', phone);
+    App.clearOTPBoxes('lb');
+    App.startLoginResendTimer();
+    goStep(9);
+  },
+
+  loi(i,el) {
+    el.value=el.value.replace(/\D/g,'').slice(-1);
+    el.classList.toggle('on',!!el.value);
+    if(el.value&&i<5)$(`lb${i+1}`)?.focus();
+    if(i===5&&el.value)App.verifyLoginOTP();
+  },
+  lok(i,e) { if(e.key==='Backspace'&&!$(`lb${i}`).value&&i>0)$(`lb${i-1}`)?.focus(); },
+
+  startLoginResendTimer() {
+    clearInterval(S.loginResendTimer);
+    let sec=60; const timer=$('lrtimer'),btn=$('lrbtn');
+    timer.style.display='';btn.style.display='none';
+    timer.textContent=S.lang==='sw'?`Tuma tena baada ya ${sec}s`:`Resend in ${sec}s`;
+    S.loginResendTimer=setInterval(()=>{
+      sec--;
+      if(sec<=0){clearInterval(S.loginResendTimer);timer.style.display='none';btn.style.display='';}
+      else timer.textContent=S.lang==='sw'?`Tuma tena baada ya ${sec}s`:`Resend in ${sec}s`;
+    },1000);
+  },
+  async resendLoginOTP() {
+    if(!S.pendingPhone)return;
+    const r=await callOTP({action:'send_otp',phone:S.pendingPhone});
+    if(r.success){toast('OTP imetumwa tena','s');App.startLoginResendTimer();}
+    else toast(r.message||'Hitilafu','e');
+  },
+
+  async verifyLoginOTP() {
+    const code=App.getOTPVal('lb');
+    if(code.length!==6)return toast('Weka nambari 6 kamili','e');
+    setBusy('lvbtn',true);
+    const r=await callOTP({action:'verify_otp',phone:S.pendingPhone,otp_code:code});
+    setBusy('lvbtn',false,'Thibitisha');
+    if(!r.success){
+      for(let i=0;i<6;i++)$(`lb${i}`)?.classList.add('err');
+      return toast(r.message||'Nambari si sahihi','e');
+    }
+    if(!r.user_exists)
+      return toast(S.lang==='sw'?'Namba hii haijasajiliwa. Unda akaunti kwanza.':'Number not registered. Please create account.','e');
+    S.user=r.user; saveSession();
+    // Show PIN screen
+    S.pinBuf=''; App.renderPinDots();
+    setText('s7h', S.lang==='sw'?'Karibu!':'Welcome!');
+    setText('s7sub', r.user.store_name||'');
+    goStep(7);
+  },
+
+  // ── PIN keypad ──────────────────────────────────────────
+  pk(digit) {
+    if(S.pinBuf.length>=4)return;
+    S.pinBuf+=digit; App.renderPinDots();
+    if(S.pinBuf.length===4)setTimeout(()=>App.checkPin(),200);
+  },
+  pdel() { S.pinBuf=S.pinBuf.slice(0,-1); App.renderPinDots(); },
+  renderPinDots() {
+    for(let i=0;i<4;i++){
+      const dot=$(`pd${i}`);
+      if(dot){dot.classList.toggle('on',i<S.pinBuf.length);dot.classList.remove('err');}
+    }
+    setText('perr','');
+  },
+  checkPin() {
+    if(S.pinBuf===String(S.user.pin)){
+      S.user.last_login=new Date().toISOString();
+      saveSession();
+      App.showApp();
     } else {
-      items=[
-        {id:'dashboard',icon:'📊',label:t('nav_home'),badge:true},
-        {id:'orders',icon:'📋',label:t('nav_orders'),badge:true},
-        {id:'records',icon:'📈',label:t('nav_records')},
-        {id:'dist_more',icon:'⋯',label:t('nav_more')},
-      ];
+      for(let i=0;i<4;i++) $(`pd${i}`)?.classList.add('err');
+      setText('perr', S.lang==='sw'?'PIN si sahihi. Jaribu tena.':'Wrong PIN. Try again.');
+      setTimeout(()=>{S.pinBuf='';App.renderPinDots();},900);
     }
-    bn.innerHTML=items.map(item=>`
-      <button class="bn-item" id="bn-${item.id}" onclick="App.navigate('${item.id}')">
-        <span class="bn-icon ${item.badge?'bn-badge':''}">
-          ${item.icon}
-          ${item.badge?`<span class="bn-badge-dot" id="bn-badge-${item.id}" style="display:none">0</span>`:''}
-        </span>
-        <span class="bn-label">${item.label}</span>
-      </button>`).join('');
   },
 
-  // ── NAVIGATION ────────────────────────────────────────
+  // ── Forgot PIN ─────────────────────────────────────────
+  forgotPin() { S.pinBuf=''; goStep(10); },
 
-  navigate(page){
-    // Distributor "More" shows a panel instead of navigating
-    if(page==='dist_more'){ this._showMoreMenu(); return; }
-
-    State.activePage=page;
-    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-    el(`nav-${page}`)?.classList.add('active');
-    el(`bn-${page}`)?.classList.add('active');
-    this.closeSidebar();
-
-    const PM={
-      home:           {title:'topbar_home',sub:'topbar_sub_home',icon:'🏠'},
-      marketplace:    {title:'topbar_marketplace',sub:'topbar_sub_market',icon:'🛍️'},
-      records:        {title:'topbar_records',sub:'topbar_sub_records',icon:'📊'},
-      my_orders:      {title:'topbar_my_orders',sub:'topbar_sub_my_orders',icon:'📦'},
-      dashboard:      {title:'topbar_dashboard',sub:'topbar_sub_dash',icon:'📊'},
-      orders:         {title:'topbar_orders',sub:'topbar_sub_orders',icon:'📋'},
-      products:       {title:'topbar_products',sub:'topbar_sub_products',icon:'🏷️'},
-      inventory:      {title:'topbar_inventory',sub:'topbar_sub_inventory',icon:'📦'},
-      retailers:      {title:'topbar_retailers',sub:'topbar_sub_retailers',icon:'🏪'},
-      admin_dashboard:{title:'topbar_dashboard',sub:'topbar_sub_dash',icon:'📊'},
-      admin_users:    {title:'topbar_users',sub:'topbar_sub_users',icon:'👥'},
-      admin_orders:   {title:'topbar_all_orders',sub:'topbar_sub_all_orders',icon:'📋'},
-      admin_analytics:{title:'topbar_analytics',sub:'topbar_sub_analytics',icon:'📈'},
-    };
-    const info=PM[page]||PM.dashboard;
-    setText('topbar-title',t(info.title));
-    setText('topbar-sub',t(info.sub));
-    const ic=el('topbar-icon'); if(ic) ic.innerText=info.icon;
-
-    const fab=el('cart-fab');
-    if(fab) fab.style.display=page==='marketplace'?'flex':'none';
-
-    const view=el('app-view'); if(!view) return;
-
-    const renders={
-      home:()=>this._renderHome(),
-      marketplace:()=>this._renderMarketplace(),
-      records:()=>this._renderRecords(),
-      my_orders:()=>this._renderMyOrders(),
-      dashboard:()=>this._renderDashboard(),
-      orders:()=>this._renderDistOrders(),
-      products:()=>this._renderProducts(),
-      inventory:()=>this._renderInventory(),
-      retailers:()=>this._renderRetailers(),
-      admin_dashboard:()=>this._renderAdminDashboard(),
-      admin_users:()=>this._renderAdminUsers(),
-      admin_orders:()=>this._renderAdminOrders(),
-      admin_analytics:()=>this._renderAdminAnalytics(),
-    };
-    renders[page]?.();
+  async sendForgotOTP() {
+    const raw=$('fphone').value.trim();
+    const phone=normPhone(raw);
+    if(!phone)return toast('Namba ya simu si sahihi','e');
+    S.pendingPhone=phone;
+    const r=await callOTP({action:'send_otp',phone});
+    if(!r.success)return toast(r.message||'Hitilafu','e');
+    toast('OTP imetumwa! ✅','s');
+    setText('fotp-phone',phone);
+    App.clearOTPBoxes('fb');
+    goStep(11);
   },
 
-  _showMoreMenu(){
-    const existing=el('more-menu-overlay');
-    if(existing){existing.remove();return;}
-    const items=[
-      {id:'products',icon:'🏷️',label:t('nav_products')},
-      {id:'inventory',icon:'📦',label:t('nav_inventory')},
-      {id:'retailers',icon:'🏪',label:t('nav_retailers')},
+  foi(i,el){
+    el.value=el.value.replace(/\D/g,'').slice(-1);
+    el.classList.toggle('on',!!el.value);
+    if(el.value&&i<5)$(`fb${i+1}`)?.focus();
+    if(i===5&&el.value)App.verifyForgotOTP();
+  },
+  fok(i,e){if(e.key==='Backspace'&&!$(`fb${i}`).value&&i>0)$(`fb${i-1}`)?.focus();},
+
+  async verifyForgotOTP() {
+    const code=App.getOTPVal('fb');
+    if(code.length!==6)return toast('Weka nambari 6 kamili','e');
+    setBusy('fvbtn',true);
+    const r=await callOTP({action:'verify_otp',phone:S.pendingPhone,otp_code:code});
+    setBusy('fvbtn',false,'Thibitisha');
+    if(!r.success){for(let i=0;i<6;i++)$(`fb${i}`)?.classList.add('err');return toast(r.message||'Nambari si sahihi','e');}
+    // Check user exists with this phone
+    if(!r.user_exists)return toast(S.lang==='sw'?'Namba hii haijasajiliwa.':'Number not registered.','e');
+    S.user=r.user; goStep(12);
+  },
+
+  async resetPin() {
+    const pin=$('npin').value.trim(), pin2=$('npin2').value.trim();
+    if(pin.length!==4||!/^\d{4}$/.test(pin))return toast('PIN lazima iwe tarakimu 4','e');
+    if(pin!==pin2)return toast('PIN hazilingani','e');
+    setBusy('rpintxt',false);
+    const r=await callOTP({action:'reset_pin',phone:S.pendingPhone,pin});
+    if(!r.success)return toast(r.message||'Hitilafu','e');
+    toast(S.lang==='sw'?'PIN imebadilishwa! ✅':'PIN updated! ✅','s');
+    S.user=r.user; saveSession();
+    App.showApp();
+  },
+
+  // ── Show App ────────────────────────────────────────────
+  showApp() {
+    $('onboarding').style.display='none';
+    $('app-main').style.display='block';
+    App.renderApp();
+    App.setupRealtime();
+  },
+
+  logout() {
+    if(S.realtimeCh)sb.removeChannel(S.realtimeCh);
+    S={user:null,lang:S.lang,role:null,pendingPhone:null,pendingData:null,
+       pinBuf:'',cart:[],cartDist:null,page:'dashboard',notifs:[],
+       resendTimer:null,loginResendTimer:null,forgotResendTimer:null,realtimeCh:null};
+    clearSession();
+    $('onboarding').style.display='flex';
+    $('app-main').style.display='none';
+    goStep(1);
+  },
+
+  // ══════════════════════════════════════════════════════════
+  //  APP RENDERING
+  // ══════════════════════════════════════════════════════════
+  renderApp() {
+    const u=S.user;
+    // Sidebar user info
+    const av=u.store_name?.[0]?.toUpperCase()||'U';
+    setText('sbav',av); setText('sbn',u.store_name||'—');
+    const badgeClass={retailer:'rb-ret',distributor:'rb-dist',admin:'rb-adm'}[u.role]||'rb-ret';
+    const badgeTxt={retailer:'Duka',distributor:'Msambazaji',admin:'Admin'}[u.role]||u.role;
+    const bb=$('sbb');
+    if(bb){bb.className=`rbadge ${badgeClass}`;bb.textContent=badgeTxt;}
+
+    // Nav items by role
+    const navItems = App.getNavItems(u.role);
+    const nav=$('sbnav');
+    if(nav){
+      nav.innerHTML=navItems.map(n=>`
+        <button class="ni${S.page===n.page?' on':''}" onclick="App.navTo('${n.page}')">
+          <span class="nic">${n.icon}</span>${n.label}
+          ${n.badge?`<span class="nb">${n.badge}</span>`:''}
+        </button>`).join('');
+    }
+
+    // Bottom nav (mobile)
+    const mobileNav=navItems.slice(0,5);
+    const bn=$('bn');
+    if(bn){
+      bn.innerHTML=mobileNav.map(n=>`
+        <button class="bni${S.page===n.page?' on':''}" onclick="App.navTo('${n.page}')">
+          ${n.icon}<span class="bni-lbl">${n.shortLabel||n.label}</span>
+        </button>`).join('');
+    }
+
+    // Lang toggle
+    $('lsw-sw')?.classList.toggle('on',S.lang==='sw');
+    $('lsw-en')?.classList.toggle('on',S.lang==='en');
+
+    // Render page
+    App.renderPage(S.page);
+  },
+
+  getNavItems(role) {
+    const l=S.lang;
+    const base=[
+      {page:'dashboard',icon:svgIcon('grid'),label:t('dashboard'),shortLabel:'Home'},
     ];
-    const overlay=document.createElement('div');
-    overlay.id='more-menu-overlay';
-    overlay.style.cssText='position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;';
-    overlay.innerHTML=`
-      <div style="width:100%;background:#fff;border-radius:1.25rem 1.25rem 0 0;padding:1rem;padding-bottom:calc(var(--bottom-nav-h) + 1rem)">
-        <div style="width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto .875rem"></div>
-        <div style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;padding:0 .25rem">${t('more_menu')}</div>
-        ${items.map(i=>`
-          <button onclick="document.getElementById('more-menu-overlay').remove();App.navigate('${i.id}')"
-            style="width:100%;display:flex;align-items:center;gap:.875rem;padding:.875rem .5rem;
-            border:none;background:none;font-family:'DM Sans',sans-serif;font-size:.88rem;
-            font-weight:600;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border2);text-align:left">
-            <span style="font-size:1.3rem;width:28px;text-align:center">${i.icon}</span>
-            ${i.label}
-          </button>`).join('')}
-      </div>`;
-    overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
-    document.body.appendChild(overlay);
+    if(role==='retailer') return [...base,
+      {page:'marketplace',icon:svgIcon('store'),label:t('marketplace'),shortLabel:'Soko'},
+      {page:'my-orders',icon:svgIcon('pkg'),label:t('myOrders'),shortLabel:'Maagizo'},
+      {page:'pos',icon:svgIcon('pos'),label:t('pos'),shortLabel:'POS'},
+      {page:'debts',icon:svgIcon('debt'),label:t('debts'),shortLabel:'Madeni'},
+      {page:'reports',icon:svgIcon('chart'),label:t('reports'),shortLabel:'Ripoti'},
+    ];
+    if(role==='distributor') return [...base,
+      {page:'products',icon:svgIcon('pkg'),label:t('products'),shortLabel:'Bidhaa'},
+      {page:'orders',icon:svgIcon('orders'),label:t('orders'),shortLabel:'Maagizo'},
+      {page:'invoices',icon:svgIcon('invoice'),label:t('invoices'),shortLabel:'Ankara'},
+      {page:'reports',icon:svgIcon('chart'),label:t('reports'),shortLabel:'Ripoti'},
+    ];
+    if(role==='admin') return [...base,
+      {page:'users',icon:svgIcon('users'),label:t('users'),shortLabel:'Watumiaji'},
+      {page:'orders',icon:svgIcon('orders'),label:t('orders'),shortLabel:'Maagizo'},
+      {page:'analytics',icon:svgIcon('analytics'),label:t('analytics'),shortLabel:'Data'},
+    ];
+    return base;
   },
 
-  // ── MOBILE SIDEBAR ────────────────────────────────────
-
-  toggleSidebar(){
-    el('sidebar')?.classList.toggle('mobile-open');
-    el('sidebar-overlay')?.classList.toggle('active');
-  },
-  closeSidebar(){
-    el('sidebar')?.classList.remove('mobile-open');
-    el('sidebar-overlay')?.classList.remove('active');
+  navTo(page) {
+    S.page=page;
+    App.renderApp();
+    App.closeSidebar();
+    window.scrollTo(0,0);
   },
 
-  // ── REALTIME ──────────────────────────────────────────
-
-  _setupRealtime(){
-    if(State.realtimeSub) supabase.removeChannel(State.realtimeSub);
-    const u=State.user;
-    const channel=supabase.channel(`bw2-${u.id}`)
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'orders'},(pl)=>{
-        if(u.role==='distributor'&&pl.new.distributor_id===u.id){
-          playSmsSound('new_order');
-          this._addNotif({icon:'🛍️',title:t('notif_new_order'),text:pl.new.order_ref});
-          showToast('🔔 '+t('toast_new_order'),'info');
-          if(['orders','dashboard'].includes(State.activePage)) this.navigate(State.activePage);
-          this._updateOrderBadge();
-        }
-      })
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders'},(pl)=>{
-        if(u.role==='retailer'&&pl.new.retailer_id===u.id){
-          const st=pl.new.status;
-          if(st==='confirmed'||st==='delivered'){
-            const msg=st==='confirmed'?t('toast_order_confirmed'):t('toast_order_delivered');
-            playSmsSound(st==='confirmed'?'confirmed':'delivered');
-            showToast('✅ '+msg,'success');
-            this._addNotif({icon:st==='delivered'?'📦':'✅',
-              title:st==='delivered'?t('notif_order_del'):t('notif_order_conf'),text:pl.new.order_ref});
-          }
-          if(State.activePage==='my_orders') this._renderMyOrders();
-        }
-      }).subscribe();
-    State.realtimeSub=channel;
+  toggleSidebar() {
+    $('sidebar')?.classList.toggle('open');
+    $('sovl')?.classList.toggle('active');
+  },
+  closeSidebar() {
+    $('sidebar')?.classList.remove('open');
+    $('sovl')?.classList.remove('active');
   },
 
-  _addNotif(n){
-    const now=new Date().toLocaleTimeString(State.lang==='sw'?'sw-TZ':'en-GB',{hour:'2-digit',minute:'2-digit'});
-    State.notifications.unshift({...n,time:now});
-    const dot=el('notif-dot');
-    if(dot){dot.style.display='flex';dot.innerText=Math.min(State.notifications.length,99);}
-    this._renderNotifList();
+  toggleNotif() { $('ndd')?.classList.toggle('open'); },
+  clearNotifs() { S.notifs=[]; App.renderNotifs(); },
+  addNotif(txt) {
+    S.notifs.unshift({txt,time:new Date().toLocaleTimeString()});
+    App.renderNotifs();
+    App.playSmsSound('new_order');
   },
-
-  _renderNotifList(){
-    const list=el('notif-list'); if(!list) return;
-    if(!State.notifications.length){
-      list.innerHTML=`<div class="notif-empty">${t('notif_empty')}</div>`;return;
-    }
-    list.innerHTML=State.notifications.slice(0,10).map((n,i)=>`
-      <div class="notif-item ${i===0?'unread':''}">
-        <span class="notif-icon">${n.icon}</span>
-        <div><div class="notif-text">${n.title} — ${n.text}</div>
-        <div class="notif-time">${n.time}</div></div>
+  renderNotifs() {
+    const list=$('nlist'), dot=$('ndot');
+    const count=S.notifs.length;
+    if(dot){dot.style.display=count?'flex':'none';dot.textContent=count>9?'9+':count;}
+    if(!list)return;
+    if(!count){list.innerHTML=`<div class="nde" id="ne-txt">${S.lang==='sw'?'Hakuna arifa':'No notifications'}</div>`;return;}
+    list.innerHTML=S.notifs.slice(0,10).map(n=>`
+      <div class="ndi unread">
+        <div><div class="ndt">${n.txt}</div><div class="ndtime">${n.time}</div></div>
       </div>`).join('');
   },
 
-  toggleNotif(){
-    State.notifOpen=!State.notifOpen;
-    el('notif-dropdown')?.classList.toggle('open',State.notifOpen);
-    if(State.notifOpen){const d=el('notif-dot');if(d)d.style.display='none';}
+  // ── Realtime ───────────────────────────────────────────
+  setupRealtime() {
+    if(S.realtimeCh)sb.removeChannel(S.realtimeCh);
+    const u=S.user;
+    S.realtimeCh=sb.channel('bw-realtime')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'orders'},payload=>{
+        const o=payload.new;
+        if(u.role==='distributor'&&o.distributor_id===u.id){
+          App.addNotif(`${S.lang==='sw'?'Agizo jipya kutoka':'New order from'} ${o.order_ref}`);
+          if(S.page==='orders')App.renderPage('orders');
+        }
+        if(u.role==='retailer'&&o.retailer_id===u.id){
+          if(S.page==='my-orders')App.renderPage('my-orders');
+        }
+      })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders'},payload=>{
+        const o=payload.new;
+        if(u.role==='retailer'&&o.retailer_id===u.id){
+          App.addNotif(`${S.lang==='sw'?'Hali ya agizo imebadilika:':'Order status changed:'} ${o.status}`);
+          App.playSmsSound(o.status==='confirmed'?'confirmed':'delivered');
+          if(S.page==='my-orders')App.renderPage('my-orders');
+        }
+      }).subscribe();
   },
 
-  clearNotifs(){
-    State.notifications=[];this._renderNotifList();
-    const d=el('notif-dot');if(d)d.style.display='none';
-  },
-
-  async _updateOrderBadge(){
-    try{
-      const {count}=await supabase.from('orders').select('*',{count:'exact',head:true})
-        .eq('distributor_id',State.user.id).eq('status','pending');
-      const n=count||0;
-      ['badge-dashboard','badge-orders','bn-badge-dashboard','bn-badge-orders'].forEach(id=>{
-        const b=el(id);if(b){b.innerText=n;b.style.display=n>0?'flex':'none';}
+  playSmsSound(type) {
+    try {
+      const ac=new (window.AudioContext||window.webkitAudioContext)();
+      const patterns={
+        new_order:[[800,.1,0],[600,.1,.15]],
+        confirmed:[[500,.08,0],[700,.08,.12],[900,.1,.24]],
+        delivered:[[400,.08,0],[600,.1,.12],[800,.12,.26],[1000,.1,.42]],
+      };
+      (patterns[type]||patterns.new_order).forEach(([freq,dur,delay])=>{
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.connect(g);g.connect(ac.destination);
+        o.frequency.value=freq;
+        o.start(ac.currentTime+delay);o.stop(ac.currentTime+delay+dur);
+        g.gain.setValueAtTime(.3,ac.currentTime+delay);
+        g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+delay+dur);
       });
-    }catch(e){}
+    } catch{}
   },
 
-  // ══════════════════════════════════════════════════════
-  //  RETAILER HOME
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════
+  //  PAGE RENDERING
+  // ══════════════════════════════════════════════════════════
+  async renderPage(page) {
+    const view=$('av');
+    if(!view)return;
+    view.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--s500)"><span class="spin d"></span></div>`;
 
-  async _renderHome(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    const uid=State.user.id;
-    let orders=[],sales=[],expenses=[],debts=[];
-    try{
-      const tod=new Date(); tod.setHours(0,0,0,0);
-      const [r1,r2,r3,r4]=await Promise.all([
-        supabase.from('orders').select('*').eq('retailer_id',uid).gte('created_at',tod.toISOString()),
-        supabase.from('sales').select('*').eq('user_id',uid).eq('sale_date',today()),
-        supabase.from('expenses').select('*').eq('user_id',uid).eq('expense_date',today()),
-        supabase.from('debts').select('*').eq('user_id',uid).neq('status','paid'),
-      ]);
-      orders=r1.data||[]; sales=r2.data||[];
-      expenses=r3.data||[]; debts=r4.data||[];
-    }catch(e){console.error(e);}
-    const todaySales=sales.reduce((s,x)=>s+Number(x.revenue),0);
-    const todayProfit=sales.reduce((s,x)=>s+Number(x.profit),0);
-    const totalDebt=debts.reduce((s,x)=>s+(Number(x.amount)-Number(x.amount_paid)),0);
-    const pendingOrders=orders.filter(o=>o.status==='pending').length;
-    view.innerHTML=`
-      <div class="stats-row">
-        <div class="stat-card green"><div class="stat-icon">💰</div>
-          <div class="stat-label">${t('stat_sales_today')}</div>
-          <div class="stat-value" style="font-size:1.1rem">${fmt(todaySales)}</div></div>
-        <div class="stat-card blue"><div class="stat-icon">📈</div>
-          <div class="stat-label">${t('stat_profit_today')}</div>
-          <div class="stat-value" style="font-size:1.1rem;color:var(--blue-dark)">${fmt(todayProfit)}</div></div>
-        <div class="stat-card amber"><div class="stat-icon">⏳</div>
-          <div class="stat-label">${t('stat_pending')}</div>
-          <div class="stat-value">${pendingOrders}</div></div>
-        <div class="stat-card red"><div class="stat-icon">📋</div>
-          <div class="stat-label">${t('stat_debts')}</div>
-          <div class="stat-value" style="font-size:1.1rem">${fmt(totalDebt)}</div></div>
-      </div>
-      <div class="section-header">
-        <span class="section-title">${State.lang==='sw'?'Vitendo vya Haraka':'Quick Actions'}</span>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-bottom:1.25rem">
-        ${[
-          {page:'marketplace',icon:'🛍️',label:t('nav_marketplace'),color:'var(--green-light)',tc:'var(--green-dark)'},
-          {page:'records',icon:'📊',label:t('pos_sales'),color:'var(--blue-light)',tc:'var(--blue-dark)'},
-          {page:'records',icon:'💸',label:t('pos_expenses'),color:'var(--amber-light)',tc:'var(--amber)'},
-          {page:'records',icon:'📋',label:t('pos_debts'),color:'var(--red-light)',tc:'var(--red)'},
-        ].map(a=>`
-          <button onclick="App.navigate('${a.page}')"
-            style="background:${a.color};border:none;border-radius:var(--radius-lg);padding:1rem;
-            cursor:pointer;text-align:center;transition:all .2s;font-family:'DM Sans',sans-serif">
-            <div style="font-size:1.5rem;margin-bottom:.35rem">${a.icon}</div>
-            <div style="font-size:.75rem;font-weight:700;color:${a.tc}">${a.label}</div>
-          </button>`).join('')}
-      </div>
-      ${orders.length?`
-        <div class="section-header">
-          <span class="section-title">${t('topbar_my_orders')}</span>
-          <button class="section-action" onclick="App.navigate('my_orders')">${t('view_all')}</button>
-        </div>
-        <div class="card"><div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th>${t('order_id')}</th><th>${t('distributor')}</th><th>${t('total')}</th><th>${t('status')}</th></tr></thead>
-            <tbody>${orders.slice(0,5).map(o=>`
-              <tr><td class="mono">${o.order_ref}</td>
-              <td>${o.distributor_id?.toString().slice(0,8)||'—'}</td>
-              <td style="color:var(--green-mid);font-weight:700">${fmt(o.total_price)}</td>
-              <td>${pill(o.status)}</td></tr>`).join('')}</tbody>
-          </table></div></div>`:''}`;
+    const tbic=$('tbic'), tbt=$('tbt'), tbs=$('tbs');
+    const icons={dashboard:svgIcon('grid'),marketplace:svgIcon('store'),
+      'my-orders':svgIcon('pkg'),orders:svgIcon('orders'),products:svgIcon('pkg'),
+      pos:svgIcon('pos'),reports:svgIcon('chart'),debts:svgIcon('debt'),
+      invoices:svgIcon('invoice'),users:svgIcon('users'),analytics:svgIcon('analytics')};
+    if(tbic)tbic.innerHTML=icons[page]||svgIcon('grid');
+
+    const pageLabels={dashboard:t('dashboard'),marketplace:t('marketplace'),
+      'my-orders':t('myOrders'),orders:t('orders'),products:t('products'),
+      pos:t('pos'),reports:t('reports'),debts:t('debts'),
+      invoices:t('invoices'),users:t('users'),analytics:t('analytics')};
+    setText('tbt', pageLabels[page]||page);
+    setText('tbs', S.user?.store_name||'');
+
+    const pages={
+      dashboard:()=>App.pageDashboard(),
+      marketplace:()=>App.pageMarketplace(),
+      'my-orders':()=>App.pageMyOrders(),
+      orders:()=>App.pageOrders(),
+      products:()=>App.pageProducts(),
+      pos:()=>App.pagePOS(),
+      reports:()=>App.pageReports(),
+      debts:()=>App.pageDebts(),
+      invoices:()=>App.pageInvoices(),
+      users:()=>App.pageUsers(),
+      analytics:()=>App.pageAnalytics(),
+    };
+    await (pages[page]||pages.dashboard)();
   },
 
-  // ══════════════════════════════════════════════════════
-  //  MARKETPLACE
-  // ══════════════════════════════════════════════════════
+  // ── DASHBOARD ──────────────────────────────────────────
+  async pageDashboard() {
+    const u=S.user;
+    const {data:orders}=await sb.from('orders')
+      .select('*').or(`retailer_id.eq.${u.id},distributor_id.eq.${u.id}`)
+      .order('created_at',{ascending:false}).limit(10);
+    const {data:sales}=await sb.from('sales').select('revenue,profit,created_at')
+      .eq('user_id',u.id).gte('sale_date',today());
+    const todayRev=sales?.reduce((s,r)=>s+(r.revenue||0),0)||0;
+    const todayProfit=sales?.reduce((s,r)=>s+(r.profit||0),0)||0;
+    const pending=(orders||[]).filter(o=>o.status==='pending').length;
+    const delivered=(orders||[]).filter(o=>o.status==='delivered').length;
 
-  async _renderMarketplace(){
-    const view=el('app-view'); if(!view) return;
+    const view=$('av');
     view.innerHTML=`
-      <div>
-        <div style="display:flex;gap:.65rem;align-items:center;margin-bottom:.875rem;flex-wrap:wrap">
-          <div class="search-wrap" style="flex:1;min-width:180px;max-width:300px">
-            <span class="search-icon">🔍</span>
-            <input class="form-input" id="market-search" placeholder="${t('search_products')}"
-              oninput="App._filterProducts()" style="padding-left:2.1rem"/>
+      <div class="sr">
+        <div class="sc g"><div class="sic">${svgIcon('revenue')}</div><div class="sl">${S.lang==='sw'?'Mauzo Leo':'Today Sales'}</div><div class="sv">${fmt(todayRev)}</div></div>
+        <div class="sc g"><div class="sic">${svgIcon('profit')}</div><div class="sl">${t('profit')}</div><div class="sv">${fmt(todayProfit)}</div></div>
+        <div class="sc a"><div class="sic">${svgIcon('pkg')}</div><div class="sl">${S.lang==='sw'?'Yanasubiri':'Pending'}</div><div class="sv">${pending}</div></div>
+        <div class="sc b"><div class="sic">${svgIcon('orders')}</div><div class="sl">${S.lang==='sw'?'Zimetolewa':'Delivered'}</div><div class="sv">${delivered}</div></div>
+      </div>
+      <div class="card">
+        <div class="cp">
+          <div class="sh"><span class="st">${S.lang==='sw'?'Maagizo ya Hivi Karibuni':'Recent Orders'}</span>
+            <button class="sa" onclick="App.navTo('${u.role==='retailer'?'my-orders':'orders'}')">${S.lang==='sw'?'Ona Yote →':'See All →'}</button>
           </div>
+          <div class="tw"><table class="dt">
+            <thead><tr>
+              <th>REF</th><th>${S.lang==='sw'?'HALI':'STATUS'}</th>
+              <th>${S.lang==='sw'?'JUMLA':'TOTAL'}</th><th>${S.lang==='sw'?'TAREHE':'DATE'}</th>
+            </tr></thead>
+            <tbody>${(orders||[]).slice(0,5).map(o=>`
+              <tr>
+                <td><span style="font-size:.75rem;font-weight:700;color:var(--g700)">${o.order_ref}</span></td>
+                <td>${statusPill(o.status,S.lang)}</td>
+                <td style="font-weight:700">${fmt(o.total_price)}</td>
+                <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</td>
+              </tr>`).join('')||`<tr><td colspan="4"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
+            </tbody>
+          </table></div>
         </div>
-        <div class="filter-pills" id="cat-filters"></div>
-        <div class="product-grid" id="product-list">${loader()}</div>
       </div>`;
+  },
+
+  // ── MARKETPLACE (Retailer) ─────────────────────────────
+  async pageMarketplace() {
+    const u=S.user;
+    // Load distributors — filtered by location first
+    const {data:allDists}=await sb.from('profiles')
+      .select('id,store_name,region,district,coverage_area,min_delivery_amount')
+      .eq('role','distributor').eq('is_active',true);
+
+    // Sort: same region first, then same district
+    const sorted=(allDists||[]).sort((a,b)=>{
+      const aScore=(a.region===u.region?2:0)+(a.district===u.district?1:0);
+      const bScore=(b.region===u.region?2:0)+(b.district===u.district?1:0);
+      return bScore-aScore;
+    });
+
+    const distOpts=sorted.map(d=>`<option value="${d.id}">${d.store_name} — ${d.district||d.region||''}${d.region===u.region?' ⭐':''}</option>`).join('');
+
+    // Load products
+    const distId=S.cartDist||(sorted[0]?.id||'');
     let products=[];
-    try{
-      const {data,error}=await supabase.from('products').select('*').gt('stock_qty',0)
-        .eq('is_active',true).order('created_at',{ascending:false});
-      if(error) console.warn(error);
-      products=data||[];
-    }catch(e){console.error(e);}
-    State._allProducts=products; State._activeFilter='all';
-    const cats=[...new Set(products.map(p=>p.category))].filter(Boolean);
-    const fp=el('cat-filters');
-    if(fp){
-      fp.innerHTML=[
-        `<button class="filter-pill active" id="pill-all" onclick="App._setFilter('all')">${t('all_categories')}</button>`,
-        ...cats.map(c=>`<button class="filter-pill" id="pill-${c}" onclick="App._setFilter('${c}')">${catLabel(c)}</button>`)
-      ].join('');
+    if(distId){
+      const {data:p}=await sb.from('products').select('*')
+        .eq('distributor_id',distId).eq('is_active',true).order('category');
+      products=p||[];
     }
-    this._renderProductCards(products);
-  },
 
-  _setFilter(cat){
-    State._activeFilter=cat;
-    document.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('active'));
-    el(`pill-${cat}`)?.classList.add('active');
-    this._filterProducts();
-  },
+    let activeCat='all';
+    const cats=['all',...new Set(products.map(p=>p.category))];
 
-  _filterProducts(){
-    const search=el('market-search')?.value.toLowerCase()||'';
-    const cat=State._activeFilter||'all';
-    let f=State._allProducts||[];
-    if(cat!=='all') f=f.filter(p=>p.category===cat);
-    if(search) f=f.filter(p=>p.product_name.toLowerCase().includes(search));
-    this._renderProductCards(f);
-  },
-
-  _renderProductCards(products){
-    const list=el('product-list'); if(!list) return;
-    if(!products?.length){
-      list.innerHTML=`<div style="grid-column:1/-1" class="empty-state">
-        <div class="empty-icon">🏪</div>
-        <div class="empty-title">${t('err_no_products')||'Hakuna bidhaa bado'}</div></div>`;
-      return;
-    }
-    list.innerHTML=products.map(p=>{
-      const qty=State.cart[p.id]?.qty||0;
-      const sc=p.stock_qty<=0?'stock-out':p.stock_qty<10?'stock-low':'stock-ok';
-      const st=p.stock_qty<=0?t('out_of_stock'):p.stock_qty<10?t('low_stock'):t('in_stock');
-      const imgHtml=p.image_url
-        ?`<img src="${p.image_url}" class="product-img" alt="${p.product_name}" loading="lazy"/>`
-        :`<div class="product-img-placeholder">${catIcon(p.category)}</div>`;
-      return `
-        <div class="product-card ${qty>0?'in-cart':''}" id="pcard-${p.id}">
-          <span class="stock-badge ${sc}">${st}</span>
-          ${imgHtml}
-          <div class="product-category">${catLabel(p.category)}</div>
-          <div class="product-name">${p.product_name}</div>
-          <div class="product-unit">${t('unit')}: ${p.selling_unit||'—'}</div>
-          <div class="product-footer">
-            <span class="product-price">${fmt(p.price)}</span>
-            ${p.stock_qty<=0
-              ?`<span style="font-size:.65rem;color:var(--red);font-weight:700">${t('out_of_stock')}</span>`
-              :qty===0
-              ?`<button class="add-btn" onclick="App.addToCart(${JSON.stringify(p).replace(/"/g,"'")})" title="${t('add_to_cart')}">+</button>`
-              :`<div class="qty-control">
-                  <button class="qty-btn" onclick="App.changeQty('${p.id}',-1)">−</button>
-                  <span class="qty-num">${qty}</span>
-                  <button class="qty-btn" onclick="App.changeQty('${p.id}',1)">+</button>
-                </div>`}
+    const renderProducts=(catFilter='all')=>{
+      const filtered=catFilter==='all'?products:products.filter(p=>p.category===catFilter);
+      const cartItem=(pid)=>S.cart.find(c=>c.product_id===pid);
+      return filtered.map(p=>{
+        const ci=cartItem(p.id); const inCart=!!ci;
+        const stock=p.stock_qty>10?'ok':p.stock_qty>0?'low':'out';
+        const stockTxt=stock==='ok'?'✅ Stok':stock==='low'?`⚠️ ${p.stock_qty} imebaki`:'❌ Hakuna';
+        const stockClass=`sbadge s-${stock}`;
+        return `<div class="pcard${inCart?' in':''}" id="pc-${p.id}">
+          <span class="${stockClass}">${stockTxt}</span>
+          <div class="ppla">${CAT_ICONS[p.category]||'📦'}</div>
+          <div class="pcat">${p.category}</div>
+          <div class="pname">${p.product_name}</div>
+          <div class="punit">${p.selling_unit||''}</div>
+          ${p.min_order_qty>1?`<div class="pmoq">Min: ${p.min_order_qty} ${p.selling_unit||'pc'}</div>`:''}
+          <div class="pfoot">
+            <span class="pprice">${fmt(p.price)}</span>
+            ${stock==='out'?`<span style="font-size:.7rem;color:var(--red)">${S.lang==='sw'?'Haipo':'Out'}</span>`
+            :inCart?`<div class="qc">
+              <button class="qb" onclick="App.cartChange('${p.id}',-1)">−</button>
+              <span class="qn">${ci.qty}</span>
+              <button class="qb" onclick="App.cartChange('${p.id}',1)">+</button>
+            </div>`
+            :`<button class="adbtn" onclick="App.addToCart(${JSON.stringify(p).replace(/"/g,'&quot;')})">+</button>`}
           </div>
         </div>`;
+      }).join('');
+    };
+
+    const sel=sorted.find(d=>d.id===distId);
+    const minDel=sel?.min_delivery_amount||0;
+
+    const view=$('av');
+    view.innerHTML=`
+      <div class="card" style="margin-bottom:1rem">
+        <div class="cp">
+          <div class="fg" style="margin-bottom:.75rem">
+            <label class="fl">${S.lang==='sw'?'Chagua Msambazaji':'Select Distributor'}</label>
+            <select class="fi" id="dist-sel" onchange="App.changeDist(this.value)">
+              ${distOpts}
+            </select>
+          </div>
+          ${minDel>0?`<div class="alert al-w" style="margin:0">
+            <span>⚠️</span> ${S.lang==='sw'?'Kiwango cha chini cha agizo:':'Minimum order:'} <strong>${fmt(minDel)}</strong>
+          </div>`:''}
+        </div>
+      </div>
+      <div class="fps" id="cat-filter">
+        ${cats.map(c=>`<button class="fp${c==='all'?' on':''}" onclick="App.filterCat('${c}',this)">${c==='all'?t('allCategories'):CAT_ICONS[c]+' '+(S.lang==='sw'?CATS.find(x=>x.id===c)?.sw||c:CATS.find(x=>x.id===c)?.en||c)}</button>`).join('')}
+      </div>
+      <div class="pgrid" id="pgrid">${renderProducts('all')}</div>`;
+
+    // Set current dist selector
+    if($('dist-sel')&&distId)$('dist-sel').value=distId;
+
+    // Update cart FAB
+    const fab=$('cfab');
+    if(fab){fab.style.display=S.cart.length?'flex':'none';}
+    App.renderCartPanel();
+  },
+
+  changeDist(id) {
+    S.cartDist=id; S.cart=[]; App.pageMarketplace();
+  },
+
+  filterCat(cat,btn) {
+    document.querySelectorAll('.fp').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    // Re-render products with filter
+    App.pageMarketplace().then(()=>{
+      setTimeout(()=>{
+        document.querySelectorAll('.fp').forEach(b=>{
+          if(b.textContent.trim().startsWith(cat==='all'?t('allCategories').slice(0,5):CAT_ICONS[cat]||cat))
+            b.classList.add('on');
+        });
+      },100);
+    });
+  },
+
+  addToCart(p) {
+    if(p.stock_qty===0)return;
+    if(!S.cartDist)S.cartDist=p.distributor_id;
+    const existing=S.cart.find(c=>c.product_id===p.id);
+    if(existing){existing.qty++;} else {
+      S.cart.push({product_id:p.id,product_name:p.product_name,
+        qty:p.min_order_qty||1,unit_price:p.price,
+        min_order_qty:p.min_order_qty||1,selling_unit:p.selling_unit,distributor_id:p.distributor_id});
+    }
+    App.updateCartUI();
+  },
+
+  cartChange(productId, delta) {
+    const item=S.cart.find(c=>c.product_id===productId);
+    if(!item)return;
+    item.qty=Math.max(0,item.qty+delta);
+    if(item.qty===0)S.cart=S.cart.filter(c=>c.product_id!==productId);
+    App.updateCartUI();
+    App.pageMarketplace();
+  },
+
+  updateCartUI() {
+    const count=S.cart.reduce((s,c)=>s+c.qty,0);
+    const fab=$('cfab'),cc=$('cc');
+    if(fab)fab.style.display=S.cart.length?'flex':'none';
+    if(cc)cc.textContent=count;
+    App.renderCartPanel();
+  },
+
+  renderCartPanel() {
+    const list=$('cplist'),total=$('ct-val');
+    if(!list)return;
+    if(!S.cart.length){
+      list.innerHTML=`<div class="empty"><div class="empty-ic">🛒</div><div class="empty-s">${t('cartEmpty')}</div></div>`;
+      if(total)total.textContent='TZS 0'; return;
+    }
+    const sum=S.cart.reduce((s,c)=>s+c.qty*c.unit_price,0);
+    list.innerHTML=S.cart.map(c=>{
+      const moqWarn=c.qty<c.min_order_qty;
+      const sub=c.qty*c.unit_price;
+      return `<div class="cpi">
+        <div class="cpi-em">${CAT_ICONS['other']||'📦'}</div>
+        <div style="flex:1;min-width:0">
+          <div class="cpi-name">${c.product_name}</div>
+          <div class="cpi-price">${fmt(sub)}</div>
+          ${moqWarn?`<div class="cpi-moq">⚠️ Min: ${c.min_order_qty}</div>`:''}
+        </div>
+        <div class="qc">
+          <button class="qb" onclick="App.cartChange('${c.product_id}',-1)">−</button>
+          <span class="qn">${c.qty}</span>
+          <button class="qb" onclick="App.cartChange('${c.product_id}',1)">+</button>
+        </div>
+      </div>`;
     }).join('');
+    if(total)total.textContent=fmt(sum);
   },
 
-  // ── CART ──────────────────────────────────────────────
-
-  addToCart(product){
-    const p=typeof product==='string'?JSON.parse(product):product;
-    if(!State.cart[p.id]) State.cart[p.id]={product:p,qty:0};
-    State.cart[p.id].qty++;
-    this._updateCartUI(); this._filterProducts();
+  toggleCart() {
+    $('cpanel')?.classList.toggle('open');
   },
 
-  changeQty(id,delta){
-    if(!State.cart[id]) return;
-    State.cart[id].qty=Math.max(0,State.cart[id].qty+delta);
-    if(State.cart[id].qty===0) delete State.cart[id];
-    this._updateCartUI(); this._filterProducts();
-  },
+  async placeOrder() {
+    if(!S.cart.length)return toast(t('cartEmpty'),'e');
 
-  _updateCartUI(){
-    const items=Object.values(State.cart);
-    const count=items.reduce((s,x)=>s+x.qty,0);
-    const total=items.reduce((s,x)=>s+x.product.price*x.qty,0);
-    setText('cart-count',count);
-    setText('cart-subtitle',`${count} ${t('cart_sub')}`);
-    setText('cart-total',fmt(total));
-    const list=el('cart-items-list'); if(!list) return;
-    if(!items.length){
-      list.innerHTML=`<div class="empty-state"><div class="empty-icon">🛒</div><div class="empty-sub">${t('cart_empty')}</div></div>`;
+    // MOQ check
+    const moqFail=S.cart.filter(c=>c.qty<c.min_order_qty);
+    if(moqFail.length){
+      toast(`${S.lang==='sw'?'Kiwango cha chini hafikiwi:':'MOQ not met:'} ${moqFail.map(c=>c.product_name).join(', ')}`,'e');
       return;
     }
-    list.innerHTML=items.map(({product:p,qty})=>{
-      const imgEl=p.image_url
-        ?`<img src="${p.image_url}" class="cart-item-img" alt="${p.product_name}"/>`
-        :`<div class="cart-item-emoji">${catIcon(p.category)}</div>`;
-      return `<div class="cart-item">${imgEl}
-        <div class="cart-item-info">
-          <div class="cart-item-name">${p.product_name}</div>
-          <div class="cart-item-price">${fmt(p.price)} × ${qty} = ${fmt(p.price*qty)}</div>
-        </div>
-        <div class="qty-control">
-          <button class="qty-btn" onclick="App.changeQty('${p.id}',-1)">−</button>
-          <span class="qty-num">${qty}</span>
-          <button class="qty-btn" onclick="App.changeQty('${p.id}',1)">+</button>
-        </div></div>`;
-    }).join('');
+
+    const distId=S.cartDist||S.cart[0]?.distributor_id;
+    const {data:dist}=await sb.from('profiles').select('min_delivery_amount').eq('id',distId).single();
+    const total=S.cart.reduce((s,c)=>s+c.qty*c.unit_price,0);
+
+    if(dist?.min_delivery_amount&&total<dist.min_delivery_amount){
+      toast(`${S.lang==='sw'?'Agizo lako ni ndogo. Kiwango cha chini:':'Order below minimum:' } ${fmt(dist.min_delivery_amount)}`,'e');
+      return;
+    }
+
+    setBusy('po-btn',true);
+    const ref=genRef('ORD');
+    const {data:order,error}=await sb.from('orders').insert([{
+      order_ref:ref, retailer_id:S.user.id, distributor_id:distId,
+      total_price:total, items_count:S.cart.length, status:'pending',
+    }]).select().single();
+
+    if(error||!order){setBusy('po-btn',false,t('placeOrder'));return toast('Hitilafu ya kutuma agizo','e');}
+
+    await sb.from('order_items').insert(S.cart.map(c=>({
+      order_id:order.id, product_id:c.product_id,
+      product_name:c.product_name, qty:c.qty,
+      unit_price:c.unit_price, subtotal:c.qty*c.unit_price,
+    })));
+
+    setBusy('po-btn',false,t('placeOrder'));
+    S.cart=[]; S.cartDist=null;
+    $('cpanel')?.classList.remove('open');
+    App.updateCartUI();
+    toast(`${t('orderSuccess')} ${ref}`,'s');
+    App.navTo('my-orders');
   },
 
-  toggleCart(){el('cart-panel')?.classList.toggle('open');this._updateCartUI();},
+  // ── MY ORDERS (Retailer) ──────────────────────────────
+  async pageMyOrders() {
+    const {data:orders}=await sb.from('orders')
+      .select('*').eq('retailer_id',S.user.id)
+      .order('created_at',{ascending:false});
 
-  async placeOrder(){
-    const items=Object.values(State.cart);
-    if(!items.length){showToast('⚠️ '+t('err_cart_empty'),'error');return;}
-    const btn=el('place-order-btn'); const span=el('place-order-text');
-    if(btn) btn.disabled=true;
-    if(span) span.innerHTML='<span class="spinner"></span>';
-    const byDist={};
-    items.forEach(({product:p,qty})=>{
-      if(!byDist[p.distributor_id]) byDist[p.distributor_id]=[];
-      byDist[p.distributor_id].push({product:p,qty});
-    });
-    let hasError=false;
-    for(const [distId,distItems] of Object.entries(byDist)){
-      const total=distItems.reduce((s,x)=>s+x.product.price*x.qty,0);
-      const ref=genRef();
-      try{
-        const {data:order,error:oErr}=await supabase.from('orders').insert([{
-          order_ref:ref,retailer_id:State.user.id,distributor_id:distId,
-          total_price:total,status:'pending',
-          items_count:distItems.reduce((s,x)=>s+x.qty,0),
-        }]).select().single();
-        if(oErr){hasError=true;continue;}
-        await supabase.from('order_items').insert(
-          distItems.map(({product:p,qty})=>({
-            order_id:order.id,product_id:p.id,product_name:p.product_name,
-            qty,unit_price:p.price,subtotal:p.price*qty,
-          }))
-        );
-        for(const {product:p,qty} of distItems){
-          await supabase.from('products').update({stock_qty:Math.max(0,p.stock_qty-qty)}).eq('id',p.id);
-        }
-      }catch(e){hasError=true;}
-    }
-    if(btn) btn.disabled=false;
-    if(span) span.innerText=t('place_order');
-    if(hasError){showToast('❌ '+t('err_generic'),'error');return;}
-    State.cart={};
-    el('cart-panel')?.classList.remove('open');
-    const view=el('app-view'); if(!view) return;
+    const view=$('av');
     view.innerHTML=`
-      <div class="success-screen">
-        <div class="success-ring">✅</div>
-        <div class="success-title">${t('success_title')}</div>
-        <div class="success-sub">${t('success_sub')}</div>
-        <div class="success-ref">${genRef()}</div>
-        <button class="btn-primary" style="max-width:200px" onclick="App.navigate('my_orders')">
-          ${State.lang==='sw'?'Angalia Maagizo':'View My Orders'}</button>
-        <button class="btn-ghost" style="margin-top:.5rem" onclick="App.navigate('marketplace')">
-          ${State.lang==='sw'?'← Rudi Sokoni':'← Back to Marketplace'}</button>
+      <div class="card"><div class="cp">
+        <div class="sh"><span class="st">${t('myOrders')}</span></div>
+        <div class="tw"><table class="dt">
+          <thead><tr>
+            <th>REF</th><th>${S.lang==='sw'?'HALI':'STATUS'}</th>
+            <th>${S.lang==='sw'?'BIDHAA':'ITEMS'}</th><th>${S.lang==='sw'?'JUMLA':'TOTAL'}</th>
+            <th>${S.lang==='sw'?'TAREHE':'DATE'}</th><th>${S.lang==='sw'?'VITENDO':'ACTIONS'}</th>
+          </tr></thead>
+          <tbody>${(orders||[]).map(o=>`
+            <tr>
+              <td><strong style="color:var(--g700)">${o.order_ref}</strong></td>
+              <td>${statusPill(o.status,S.lang)}</td>
+              <td>${o.items_count}</td>
+              <td><strong>${fmt(o.total_price)}</strong></td>
+              <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</td>
+              <td>
+                ${o.status==='delivered'?`<button class="bsm b" onclick="App.showInvoice('${o.id}')">${svgIcon('invoice')} ${t('invoices')}</button>`:''}
+              </td>
+            </tr>`).join('')||`<tr><td colspan="6"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
+          </tbody>
+        </table></div>
+      </div></div>`;
+  },
+
+  // ── ORDERS (Distributor) ──────────────────────────────
+  async pageOrders() {
+    const {data:orders}=await sb.from('orders')
+      .select('*').eq('distributor_id',S.user.id)
+      .order('created_at',{ascending:false});
+
+    const view=$('av');
+    view.innerHTML=`
+      <div class="card"><div class="cp">
+        <div class="sh"><span class="st">${t('orders')}</span></div>
+        <div class="tw"><table class="dt">
+          <thead><tr>
+            <th>REF</th><th>${S.lang==='sw'?'HALI':'STATUS'}</th>
+            <th>${S.lang==='sw'?'JUMLA':'TOTAL'}</th><th>${S.lang==='sw'?'TAREHE':'DATE'}</th>
+            <th>${S.lang==='sw'?'VITENDO':'ACTIONS'}</th>
+          </tr></thead>
+          <tbody>${(orders||[]).map(o=>`
+            <tr>
+              <td><strong style="color:var(--g700)">${o.order_ref}</strong></td>
+              <td>${statusPill(o.status,S.lang)}</td>
+              <td><strong>${fmt(o.total_price)}</strong></td>
+              <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</td>
+              <td style="display:flex;gap:.3rem;flex-wrap:wrap">
+                ${o.status==='pending'?`<button class="bsm b" onclick="App.updateOrderStatus('${o.id}','confirmed')">${S.lang==='sw'?'Thibitisha':'Confirm'}</button>`:''}
+                ${o.status==='confirmed'?`<button class="bsm g" onclick="App.updateOrderStatus('${o.id}','delivered')">${S.lang==='sw'?'Toa':'Deliver'}</button>`:''}
+                ${o.status==='delivered'?`<button class="bsm g" onclick="App.showReceipt('${o.id}')">${svgIcon('receipt')} ${t('printReceipt')}</button>`:''}
+                ${o.status!=='cancelled'&&o.status!=='delivered'?`<button class="bsm r" onclick="App.updateOrderStatus('${o.id}','cancelled')">${S.lang==='sw'?'Futa':'Cancel'}</button>`:''}
+              </td>
+            </tr>`).join('')||`<tr><td colspan="5"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
+          </tbody>
+        </table></div>
+      </div></div>`;
+  },
+
+  async updateOrderStatus(orderId, status) {
+    const {error}=await sb.from('orders').update({status}).eq('id',orderId);
+    if(error)return toast('Hitilafu ya kubadilisha hali','e');
+    toast(S.lang==='sw'?`Hali imebadilishwa: ${status}`:`Status updated: ${status}`,'s');
+    // Auto-create receipt on delivery
+    if(status==='delivered'){
+      const {data:o}=await sb.from('orders').select('*').eq('id',orderId).single();
+      if(o){
+        const ref=genRef('RCP');
+        await sb.from('receipts').insert([{
+          receipt_ref:ref, order_id:orderId,
+          distributor_id:o.distributor_id, retailer_id:o.retailer_id,
+          amount:o.total_price, payment_method:'cash',
+        }]);
+        const invRef=genRef('INV');
+        await sb.from('invoices').insert([{
+          invoice_ref:invRef, order_id:orderId,
+          distributor_id:o.distributor_id, retailer_id:o.retailer_id,
+          amount:o.total_price, status:'unpaid',
+          due_date:new Date(Date.now()+7*864e5).toISOString().slice(0,10),
+        }]);
+      }
+    }
+    App.pageOrders();
+  },
+
+  // ── RECEIPT (PDF only) ────────────────────────────────
+  async showReceipt(orderId) {
+    const {data:order}=await sb.from('orders').select('*').eq('id',orderId).single();
+    const {data:items}=await sb.from('order_items').select('*').eq('order_id',orderId);
+    const {data:retailer}=await sb.from('profiles').select('store_name,phone_number,district').eq('id',order.retailer_id).single();
+    const {data:dist}=await sb.from('profiles').select('store_name,phone_number').eq('id',order.distributor_id).single();
+    const {data:receipt}=await sb.from('receipts').select('receipt_ref,issued_at').eq('order_id',orderId).maybeSingle();
+
+    const view=$('av');
+    view.innerHTML=`
+      <div class="no-print" style="display:flex;gap:.65rem;margin-bottom:1rem;flex-wrap:wrap">
+        <button class="share-btn pdf" onclick="window.print()">
+          ${svgIcon('print')} ${t('printReceipt')}
+        </button>
+      </div>
+      <div class="receipt" id="print-area">
+        <div class="receipt-logo">
+          <img src="logo.jpg" onerror="this.style.display='none'"/>
+          <div>
+            <div class="receipt-logo-name">BomaWave</div>
+            <div style="font-size:.65rem;color:var(--s500)">FMCG Platform · Tanzania</div>
+          </div>
+        </div>
+        <div class="receipt-title">${S.lang==='sw'?'RISITI YA MALIPO':'PAYMENT RECEIPT'}</div>
+        <div class="receipt-ref">Ref: ${receipt?.receipt_ref||order.order_ref} · ${receipt?.issued_at?.slice(0,10)||today()}</div>
+        <div class="receipt-parties">
+          <div><div class="rp-lbl">${S.lang==='sw'?'MUUZAJI':'SELLER'}</div>
+            <div class="rp-name">${dist?.store_name||'—'}</div>
+            <div class="rp-info">${dist?.phone_number||''}</div>
+          </div>
+          <div><div class="rp-lbl">${S.lang==='sw'?'MNUNUZI':'BUYER'}</div>
+            <div class="rp-name">${retailer?.store_name||'—'}</div>
+            <div class="rp-info">${retailer?.phone_number||''} · ${retailer?.district||''}</div>
+          </div>
+        </div>
+        <div>${(items||[]).map(i=>`
+          <div class="ri">
+            <div><div class="ri-name">${i.product_name}</div><div class="ri-qty">Qty: ${i.qty}</div></div>
+            <div class="ri-price">${fmt(i.subtotal)}</div>
+          </div>`).join('')}
+        </div>
+        <div class="rtotal">
+          <span class="rtl">${S.lang==='sw'?'JUMLA YA MALIPO':'TOTAL PAID'}</span>
+          <span class="rtv">${fmt(order.total_price)}</span>
+        </div>
+        <div class="rfoot">
+          ${S.lang==='sw'?'Asante kwa biashara yako! · BomaWave FMCG Platform':'Thank you for your business! · BomaWave FMCG Platform'}
+        </div>
       </div>`;
-    showToast('✅ '+t('toast_order_placed'),'success');
   },
 
-  // ══════════════════════════════════════════════════════
-  //  MY ORDERS (Retailer)
-  // ══════════════════════════════════════════════════════
+  // ── INVOICES (PDF + WhatsApp + SMS) ──────────────────
+  async showInvoice(orderId) {
+    const {data:order}=await sb.from('orders').select('*').eq('id',orderId).single();
+    const {data:items}=await sb.from('order_items').select('*').eq('order_id',orderId);
+    const {data:retailer}=await sb.from('profiles').select('store_name,phone_number,district').eq('id',order.retailer_id).single();
+    const {data:dist}=await sb.from('profiles').select('store_name,phone_number').eq('id',order.distributor_id).single();
+    const {data:invoice}=await sb.from('invoices').select('*').eq('order_id',orderId).maybeSingle();
+    const inv=invoice||{invoice_ref:genRef('INV'),issued_at:new Date().toISOString(),due_date:'',status:'unpaid'};
 
-  async _renderMyOrders(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    let data=[];
-    try{
-      const {data:rows}=await supabase.from('orders')
-        .select('*,distributor:profiles!orders_distributor_id_fkey(store_name,phone_number)')
-        .eq('retailer_id',State.user.id).order('created_at',{ascending:false});
-      data=rows||[];
-    }catch(e){console.error(e);}
-    if(!data.length){
-      view.innerHTML=`<div class="empty-state"><div class="empty-icon">📦</div>
-        <div class="empty-title">${t('no_orders')}</div><div class="empty-sub">${t('no_orders_sub')}</div>
-        <button class="btn-primary" style="max-width:180px;margin-top:1.25rem" onclick="App.navigate('marketplace')">${t('go_market')}</button>
-        </div>`;return;
-    }
-    const ts=data.reduce((s,o)=>s+Number(o.total_price),0);
-    const pend=data.filter(o=>o.status==='pending').length;
+    // Build share text
+    const shareText=encodeURIComponent(
+      `*ANKARA YA BOMAWAVE*\n` +
+      `Ref: ${inv.invoice_ref}\n` +
+      `Tarehe: ${inv.issued_at?.slice(0,10)}\n\n` +
+      `Muuzaji: ${dist?.store_name}\n` +
+      `Mnunuzi: ${retailer?.store_name}\n\n` +
+      `BIDHAA:\n` +
+      (items||[]).map(i=>`- ${i.product_name} x${i.qty}: ${fmt(i.subtotal)}`).join('\n') +
+      `\n\nJUMLA: ${fmt(order.total_price)}\n` +
+      `Hali: ${inv.status==='paid'?'✅ Imelipwa':'⏳ Haijalipwa'}\n\n` +
+      `BomaWave FMCG · Tanzania`
+    );
+    const waUrl=`https://wa.me/?text=${shareText}`;
+    const smsUrl=`sms:?body=${shareText}`;
+
+    const view=$('av');
     view.innerHTML=`
-      <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
-        <div class="stat-card green"><div class="stat-icon">📦</div>
-          <div class="stat-label">${t('stat_total_orders')}</div><div class="stat-value">${data.length}</div></div>
-        <div class="stat-card amber"><div class="stat-icon">⏳</div>
-          <div class="stat-label">${t('stat_pending')}</div><div class="stat-value">${pend}</div></div>
-        <div class="stat-card blue"><div class="stat-icon">💰</div>
-          <div class="stat-label">${t('stat_total_spent')}</div>
-          <div class="stat-value" style="font-size:1rem">${fmt(ts)}</div></div>
+      <div class="no-print share-btns" style="margin-bottom:1rem">
+        <button class="share-btn pdf" onclick="window.print()">${svgIcon('print')} ${t('printPDF')}</button>
+        <button class="share-btn wa" onclick="window.open('${waUrl}','_blank')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+          WhatsApp
+        </button>
+        <button class="share-btn sms" onclick="window.open('${smsUrl}','_blank')">${svgIcon('sms')} SMS</button>
       </div>
-      <div class="card"><div class="table-wrap">
-        <table class="data-table">
-          <thead><tr>
-            <th>${t('order_id')}</th><th>${t('distributor')}</th>
-            <th>${t('items')}</th><th>${t('total')}</th>
-            <th>${t('status')}</th><th>${t('date')}</th>
-          </tr></thead>
-          <tbody>${data.map(o=>`
-            <tr><td class="mono">${o.order_ref}</td>
-            <td><div style="font-weight:700;font-size:.8rem">${o.distributor?.store_name||'—'}</div>
-              ${o.distributor?.phone_number?`<div style="font-size:.7rem;color:var(--muted)">${o.distributor.phone_number}</div>`:''}</td>
-            <td style="font-weight:700">${o.items_count||'—'}</td>
-            <td style="color:var(--green-mid);font-weight:700">${fmt(o.total_price)}</td>
-            <td>${pill(o.status)}</td>
-            <td class="mono">${fmtDate(o.created_at)}</td></tr>`).join('')}
-          </tbody>
-        </table></div></div>`;
+      <div class="receipt" id="print-area">
+        <div class="receipt-logo">
+          <img src="logo.jpg" onerror="this.style.display='none'"/>
+          <div>
+            <div class="receipt-logo-name">BomaWave</div>
+            <div style="font-size:.65rem;color:var(--s500)">FMCG Platform · Tanzania</div>
+          </div>
+        </div>
+        <div class="receipt-title">${S.lang==='sw'?'ANKARA YA BIASHARA':'COMMERCIAL INVOICE'}</div>
+        <div class="receipt-ref">Ref: ${inv.invoice_ref} · ${inv.issued_at?.slice(0,10)||today()}</div>
+        <div class="receipt-parties">
+          <div><div class="rp-lbl">${S.lang==='sw'?'MUUZAJI':'SELLER'}</div>
+            <div class="rp-name">${dist?.store_name||'—'}</div>
+            <div class="rp-info">${dist?.phone_number||''}</div>
+          </div>
+          <div><div class="rp-lbl">${S.lang==='sw'?'MNUNUZI':'BUYER'}</div>
+            <div class="rp-name">${retailer?.store_name||'—'}</div>
+            <div class="rp-info">${retailer?.phone_number||''}</div>
+          </div>
+        </div>
+        <div>${(items||[]).map(i=>`
+          <div class="ri">
+            <div><div class="ri-name">${i.product_name}</div><div class="ri-qty">× ${i.qty} @ ${fmt(i.unit_price)}</div></div>
+            <div class="ri-price">${fmt(i.subtotal)}</div>
+          </div>`).join('')}
+        </div>
+        <div class="rtotal">
+          <span class="rtl">${S.lang==='sw'?'JUMLA':'TOTAL'}</span>
+          <span class="rtv">${fmt(order.total_price)}</span>
+        </div>
+        <div style="margin-top:.75rem;padding:.65rem;background:var(--s100);border-radius:.5rem;font-size:.75rem">
+          <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+            <span style="color:var(--s500)">${S.lang==='sw'?'Hali ya Malipo':'Payment Status'}</span>
+            <strong>${inv.status==='paid'?'✅ Imelipwa':'⏳ Haijalipwa'}</strong>
+          </div>
+          ${inv.due_date?`<div style="display:flex;justify-content:space-between">
+            <span style="color:var(--s500)">${S.lang==='sw'?'Tarehe ya Mwisho':'Due Date'}</span>
+            <strong>${inv.due_date}</strong>
+          </div>`:''}
+        </div>
+        <div class="rfoot">
+          ${S.lang==='sw'?'Malipo yalipwe kabla ya tarehe iliyoonyeshwa. · BomaWave FMCG · Tanzania':'Payment due by date shown. · BomaWave FMCG · Tanzania'}
+        </div>
+      </div>`;
   },
 
-  // ══════════════════════════════════════════════════════
-  //  POS RECORDS (Both Roles)
-  // ══════════════════════════════════════════════════════
-
-  _renderRecords(){
-    const view=el('app-view'); if(!view) return;
-    const tabs=['sales','expenses','debts','reports'];
+  async pageInvoices() {
+    const {data:invoices}=await sb.from('invoices')
+      .select('*').eq('distributor_id',S.user.id)
+      .order('issued_at',{ascending:false});
+    const view=$('av');
     view.innerHTML=`
-      <div class="pos-tabs" id="pos-tabs">
-        ${tabs.map(tab=>`
-          <button class="pos-tab ${State.posTab===tab?'active':''}"
-            onclick="App._switchPosTab('${tab}')">${t('pos_'+tab)}</button>`).join('')}
-      </div>
-      <div id="pos-content"></div>`;
-    this._renderPosContent();
-  },
-
-  _switchPosTab(tab){
-    State.posTab=tab;
-    document.querySelectorAll('.pos-tab').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.pos-tab').forEach((b,i)=>{
-      if(['sales','expenses','debts','reports'][i]===tab) b.classList.add('active');
-    });
-    this._renderPosContent();
-  },
-
-  _renderPosContent(){
-    const fn={
-      sales:()=>this._renderSales(),
-      expenses:()=>this._renderExpenses(),
-      debts:()=>this._renderDebts(),
-      reports:()=>this._renderReports(),
-    };
-    fn[State.posTab]?.();
-  },
-
-  // ── SALES ─────────────────────────────────────────────
-
-  async _renderSales(){
-    setHtml('pos-content',loader());
-    let sales=[];
-    try{
-      const {data}=await supabase.from('sales').select('*').eq('user_id',State.user.id)
-        .order('sale_date',{ascending:false}).order('created_at',{ascending:false}).limit(100);
-      sales=data||[];
-    }catch(e){console.error(e);}
-    const todRev=sales.filter(s=>s.sale_date===today()).reduce((a,s)=>a+Number(s.revenue),0);
-    const todPro=sales.filter(s=>s.sale_date===today()).reduce((a,s)=>a+Number(s.profit),0);
-    setHtml('pos-content',`
-      <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:1rem">
-        <div class="stat-card green"><div class="stat-icon">💰</div>
-          <div class="stat-label">${t('stat_sales_today')}</div>
-          <div class="stat-value" style="font-size:1rem">${fmt(todRev)}</div></div>
-        <div class="stat-card blue"><div class="stat-icon">📈</div>
-          <div class="stat-label">${t('stat_profit_today')}</div>
-          <div class="stat-value" style="font-size:1rem;color:var(--blue-dark)">${fmt(todPro)}</div></div>
-      </div>
-      <div class="pos-form">
-        <div class="pos-form-title">${t('add_sale')}</div>
-        <div style="display:flex;flex-direction:column;gap:.65rem">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">${t('sale_product')}</label>
-              <input class="form-input" id="sale-product" placeholder="${State.lang==='sw'?'Jina la bidhaa':'Product name'}"/>
-            </div>
-            <div class="form-group">
-              <label class="form-label">${t('sale_qty')}</label>
-              <input class="form-input" id="sale-qty" type="number" min="1" value="1"/>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">${t('sale_buying_price')}</label>
-              <input class="form-input" id="sale-buy" type="number" min="0" placeholder="0"/>
-            </div>
-            <div class="form-group">
-              <label class="form-label">${t('sale_selling_price')}</label>
-              <input class="form-input" id="sale-sell" type="number" min="0" placeholder="0"/>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">${t('sale_date')}</label>
-              <input class="form-input" id="sale-date" type="date" value="${today()}"/>
-            </div>
-            <div class="form-group">
-              <label class="form-label">${t('product_category')}</label>
-              <select class="form-input" id="sale-cat">
-                ${CATEGORIES.map(c=>`<option value="${c.key}">${catLabel(c.key)}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">${t('sale_notes')}</label>
-            <input class="form-input" id="sale-notes" placeholder="${State.lang==='sw'?'Maelezo...':'Notes...'}"/>
-          </div>
-          <button class="btn-primary" onclick="App._saveSale()">
-            <span id="save-sale-text">${t('btn_save_sale')}</span></button>
-        </div>
-      </div>
-      ${!sales.length?`<div class="empty-state"><div class="empty-icon">💰</div>
-        <div class="empty-title">${t('no_sales')}</div></div>`:`
-      <div class="card"><div class="table-wrap">
-        <table class="data-table">
+      <div class="card"><div class="cp">
+        <div class="sh"><span class="st">${t('invoices')}</span></div>
+        <div class="tw"><table class="dt">
           <thead><tr>
-            <th>${t('date')}</th><th>${t('sale_product')}</th>
-            <th>${t('product_category')}</th><th>${t('sale_qty')}</th>
-            <th>${t('sale_selling_price')}</th><th>${t('total_revenue')}</th>
-            <th>${t('gross_profit')}</th>
+            <th>REF</th><th>${S.lang==='sw'?'HALI':'STATUS'}</th>
+            <th>${S.lang==='sw'?'KIASI':'AMOUNT'}</th><th>${S.lang==='sw'?'TAREHE':'DATE'}</th>
+            <th>${S.lang==='sw'?'VITENDO':'ACTIONS'}</th>
           </tr></thead>
-          <tbody>${sales.map(s=>`
-            <tr><td class="mono">${s.sale_date}</td>
-            <td style="font-weight:700">${s.product_name}</td>
-            <td>${catLabel(s.category||'other')}</td>
-            <td style="font-weight:700">${s.qty}</td>
-            <td>${fmt(s.selling_price)}</td>
-            <td style="color:var(--green-mid);font-weight:700">${fmt(s.revenue)}</td>
-            <td class="${Number(s.profit)>=0?'report-value green':'report-value red'}"
-              style="font-weight:700">${fmt(s.profit)}</td>
-            </tr>`).join('')}
+          <tbody>${(invoices||[]).map(inv=>`
+            <tr>
+              <td><strong style="color:var(--g700)">${inv.invoice_ref}</strong></td>
+              <td><span class="pill ${inv.status==='paid'?'p-paid':'p-unp'}">${inv.status==='paid'?'Imelipwa':'Haijalipwa'}</span></td>
+              <td><strong>${fmt(inv.amount)}</strong></td>
+              <td style="color:var(--s500);font-size:.75rem">${inv.issued_at?.slice(0,10)}</td>
+              <td style="display:flex;gap:.3rem;flex-wrap:wrap">
+                ${inv.order_id?`<button class="bsm b" onclick="App.showInvoice('${inv.order_id}')">${t('shareInvoice')}</button>`:''}
+                ${inv.status==='unpaid'?`<button class="bsm g" onclick="App.markInvPaid('${inv.id}')">${S.lang==='sw'?'Malipo Yamefika':'Mark Paid'}</button>`:''}
+              </td>
+            </tr>`).join('')||`<tr><td colspan="5"><div class="empty"><div class="empty-ic">📄</div><div class="empty-s">${S.lang==='sw'?'Hakuna ankara':'No invoices'}</div></div></td></tr>`}
           </tbody>
-        </table></div></div>`}`);
+        </table></div>
+      </div></div>`;
   },
 
-  async _saveSale(){
-    const product=el('sale-product')?.value.trim();
-    const qty=parseInt(el('sale-qty')?.value||'1');
-    const buy=parseFloat(el('sale-buy')?.value||'0');
-    const sell=parseFloat(el('sale-sell')?.value||'0');
-    const date=el('sale-date')?.value||today();
-    const cat=el('sale-cat')?.value||'other';
-    const notes=el('sale-notes')?.value.trim();
-    if(!product||!sell){showToast('⚠️ '+(State.lang==='sw'?'Jaza bidhaa na bei':'Fill product and price'),'error');return;}
-    const btn=el('save-sale-text'); if(btn) btn.innerHTML='<span class="spinner"></span>';
-    try{
-      const {error}=await supabase.from('sales').insert([{
-        user_id:State.user.id,product_name:product,category:cat,
-        qty,buying_price:buy,selling_price:sell,sale_date:date,notes:notes||null,
-      }]);
-      if(error) throw error;
-      showToast('✅ '+t('toast_sale_saved'),'success');
-      this._renderSales();
-    }catch(e){console.error(e);showToast('❌ '+t('err_generic'),'error');}
-    finally{if(btn)btn.innerText=t('btn_save_sale');}
+  async markInvPaid(id){
+    await sb.from('invoices').update({status:'paid'}).eq('id',id);
+    toast(S.lang==='sw'?'Malipo yamekubaliwa':'Payment recorded','s');
+    App.pageInvoices();
   },
 
-  // ── EXPENSES ──────────────────────────────────────────
+  // ── PRODUCTS (Distributor) ─────────────────────────────
+  async pageProducts() {
+    const {data:products}=await sb.from('products')
+      .select('*').eq('distributor_id',S.user.id).order('created_at',{ascending:false});
 
-  async _renderExpenses(){
-    setHtml('pos-content',loader());
-    let expenses=[];
-    try{
-      const {data}=await supabase.from('expenses').select('*').eq('user_id',State.user.id)
-        .order('expense_date',{ascending:false}).limit(100);
-      expenses=data||[];
-    }catch(e){console.error(e);}
-    const todExp=expenses.filter(e=>e.expense_date===today()).reduce((a,e)=>a+Number(e.amount),0);
-    const totExp=expenses.reduce((a,e)=>a+Number(e.amount),0);
-    setHtml('pos-content',`
-      <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:1rem">
-        <div class="stat-card amber"><div class="stat-icon">💸</div>
-          <div class="stat-label">${State.lang==='sw'?'Gharama Leo':'Today Expenses'}</div>
-          <div class="stat-value" style="font-size:1rem">${fmt(todExp)}</div></div>
-        <div class="stat-card red"><div class="stat-icon">📊</div>
-          <div class="stat-label">${t('total_expenses')}</div>
-          <div class="stat-value" style="font-size:1rem">${fmt(totExp)}</div></div>
-      </div>
-      <div class="pos-form">
-        <div class="pos-form-title">${t('add_expense')}</div>
-        <div style="display:flex;flex-direction:column;gap:.65rem">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">${t('expense_cat')}</label>
-              <select class="form-input" id="exp-cat">
-                ${EXP_CATS.map(c=>`<option value="${c}">${t('exp_'+c)}</option>`).join('')}
-              </select>
+    const view=$('av');
+    view.innerHTML=`
+      <div class="card" style="margin-bottom:1rem">
+        <div class="cp">
+          <div class="sh"><span class="st">${S.lang==='sw'?'Ongeza Bidhaa Mpya':'Add New Product'}</span></div>
+          <div class="pform">
+            <div class="fr" style="margin-bottom:.75rem">
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Jina':'Name'} <span style="color:var(--red)">*</span></label>
+                <input class="fi" id="pn" placeholder="${S.lang==='sw'?'Jina la bidhaa':'Product name'}"/></div>
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Aina':'Category'}</label>
+                <select class="fi" id="pc">
+                  ${CATS.map(c=>`<option value="${c.id}">${CAT_ICONS[c.id]} ${S.lang==='sw'?c.sw:c.en}</option>`).join('')}
+                </select></div>
             </div>
-            <div class="form-group">
-              <label class="form-label">${t('expense_amount')}</label>
-              <input class="form-input" id="exp-amount" type="number" min="0" placeholder="0"/>
+            <div class="fr3" style="margin-bottom:.75rem">
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Bei ya Kuuza':'Sell Price'} <span style="color:var(--red)">*</span></label>
+                <input class="fi" id="pp" type="number" min="0" placeholder="0"/></div>
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Bei ya Kununua':'Cost Price'}</label>
+                <input class="fi" id="pcp" type="number" min="0" placeholder="0"/></div>
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Stok':'Stock'}</label>
+                <input class="fi" id="pq" type="number" min="0" placeholder="0"/></div>
             </div>
+            <div class="fr" style="margin-bottom:.75rem">
+              <div class="fg"><label class="fl">MOQ <span style="font-size:.65rem;color:var(--s500)">(min order)</span></label>
+                <input class="fi" id="pmoq" type="number" min="1" value="1" placeholder="1"/></div>
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Kipimo':'Unit'}</label>
+                <input class="fi" id="pu" placeholder="${S.lang==='sw'?'mfano: Krate (24)':'e.g. Crate (24)'}"/></div>
+            </div>
+            <button class="btn btn-p" onclick="App.addProduct()"  style="max-width:240px">
+              <span id="add-p-txt">+ ${t('addProduct')}</span>
+            </button>
           </div>
-          <div class="form-group">
-            <label class="form-label">${t('expense_desc')}</label>
-            <input class="form-input" id="exp-desc" placeholder="${State.lang==='sw'?'Maelezo ya gharama':'Expense description'}"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">${t('expense_date')}</label>
-            <input class="form-input" id="exp-date" type="date" value="${today()}"/>
-          </div>
-          <button class="btn-primary" onclick="App._saveExpense()">
-            <span id="save-exp-text">${t('btn_save_expense')}</span></button>
         </div>
       </div>
-      ${!expenses.length?`<div class="empty-state"><div class="empty-icon">💸</div>
-        <div class="empty-title">${t('no_expenses')}</div></div>`:`
-      <div class="card"><div class="table-wrap">
-        <table class="data-table">
+      <div class="card"><div class="cp">
+        <div class="sh"><span class="st">${S.lang==='sw'?'Bidhaa Zangu':'My Products'}</span></div>
+        <div class="tw"><table class="dt">
           <thead><tr>
-            <th>${t('date')}</th><th>${t('expense_cat')}</th>
-            <th>${t('expense_desc')}</th><th>${t('expense_amount')}</th>
+            <th>${S.lang==='sw'?'JINA':'NAME'}</th><th>${S.lang==='sw'?'AINA':'CATEGORY'}</th>
+            <th>${S.lang==='sw'?'BEI':'PRICE'}</th><th>MOQ</th>
+            <th>${S.lang==='sw'?'STOK':'STOCK'}</th><th>${S.lang==='sw'?'VITENDO':'ACTIONS'}</th>
           </tr></thead>
-          <tbody>${expenses.map(e=>`
-            <tr><td class="mono">${e.expense_date}</td>
-            <td>${pill_simple(t('exp_'+e.category),'amber')}</td>
-            <td>${e.description}</td>
-            <td style="color:var(--red);font-weight:700">${fmt(e.amount)}</td>
-            </tr>`).join('')}
+          <tbody>${(products||[]).map(p=>`
+            <tr>
+              <td><strong>${p.product_name}</strong></td>
+              <td>${CAT_ICONS[p.category]||''} ${p.category}</td>
+              <td><strong style="color:var(--g700)">${fmt(p.price)}</strong></td>
+              <td style="color:var(--amber);font-weight:700">${p.min_order_qty}</td>
+              <td>
+                <div class="sedit">
+                  <input type="number" id="sq-${p.id}" value="${p.stock_qty}" min="0" style="width:60px"/>
+                  <button class="bsm g" onclick="App.updateStock('${p.id}')">${S.lang==='sw'?'Hifadhi':'Save'}</button>
+                </div>
+              </td>
+              <td>
+                <button class="bsm r" onclick="App.deleteProduct('${p.id}')">${S.lang==='sw'?'Futa':'Delete'}</button>
+              </td>
+            </tr>`).join('')||`<tr><td colspan="6"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noProducts')}</div></div></td></tr>`}
           </tbody>
-        </table></div></div>`}`);
+        </table></div>
+      </div></div>`;
   },
 
-  async _saveExpense(){
-    const cat=el('exp-cat')?.value;
-    const desc=el('exp-desc')?.value.trim();
-    const amount=parseFloat(el('exp-amount')?.value||'0');
-    const date=el('exp-date')?.value||today();
-    if(!desc||!amount){showToast('⚠️ '+(State.lang==='sw'?'Jaza maelezo na kiasi':'Fill description and amount'),'error');return;}
-    const btn=el('save-exp-text'); if(btn) btn.innerHTML='<span class="spinner"></span>';
-    try{
-      const {error}=await supabase.from('expenses').insert([{
-        user_id:State.user.id,category:cat,description:desc,amount,expense_date:date,
-      }]);
-      if(error) throw error;
-      showToast('✅ '+t('toast_expense_saved'),'success');
-      this._renderExpenses();
-    }catch(e){console.error(e);showToast('❌ '+t('err_generic'),'error');}
-    finally{if(btn)btn.innerText=t('btn_save_expense');}
+  async addProduct() {
+    const name=$('pn').value.trim(),cat=$('pc').value,
+      price=parseFloat($('pp').value||'0'),cost=parseFloat($('pcp').value||'0'),
+      qty=parseInt($('pq').value||'0'),moq=parseInt($('pmoq').value||'1'),unit=$('pu').value.trim();
+    if(!name||!price)return toast(S.lang==='sw'?'Jaza jina na bei':'Fill name and price','e');
+    setBusy('add-p-txt',true);
+    const {error}=await sb.from('products').insert([{
+      distributor_id:S.user.id, product_name:name, category:cat,
+      price, cost_price:cost, stock_qty:qty, min_order_qty:moq, selling_unit:unit,
+    }]);
+    setBusy('add-p-txt',false,`+ ${t('addProduct')}`);
+    if(error)return toast('Hitilafu ya kuongeza bidhaa','e');
+    toast(S.lang==='sw'?'Bidhaa imeongezwa! ✅':'Product added! ✅','s');
+    App.pageProducts();
   },
 
-  // ── DEBTS ─────────────────────────────────────────────
+  async updateStock(id) {
+    const qty=parseInt($(`sq-${id}`)?.value||'0');
+    await sb.from('products').update({stock_qty:qty}).eq('id',id);
+    toast(S.lang==='sw'?'Stok imehifadhiwa':'Stock updated','s');
+  },
 
-  async _renderDebts(){
-    setHtml('pos-content',loader());
-    let debts=[];
-    try{
-      const {data}=await supabase.from('debts').select('*').eq('user_id',State.user.id)
-        .order('debt_date',{ascending:false});
-      debts=data||[];
-    }catch(e){console.error(e);}
-    const unpaid=debts.filter(d=>d.status!=='paid').reduce((a,d)=>a+(Number(d.amount)-Number(d.amount_paid)),0);
-    setHtml('pos-content',`
-      <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:1rem">
-        <div class="stat-card red"><div class="stat-icon">📋</div>
-          <div class="stat-label">${t('unpaid_debts')}</div>
-          <div class="stat-value" style="font-size:1rem">${fmt(unpaid)}</div></div>
-        <div class="stat-card green"><div class="stat-icon">📊</div>
-          <div class="stat-label">${State.lang==='sw'?'Wadeni Wote':'Total Debtors'}</div>
-          <div class="stat-value">${debts.filter(d=>d.status!=='paid').length}</div></div>
+  async deleteProduct(id) {
+    if(!confirm(S.lang==='sw'?'Una uhakika wa kufuta bidhaa hii?':'Delete this product?'))return;
+    await sb.from('products').delete().eq('id',id);
+    toast(S.lang==='sw'?'Bidhaa imefutwa':'Product deleted','s');
+    App.pageProducts();
+  },
+
+  // ── POS ───────────────────────────────────────────────
+  async pagePOS() {
+    const {data:sales}=await sb.from('sales').select('*').eq('user_id',S.user.id)
+      .gte('sale_date',today()).order('created_at',{ascending:false});
+    const {data:expenses}=await sb.from('expenses').select('*').eq('user_id',S.user.id)
+      .gte('expense_date',today()).order('created_at',{ascending:false});
+
+    const view=$('av');
+    view.innerHTML=`
+      <div class="ptabs" id="pos-tabs">
+        <button class="ptab on" onclick="App.posTab('sales',this)">
+          ${svgIcon('pos')} ${S.lang==='sw'?'Mauzo':'Sales'}
+        </button>
+        <button class="ptab" onclick="App.posTab('expenses',this)">
+          ${svgIcon('expense')} ${S.lang==='sw'?'Matumizi':'Expenses'}
+        </button>
       </div>
-      <div class="pos-form">
-        <div class="pos-form-title">${t('add_debt')}</div>
-        <div style="display:flex;flex-direction:column;gap:.65rem">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">${t('debt_customer')}</label>
-              <input class="form-input" id="debt-name" placeholder="${State.lang==='sw'?'Jina kamili':'Full name'}"/>
+
+      <div id="pos-sales">
+        <div class="pform">
+          <div class="pftitle">${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</div>
+          <div style="display:flex;flex-direction:column;gap:.75rem">
+            <div class="fr">
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Jina la Bidhaa':'Product Name'} <span style="color:var(--red)">*</span></label>
+                <input class="fi" id="s-prod" placeholder="${S.lang==='sw'?'Jina la bidhaa':'Product name'}"/></div>
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Aina':'Category'}</label>
+                <select class="fi" id="s-cat">
+                  ${CATS.map(c=>`<option value="${c.id}">${CAT_ICONS[c.id]} ${S.lang==='sw'?c.sw:c.en}</option>`).join('')}
+                </select></div>
             </div>
-            <div class="form-group">
-              <label class="form-label">${t('debt_phone')}</label>
-              <input class="form-input" id="debt-phone" type="tel" placeholder="+255 7XX XXX XXX"/>
+            <div class="fr3">
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Idadi':'Qty'} <span style="color:var(--red)">*</span></label>
+                <input class="fi" id="s-qty" type="number" min="1" value="1"/></div>
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Bei ya Kununua':'Buying Price'}</label>
+                <input class="fi" id="s-buy" type="number" min="0" placeholder="0"/></div>
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Bei ya Kuuza':'Selling Price'} <span style="color:var(--red)">*</span></label>
+                <input class="fi" id="s-sell" type="number" min="0" placeholder="0"/></div>
             </div>
+            <button class="btn btn-p" onclick="App.recordSale()" style="max-width:200px">
+              <span id="rec-sale-txt">${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</span>
+            </button>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">${t('debt_amount')}</label>
-              <input class="form-input" id="debt-amount" type="number" min="0" placeholder="0"/>
-            </div>
-            <div class="form-group">
-              <label class="form-label">${t('debt_due')}</label>
-              <input class="form-input" id="debt-due" type="date"/>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">${t('debt_desc')}</label>
-            <input class="form-input" id="debt-desc" placeholder="${State.lang==='sw'?'Bidhaa zilizopewa...':'Items given on credit...'}"/>
-          </div>
-          <button class="btn-primary" onclick="App._saveDebt()">
-            <span id="save-debt-text">${t('btn_save_debt')}</span></button>
         </div>
+        <div class="card"><div class="cp">
+          <div class="sh"><span class="st">${S.lang==='sw'?'Mauzo ya Leo':'Today Sales'}</span></div>
+          <div class="tw"><table class="dt">
+            <thead><tr>
+              <th>${S.lang==='sw'?'BIDHAA':'PRODUCT'}</th><th>${S.lang==='sw'?'IDADI':'QTY'}</th>
+              <th>${S.lang==='sw'?'MAPATO':'REVENUE'}</th><th>${S.lang==='sw'?'FAIDA':'PROFIT'}</th>
+              <th>${S.lang==='sw'?'TAREHE':'TIME'}</th>
+            </tr></thead>
+            <tbody>${(sales||[]).map(s=>`
+              <tr>
+                <td><strong>${s.product_name}</strong></td>
+                <td style="font-size:.95rem;font-weight:800">${s.qty}</td>
+                <td style="color:var(--g700);font-weight:800;font-size:.95rem">${fmt(s.revenue)}</td>
+                <td style="color:var(--g600);font-weight:700">${fmt(s.profit)}</td>
+                <td style="color:var(--s500);font-size:.75rem">${s.created_at?.slice(11,16)||'—'}</td>
+              </tr>`).join('')||`<tr><td colspan="5"><div class="empty"><div class="empty-ic">💰</div><div class="empty-s">${S.lang==='sw'?'Hakuna mauzo leo':'No sales today'}</div></div></td></tr>`}
+            </tbody>
+          </table></div>
+        </div></div>
       </div>
-      ${!debts.length?`<div class="empty-state"><div class="empty-icon">📋</div>
-        <div class="empty-title">${t('no_debts')}</div></div>`:`
-      <div style="display:flex;flex-direction:column;gap:.6rem">
-        ${debts.map(d=>{
-          const remaining=Number(d.amount)-Number(d.amount_paid);
-          const pct=Math.min(100,Math.round((Number(d.amount_paid)/Number(d.amount))*100));
-          const overdue=d.due_date&&new Date(d.due_date)<new Date()&&d.status!=='paid';
-          return `<div class="debt-card" style="${overdue?'border-color:var(--red)':''}">
-            <div class="debt-header">
-              <div>
-                <div class="debt-name">${d.customer_name}${overdue?` <span style="color:var(--red);font-size:.65rem;font-weight:700">${State.lang==='sw'?'IMEPITA':'OVERDUE'}</span>`:''}</div>
-                <div class="debt-meta">${d.customer_phone||''} ${d.description?'· '+d.description:''}</div>
-              </div>
-              ${pill(d.status)}
+
+      <div id="pos-expenses" style="display:none">
+        <div class="pform">
+          <div class="pftitle">${S.lang==='sw'?'Rekodi Matumizi':'Record Expense'}</div>
+          <div style="display:flex;flex-direction:column;gap:.75rem">
+            <div class="fr">
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Aina':'Category'}</label>
+                <select class="fi" id="e-cat">
+                  <option value="rent">${S.lang==='sw'?'Kodi':'Rent'}</option>
+                  <option value="transport">${S.lang==='sw'?'Usafiri':'Transport'}</option>
+                  <option value="salary">${S.lang==='sw'?'Mshahara':'Salary'}</option>
+                  <option value="utilities">${S.lang==='sw'?'Umeme/Maji':'Utilities'}</option>
+                  <option value="other">${S.lang==='sw'?'Nyingine':'Other'}</option>
+                </select></div>
+              <div class="fg"><label class="fl">${S.lang==='sw'?'Kiasi':'Amount'} <span style="color:var(--red)">*</span></label>
+                <input class="fi" id="e-amt" type="number" min="0" placeholder="0"/></div>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.4rem">
-              <span style="color:var(--muted)">${t('debt_remaining')}</span>
-              <span style="font-weight:800;color:${d.status==='paid'?'var(--green-mid)':'var(--red)'}">${fmt(remaining)}</span>
-            </div>
-            <div class="debt-progress"><div class="debt-progress-fill" style="width:${pct}%"></div></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.5rem">
-              <span style="font-size:.7rem;color:var(--muted)">${d.due_date?`${State.lang==='sw'?'Muda wa kulipa':'Due'}: ${fmtDate(d.due_date)}`:'—'}</span>
-              ${d.status!=='paid'?`
-                <div style="display:flex;gap:.4rem">
-                  <input type="number" id="pay-${d.id}" placeholder="${State.lang==='sw'?'Kiasi':'Amount'}"
-                    style="width:90px;padding:4px 7px;border:1.5px solid var(--border2);border-radius:5px;
-                    font-family:'DM Sans',sans-serif;font-size:.75rem;outline:none"/>
-                  <button class="btn-sm green" onclick="App._payDebt('${d.id}',${d.amount},${d.amount_paid})">${t('btn_mark_paid')}</button>
-                </div>`:'<span style="font-size:.72rem;color:var(--green-mid);font-weight:700">Imelipwa</span>'}
-            </div>
-          </div>`;}).join('')}
-      </div>`}`);
+            <div class="fg"><label class="fl">${S.lang==='sw'?'Maelezo':'Description'} <span style="color:var(--red)">*</span></label>
+              <input class="fi" id="e-desc" placeholder="${S.lang==='sw'?'Maelezo ya matumizi':'Expense description'}"/></div>
+            <button class="btn btn-p" onclick="App.recordExpense()" style="max-width:200px">
+              <span id="rec-exp-txt">${S.lang==='sw'?'Rekodi Matumizi':'Record Expense'}</span>
+            </button>
+          </div>
+        </div>
+        <div class="card"><div class="cp">
+          <div class="sh"><span class="st">${S.lang==='sw'?'Matumizi ya Leo':'Today Expenses'}</span></div>
+          <div class="tw"><table class="dt">
+            <thead><tr>
+              <th>${S.lang==='sw'?'AINA':'CATEGORY'}</th>
+              <th>${S.lang==='sw'?'MAELEZO':'DESCRIPTION'}</th>
+              <th>${S.lang==='sw'?'KIASI':'AMOUNT'}</th>
+            </tr></thead>
+            <tbody>${(expenses||[]).map(e=>`
+              <tr>
+                <td><span class="pill p-pen">${e.category}</span></td>
+                <td>${e.description}</td>
+                <td style="color:var(--red);font-weight:800">${fmt(e.amount)}</td>
+              </tr>`).join('')||`<tr><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></td></tr>`}
+            </tbody>
+          </table></div>
+        </div></div>
+      </div>`;
   },
 
-  async _saveDebt(){
-    const name=el('debt-name')?.value.trim();
-    const phone=el('debt-phone')?.value.trim();
-    const amount=parseFloat(el('debt-amount')?.value||'0');
-    const desc=el('debt-desc')?.value.trim();
-    const due=el('debt-due')?.value||null;
-    if(!name||!amount){showToast('⚠️ '+(State.lang==='sw'?'Jaza jina na kiasi':'Fill name and amount'),'error');return;}
-    const btn=el('save-debt-text'); if(btn) btn.innerHTML='<span class="spinner"></span>';
-    try{
-      const {error}=await supabase.from('debts').insert([{
-        user_id:State.user.id,customer_name:name,customer_phone:phone||null,
-        amount,description:desc||null,due_date:due,
-      }]);
-      if(error) throw error;
-      showToast('✅ '+t('toast_debt_saved'),'success');
-      this._renderDebts();
-    }catch(e){console.error(e);showToast('❌ '+t('err_generic'),'error');}
-    finally{if(btn)btn.innerText=t('btn_save_debt');}
+  posTab(tab, btn) {
+    document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    $('pos-sales').style.display=tab==='sales'?'':'none';
+    $('pos-expenses').style.display=tab==='expenses'?'':'none';
   },
 
-  async _payDebt(id,total,alreadyPaid){
-    const inp=el(`pay-${id}`);
-    const payAmount=inp?parseFloat(inp.value||'0'):Number(total)-Number(alreadyPaid);
-    if(payAmount<=0){showToast('⚠️ '+(State.lang==='sw'?'Weka kiasi':'Enter amount'),'error');return;}
-    const newPaid=Number(alreadyPaid)+payAmount;
-    const status=newPaid>=Number(total)?'paid':newPaid>0?'partial':'unpaid';
-    try{
-      const {error}=await supabase.from('debts').update({amount_paid:newPaid,status}).eq('id',id);
-      if(error) throw error;
-      showToast('✅ '+t('toast_debt_paid'),'success');
-      this._renderDebts();
-    }catch(e){console.error(e);showToast('❌ '+t('err_generic'),'error');}
+  async recordSale() {
+    const prod=$('s-prod').value.trim(), cat=$('s-cat').value,
+      qty=parseInt($('s-qty').value||'1'),
+      buy=parseFloat($('s-buy').value||'0'),
+      sell=parseFloat($('s-sell').value||'0');
+    if(!prod||!sell||qty<1)return toast(S.lang==='sw'?'Jaza jina na bei':'Fill product and price','e');
+    setBusy('rec-sale-txt',true);
+    const {error}=await sb.from('sales').insert([{
+      user_id:S.user.id,product_name:prod,category:cat,
+      qty,buying_price:buy,selling_price:sell,sale_date:today(),
+    }]);
+    setBusy('rec-sale-txt',false,S.lang==='sw'?'Rekodi Mauzo':'Record Sale');
+    if(error)return toast('Hitilafu','e');
+    toast(S.lang==='sw'?'Mauzo yamerekodiwa! ✅':'Sale recorded! ✅','s');
+    App.pagePOS();
+  },
+
+  async recordExpense() {
+    const cat=$('e-cat').value,desc=$('e-desc').value.trim(),amt=parseFloat($('e-amt').value||'0');
+    if(!desc||!amt)return toast(S.lang==='sw'?'Jaza maelezo na kiasi':'Fill description and amount','e');
+    setBusy('rec-exp-txt',true);
+    const {error}=await sb.from('expenses').insert([{
+      user_id:S.user.id,category:cat,description:desc,amount:amt,expense_date:today(),
+    }]);
+    setBusy('rec-exp-txt',false,S.lang==='sw'?'Rekodi Matumizi':'Record Expense');
+    if(error)return toast('Hitilafu','e');
+    toast(S.lang==='sw'?'Matumizi yamerekodiwa! ✅':'Expense recorded! ✅','s');
+    App.pagePOS();
   },
 
   // ── REPORTS ───────────────────────────────────────────
+  async pageReports() {
+    let period='today', startDate=today();
+    const render=async()=>{
+      if(period==='today') startDate=today();
+      else if(period==='week') startDate=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
+      else if(period==='month') startDate=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
+      const {data:sales}=await sb.from('sales').select('*').eq('user_id',S.user.id).gte('sale_date',startDate);
+      const {data:exps}=await sb.from('expenses').select('*').eq('user_id',S.user.id).gte('expense_date',startDate);
+      const rev=sales?.reduce((s,r)=>s+(r.revenue||0),0)||0;
+      const profit=sales?.reduce((s,r)=>s+(r.profit||0),0)||0;
+      const expTotal=exps?.reduce((s,e)=>s+(e.amount||0),0)||0;
+      const netProfit=profit-expTotal;
 
-  _renderReports(){
-    setHtml('pos-content',`
-      <div>
-        <div class="section-header" style="margin-bottom:.75rem">
-          <span class="section-title">${t('report_period')}</span>
+      // Category breakdown
+      const byCat={};
+      (sales||[]).forEach(s=>{byCat[s.category]=(byCat[s.category]||0)+(s.revenue||0);});
+
+      $('rep-body').innerHTML=`
+        <div class="rsec">
+          <div class="rsec-t">${S.lang==='sw'?'Muhtasari wa Fedha':'Financial Summary'}</div>
+          <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla ya Mauzo':'Total Revenue'}</span><span class="rv g">${fmt(rev)}</span></div>
+          <div class="rrow"><span class="rl">${S.lang==='sw'?'Faida Kabla ya Matumizi':'Gross Profit'}</span><span class="rv g">${fmt(profit)}</span></div>
+          <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla ya Matumizi':'Total Expenses'}</span><span class="rv r">${fmt(expTotal)}</span></div>
+          <div class="rrow div"><span class="rl">${S.lang==='sw'?'Faida Halisi':'Net Profit'}</span><span class="rv ${netProfit>=0?'g':'r'}">${fmt(netProfit)}</span></div>
         </div>
-        <div class="period-tabs">
-          ${['today','week','month','custom'].map(p=>`
-            <button class="period-tab ${State.reportPeriod===p?'active':''}"
-              onclick="App._setPeriod('${p}')">${t('period_'+p)}</button>`).join('')}
-        </div>
-        <div id="custom-range" style="${State.reportPeriod==='custom'?'display:flex':'display:none'};gap:.65rem;margin-bottom:.875rem;flex-wrap:wrap">
-          <div class="form-group" style="flex:1;min-width:130px">
-            <label class="form-label">${t('report_from')}</label>
-            <input class="form-input" id="rep-from" type="date" value="${State.reportFrom||today()}"
-              onchange="State.reportFrom=this.value"/>
-          </div>
-          <div class="form-group" style="flex:1;min-width:130px">
-            <label class="form-label">${t('report_to')}</label>
-            <input class="form-input" id="rep-to" type="date" value="${State.reportTo||today()}"
-              onchange="State.reportTo=this.value"/>
-          </div>
-        </div>
-        <button class="btn-primary" onclick="App._generateReport()" style="margin-bottom:1.1rem">
-          ${t('btn_generate')}</button>
-        <div id="report-output"></div>
-      </div>`);
-  },
-
-  _setPeriod(p){
-    State.reportPeriod=p;
-    this._renderReports();
-  },
-
-  async _generateReport(){
-    const ro=el('report-output'); if(!ro) return;
-    ro.innerHTML=loader();
-    const {from,to}=dateRange(State.reportPeriod);
-    const uid=State.user.id;
-    let sales=[],expenses=[],debts=[];
-    try{
-      const [r1,r2,r3]=await Promise.all([
-        supabase.from('sales').select('*').eq('user_id',uid).gte('sale_date',from).lte('sale_date',to),
-        supabase.from('expenses').select('*').eq('user_id',uid).gte('expense_date',from).lte('expense_date',to),
-        supabase.from('debts').select('*').eq('user_id',uid),
-      ]);
-      sales=r1.data||[]; expenses=r2.data||[]; debts=r3.data||[];
-    }catch(e){console.error(e);}
-
-    const revenue=sales.reduce((a,s)=>a+Number(s.revenue),0);
-    const cogs=sales.reduce((a,s)=>a+Number(s.buying_price)*Number(s.qty),0);
-    const grossProfit=revenue-cogs;
-    const totalExp=expenses.reduce((a,e)=>a+Number(e.amount),0);
-    const netProfit=grossProfit-totalExp;
-    const totalDebt=debts.filter(d=>d.status!=='paid').reduce((a,d)=>a+(Number(d.amount)-Number(d.amount_paid)),0);
-    const paidDebt=debts.filter(d=>d.status==='paid').reduce((a,d)=>a+Number(d.amount),0);
-
-    // Top products
-    const productMap={};
-    sales.forEach(s=>{
-      if(!productMap[s.product_name]) productMap[s.product_name]={name:s.product_name,qty:0,revenue:0,profit:0};
-      productMap[s.product_name].qty+=Number(s.qty);
-      productMap[s.product_name].revenue+=Number(s.revenue);
-      productMap[s.product_name].profit+=Number(s.profit);
-    });
-    const topProducts=Object.values(productMap).sort((a,b)=>b.revenue-a.revenue).slice(0,10);
-
-    // Expense by category
-    const expMap={};
-    expenses.forEach(e=>{
-      if(!expMap[e.category]) expMap[e.category]=0;
-      expMap[e.category]+=Number(e.amount);
-    });
-
-    const periodLabel=`${fmtDate(from)}${from!==to?' — '+fmtDate(to):''}`;
-
-    // Set print header
-    const ph=el('print-header');
-    if(ph) ph.innerHTML=`
-      <div style="text-align:center;margin-bottom:1.5rem">
-        <div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700">BomaWave</div>
-        <div style="font-size:.85rem;color:#666;margin-top:.25rem">${State.user.store_name} · ${t('report_period')}: ${periodLabel}</div>
-        <div style="font-size:.75rem;color:#888;margin-top:.1rem">${State.lang==='sw'?'Ripoti iliyoundwa':'Report generated'}: ${new Date().toLocaleString()}</div>
-      </div>`;
-
-    ro.innerHTML=`
-      <div id="printable-report">
-        <!-- P&L Summary -->
-        <div class="report-section">
-          <div class="report-section-title">${t('report_profit_summary')} · ${periodLabel}</div>
-          <div class="report-row"><span class="report-label">${t('total_revenue')}</span><span class="report-value green">${fmt(revenue)}</span></div>
-          <div class="report-row"><span class="report-label">${State.lang==='sw'?'Gharama za Bidhaa (COGS)':'Cost of Goods Sold'}</span><span class="report-value red">- ${fmt(cogs)}</span></div>
-          <div class="report-row"><span class="report-label">${t('gross_profit')}</span><span class="report-value ${grossProfit>=0?'green':'red'}">${fmt(grossProfit)}</span></div>
-          <div class="report-row"><span class="report-label">${t('total_expenses')}</span><span class="report-value red">- ${fmt(totalExp)}</span></div>
-          <div class="report-row" style="border-top:2px solid var(--border2);padding-top:.5rem;margin-top:.25rem">
-            <span style="font-size:.88rem;font-weight:800">${t('net_profit')}</span>
-            <span style="font-size:1rem;font-weight:800;color:${netProfit>=0?'var(--green-mid)':'var(--red)'}">${fmt(netProfit)}</span>
-          </div>
-        </div>
-
-        <!-- Expense Breakdown -->
-        ${Object.keys(expMap).length?`
-        <div class="report-section">
-          <div class="report-section-title">${t('report_expense_summary')}</div>
-          ${Object.entries(expMap).map(([cat,amt])=>`
-            <div class="report-row">
-              <span class="report-label">${t('exp_'+cat)||cat}</span>
-              <span class="report-value red">${fmt(amt)}</span>
-            </div>`).join('')}
-        </div>`:''}
-
-        <!-- Top Products -->
-        ${topProducts.length?`
-        <div class="report-section">
-          <div class="report-section-title">${t('report_top_products')}</div>
-          <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr>
-              <th>${t('product_ranking')}</th>
-              <th>${t('sale_product')}</th>
-              <th>${t('times_sold')}</th>
-              <th>${t('total_revenue')}</th>
-              <th>${t('gross_profit')}</th>
-            </tr></thead>
-            <tbody>${topProducts.map((p,i)=>`
-              <tr>
-                <td style="font-weight:800;color:${i===0?'#f59e0b':i===1?'#94a3b8':i===2?'#b45309':'var(--muted)'}">#${i+1}</td>
-                <td style="font-weight:700">${p.name}</td>
-                <td>${p.qty}</td>
-                <td style="color:var(--green-mid);font-weight:700">${fmt(p.revenue)}</td>
-                <td class="${p.profit>=0?'report-value green':'report-value red'}" style="font-weight:700">${fmt(p.profit)}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table></div>
-        </div>`:''}
-
-        <!-- Debts Summary -->
-        <div class="report-section">
-          <div class="report-section-title">${t('report_debts_summary')}</div>
-          <div class="report-row"><span class="report-label">${t('unpaid_debts')}</span><span class="report-value red">${fmt(totalDebt)}</span></div>
-          <div class="report-row"><span class="report-label">${t('paid_debts')}</span><span class="report-value green">${fmt(paidDebt)}</span></div>
-          <div class="report-row"><span class="report-label">${State.lang==='sw'?'Jumla ya Wadeni':'Total Debtors'}</span><span class="report-value">${debts.filter(d=>d.status!=='paid').length}</span></div>
-        </div>
-      </div>
-      <button class="btn-primary" onclick="App._printReport()" style="margin-top:1rem">
-        <span>🖨️</span> ${t('btn_print')}</button>`;
-  },
-
-  _printReport(){
-    window.print();
-  },
-
-  // ══════════════════════════════════════════════════════
-  //  DISTRIBUTOR DASHBOARD
-  // ══════════════════════════════════════════════════════
-
-  async _renderDashboard(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    const tod=new Date(); tod.setHours(0,0,0,0);
-    const uid=State.user.id;
-    let todOrders=[],allOrders=[],products=[];
-    try{
-      const [r1,r2,r3]=await Promise.all([
-        supabase.from('orders').select('*').eq('distributor_id',uid).gte('created_at',tod.toISOString()),
-        supabase.from('orders').select('retailer_id').eq('distributor_id',uid),
-        supabase.from('products').select('*').eq('distributor_id',uid),
-      ]);
-      todOrders=r1.data||[]; allOrders=r2.data||[]; products=r3.data||[];
-    }catch(e){console.error(e);}
-    const pending=todOrders.filter(o=>o.status==='pending').length;
-    const revenue=todOrders.filter(o=>o.status!=='cancelled').reduce((s,o)=>s+Number(o.total_price),0);
-    const uniqueRet=new Set(allOrders.map(r=>r.retailer_id)).size;
-    const lowStock=products.filter(p=>p.stock_qty>0&&p.stock_qty<10).length;
-    const outStock=products.filter(p=>p.stock_qty===0).length;
-    this._updateOrderBadge();
-    view.innerHTML=`
-      <div class="stats-row">
-        <div class="stat-card green"><div class="stat-icon">📋</div>
-          <div class="stat-label">${t('stat_orders_today')}</div><div class="stat-value">${todOrders.length}</div></div>
-        <div class="stat-card amber"><div class="stat-icon">⏳</div>
-          <div class="stat-label">${t('stat_pending')}</div><div class="stat-value">${pending}</div></div>
-        <div class="stat-card blue"><div class="stat-icon">💰</div>
-          <div class="stat-label">${t('stat_revenue')}</div>
-          <div class="stat-value" style="font-size:1rem;color:var(--blue-dark)">${fmt(revenue)}</div></div>
-        <div class="stat-card red"><div class="stat-icon">🏪</div>
-          <div class="stat-label">${t('stat_retailers')}</div><div class="stat-value">${uniqueRet}</div></div>
-      </div>
-      ${(lowStock||outStock)?`<div class="alert alert-warn">
-        ⚠️ ${State.lang==='sw'?`Bidhaa ${outStock} zimekwisha · ${lowStock} zinakwisha`:`${outStock} out of stock · ${lowStock} running low`}
-        <button onclick="App.navigate('inventory')" style="margin-left:auto;font-weight:700;background:none;border:none;color:var(--amber);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.75rem">
-          ${State.lang==='sw'?'Angalia Stoki →':'Check Inventory →'}</button></div>`:''}
-      <div class="section-header">
-        <span class="section-title">${State.lang==='sw'?'Maagizo ya Leo':"Today's Orders"}</span>
-        <button class="section-action" onclick="App.navigate('orders')">${t('view_all')}</button>
-      </div>
-      ${!todOrders.length?`<div class="empty-state"><div class="empty-icon">📋</div>
-        <div class="empty-title">${t('no_orders')}</div><div class="empty-sub">${t('no_orders_sub')}</div></div>`:`
-      <div class="card"><div class="table-wrap">
-        <table class="data-table">
-          <thead><tr>
-            <th>${t('order_id')}</th><th>${t('items')}</th>
-            <th>${t('total')}</th><th>${t('status')}</th><th>${t('action')}</th>
-          </tr></thead>
-          <tbody>${todOrders.slice(0,6).map(o=>`
-            <tr id="order-row-${o.id}">
-              <td class="mono">${o.order_ref}</td>
-              <td style="font-weight:700">${o.items_count||'—'}</td>
-              <td style="color:var(--green-mid);font-weight:700">${fmt(o.total_price)}</td>
-              <td id="status-${o.id}">${pill(o.status)}</td>
-              <td id="actions-${o.id}">${this._actionButtons(o)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div></div>`}`;
-  },
-
-  // ── DIST ORDERS ───────────────────────────────────────
-
-  async _renderDistOrders(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    let data=[];
-    try{
-      const {data:rows}=await supabase.from('orders')
-        .select('*,retailer:profiles!orders_retailer_id_fkey(store_name,location,phone_number,district,ward)')
-        .eq('distributor_id',State.user.id).order('created_at',{ascending:false});
-      data=rows||[];
-    }catch(e){console.error(e);}
-    if(!data.length){
-      view.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div>
-        <div class="empty-title">${t('no_orders')}</div><div class="empty-sub">${t('no_orders_sub')}</div></div>`;
-      this._updateOrderBadge();return;
-    }
-    view.innerHTML=`<div class="card"><div class="table-wrap">
-      <table class="data-table">
-        <thead><tr>
-          <th>${t('retailer')}</th><th>${t('order_id')}</th>
-          <th>${t('items')}</th><th>${t('total')}</th>
-          <th>${t('status')}</th><th>${t('date')}</th><th>${t('action')}</th>
-        </tr></thead>
-        <tbody>${data.map(o=>`
-          <tr id="order-row-${o.id}">
-            <td><div style="font-weight:700;font-size:.8rem">${o.retailer?.store_name||'—'}</div>
-              <div style="font-size:.7rem;color:var(--muted)">${[o.retailer?.ward,o.retailer?.district].filter(Boolean).join(', ')||''}</div>
-              ${o.retailer?.phone_number?`<div style="font-size:.7rem;color:var(--muted)">${o.retailer.phone_number}</div>`:''}</td>
-            <td class="mono">${o.order_ref}</td>
-            <td style="font-weight:700">${o.items_count||'—'}</td>
-            <td style="color:var(--green-mid);font-weight:700">${fmt(o.total_price)}</td>
-            <td id="status-${o.id}">${pill(o.status)}</td>
-            <td class="mono">${fmtDate(o.created_at)}</td>
-            <td id="actions-${o.id}">${this._actionButtons(o)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table></div></div>`;
-    this._updateOrderBadge();
-  },
-
-  _actionButtons(order){
-    if(State.user.role!=='distributor') return '';
-    if(order.status==='pending') return `
-      <div style="display:flex;gap:4px">
-        <button class="btn-sm green" onclick="App._updateOrderStatus('${order.id}','confirmed')">${t('confirm')}</button>
-        <button class="btn-sm red" onclick="App._updateOrderStatus('${order.id}','cancelled')">${t('cancel')}</button>
-      </div>`;
-    if(order.status==='confirmed') return `
-      <button class="btn-sm blue" onclick="App._updateOrderStatus('${order.id}','delivered')">${t('deliver')}</button>`;
-    return `<span style="font-size:.72rem;color:var(--muted)">—</span>`;
-  },
-
-  async _updateOrderStatus(orderId,status){
-    try{
-      const {error}=await supabase.from('orders').update({status}).eq('id',orderId);
-      if(error) throw error;
-      const msg=status==='confirmed'?t('toast_order_confirmed'):status==='delivered'?t('toast_order_delivered'):'Done';
-      showToast('✅ '+msg,'success');
-      const sc=el(`status-${orderId}`); const ac=el(`actions-${orderId}`);
-      if(sc) sc.innerHTML=pill(status);
-      if(ac) ac.innerHTML=this._actionButtons({id:orderId,status});
-      this._updateOrderBadge();
-      if(State.activePage==='dashboard') this._renderDashboard();
-    }catch(e){showToast('❌ '+t('err_generic'),'error');}
-  },
-
-  // ── PRODUCTS ──────────────────────────────────────────
-
-  async _renderProducts(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=`
-      <div style="display:grid;grid-template-columns:minmax(0,300px) 1fr;gap:1.25rem;align-items:start">
-        <div class="card card-pad">
-          <div class="section-title" style="margin-bottom:1rem">${t('add_product')}</div>
-          <form onsubmit="App._addProduct(event)" style="display:flex;flex-direction:column;gap:.65rem">
-            <div class="form-group">
-              <label class="form-label">${t('product_name')}</label>
-              <input class="form-input" id="p-name" required placeholder="${State.lang==='sw'?'mfano: Coca Cola 500ml':'e.g. Coca Cola 500ml'}"/>
-            </div>
-            <div class="form-group">
-              <label class="form-label">${t('product_category')}</label>
-              <select class="form-input" id="p-category" required>
-                <option value="">${State.lang==='sw'?'— Chagua Aina —':'— Select Category —'}</option>
-                ${CATEGORIES.map(c=>`<option value="${c.key}">${catLabel(c.key)}</option>`).join('')}
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">${t('product_image')}</label>
-              <div class="img-upload-wrap" onclick="document.getElementById('p-img-input').click()">
-                <input type="file" id="p-img-input" accept="image/*" capture="environment"
-                  onchange="App._previewImage(this)" style="display:none"/>
-                <img id="p-img-preview" class="img-preview" alt="preview"/>
-                <div id="p-img-label" style="font-size:.78rem;color:var(--muted);font-weight:600">
-                  ${t('upload_photo')}</div>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">${t('product_price')}</label>
-                <input class="form-input" id="p-price" type="number" min="1" required placeholder="0"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label">${t('product_cost')}</label>
-                <input class="form-input" id="p-cost" type="number" min="0" placeholder="0"/>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">${t('product_qty')}</label>
-                <input class="form-input" id="p-qty" type="number" min="0" required placeholder="0"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label">${t('product_unit')}</label>
-                <input class="form-input" id="p-unit" placeholder="${State.lang==='sw'?'mfano: Krate, Mfuko':'e.g. Crate, Bag'}"/>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">${t('product_desc')}</label>
-              <input class="form-input" id="p-desc" placeholder="${State.lang==='sw'?'Maelezo mafupi...':'Short description...'}"/>
-            </div>
-            <button type="submit" class="btn-primary" id="add-product-btn">
-              <span id="add-product-text">${t('btn_add_product')}</span>
-            </button>
-          </form>
-        </div>
-        <div>
-          <div class="section-title" style="margin-bottom:.875rem">
-            ${State.lang==='sw'?'Bidhaa Zilizowekwa Sokoni':'Listed Products'}
-          </div>
-          <div id="my-products-list">${loader()}</div>
-        </div>
-      </div>`;
-    this._loadMyProducts();
-  },
-
-  _previewImage(input){
-    const file=input.files[0]; if(!file) return;
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const prev=el('p-img-preview'); const lbl=el('p-img-label');
-      if(prev){prev.src=e.target.result;prev.style.display='block';}
-      if(lbl) lbl.innerText=t('change_photo');
+        <div class="rsec">
+          <div class="rsec-t">${S.lang==='sw'?'Mauzo kwa Aina':'Sales by Category'}</div>
+          ${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,val])=>`
+            <div class="rrow"><span class="rl">${CAT_ICONS[cat]||''} ${cat}</span><span class="rv">${fmt(val)}</span></div>`).join('')||`<div class="rrow"><span class="rl">${S.lang==='sw'?'Hakuna data':'No data'}</span></div>`}
+        </div>`;
     };
-    reader.readAsDataURL(file);
-  },
 
-  async _uploadImage(file){
-    try{
-      const ext=file.name.split('.').pop();
-      const path=`products/${Date.now()}.${ext}`;
-      const {data,error}=await supabase.storage.from('product-images').upload(path,file,{
-        cacheControl:'3600',upsert:false,contentType:file.type,
-      });
-      if(error){console.warn('Image upload:',error.message);return null;}
-      const {data:{publicUrl}}=supabase.storage.from('product-images').getPublicUrl(path);
-      return publicUrl;
-    }catch(e){console.error('Image upload error:',e);return null;}
-  },
-
-  async _loadMyProducts(){
-    let data=[];
-    try{
-      const {data:rows}=await supabase.from('products').select('*')
-        .eq('distributor_id',State.user.id).order('created_at',{ascending:false});
-      data=rows||[];
-    }catch(e){console.error(e);}
-    const list=el('my-products-list'); if(!list) return;
-    if(!data.length){
-      list.innerHTML=`<div class="empty-state"><div class="empty-icon">🏷️</div>
-        <div class="empty-title">${t('no_products')}</div>
-        <div class="empty-sub">${t('no_products_sub')}</div></div>`;return;
-    }
-    list.innerHTML=`<div style="display:flex;flex-direction:column;gap:.6rem">
-      ${data.map(p=>`
-        <div class="card" style="padding:.875rem;display:flex;align-items:center;gap:.875rem">
-          ${p.image_url
-            ?`<img src="${p.image_url}" style="width:52px;height:52px;border-radius:.5rem;object-fit:cover;flex-shrink:0" alt="${p.product_name}"/>`
-            :`<div style="width:52px;height:52px;border-radius:.5rem;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">${catIcon(p.category)}</div>`}
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:.85rem">${p.product_name}</div>
-            <div style="font-size:.72rem;color:var(--muted);margin-top:1px">${fmt(p.price)} · ${p.selling_unit||'—'} · ${catLabel(p.category)}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:1.1rem;font-weight:800;color:var(--green-mid)">${p.stock_qty}</div>
-            <div style="font-size:.62rem;color:var(--muted)">${State.lang==='sw'?'stoki':'stock'}</div>
-          </div>
-        </div>`).join('')}
-    </div>`;
-  },
-
-  async _addProduct(e){
-    e.preventDefault();
-    const btn=el('add-product-btn'); const span=el('add-product-text');
-    if(btn) btn.disabled=true;
-    if(span) span.innerHTML=`<span class="spinner"></span> ${t('img_uploading')}`;
-    let imageUrl=null;
-    const imgInput=el('p-img-input');
-    if(imgInput?.files[0]) imageUrl=await this._uploadImage(imgInput.files[0]);
-    const payload={
-      distributor_id:State.user.id,
-      product_name:el('p-name').value.trim(),
-      category:el('p-category').value,
-      price:Number(el('p-price').value),
-      cost_price:Number(el('p-cost').value||0),
-      stock_qty:Number(el('p-qty').value),
-      selling_unit:el('p-unit').value.trim()||null,
-      description:el('p-desc').value.trim()||null,
-      image_url:imageUrl,
-    };
-    try{
-      const {error}=await supabase.from('products').insert([payload]);
-      if(error) throw error;
-      showToast('✅ '+t('toast_product_added'),'success');
-      e.target.reset();
-      const prev=el('p-img-preview'); if(prev){prev.src='';prev.style.display='none';}
-      const lbl=el('p-img-label'); if(lbl) lbl.innerText=t('upload_photo');
-      this._loadMyProducts();
-    }catch(err){console.error(err);showToast('❌ '+t('err_generic'),'error');}
-    finally{if(btn)btn.disabled=false;if(span)span.innerText=t('btn_add_product');}
-  },
-
-  // ── INVENTORY ─────────────────────────────────────────
-
-  async _renderInventory(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    let data=[];
-    try{
-      const {data:rows}=await supabase.from('products').select('*')
-        .eq('distributor_id',State.user.id).order('stock_qty',{ascending:true});
-      data=rows||[];
-    }catch(e){console.error(e);}
-    if(!data.length){
-      view.innerHTML=`<div class="empty-state"><div class="empty-icon">📦</div>
-        <div class="empty-title">${t('no_products')}</div></div>`;return;
-    }
-    const out=data.filter(p=>p.stock_qty===0).length;
-    const low=data.filter(p=>p.stock_qty>0&&p.stock_qty<10).length;
+    const view=$('av');
     view.innerHTML=`
-      ${out||low?`<div class="alert alert-warn">⚠️ ${State.lang==='sw'?`${out} zimekwisha · ${low} zinakwisha`:`${out} out of stock · ${low} running low`}</div>`:`
-      <div class="alert alert-success">✅ ${State.lang==='sw'?'Stoki zote ziko sawa.':'All stock levels are healthy.'}</div>`}
-      <div class="card"><div class="table-wrap">
-        <table class="data-table">
+      <div class="pertabs" id="ptabs">
+        <button class="pertab on" onclick="App.repPeriod('today',this)">Leo</button>
+        <button class="pertab" onclick="App.repPeriod('week',this)">${S.lang==='sw'?'Wiki 1':'1 Week'}</button>
+        <button class="pertab" onclick="App.repPeriod('month',this)">${S.lang==='sw'?'Mwezi 1':'1 Month'}</button>
+      </div>
+      <div id="rep-body"><div style="text-align:center;padding:2rem;color:var(--s500)"><span class="spin d"></span></div></div>`;
+
+    S._repPeriod='today';
+    window._repRender=render;
+    await render();
+  },
+
+  repPeriod(p,btn) {
+    document.querySelectorAll('.pertab').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    S._repPeriod=p;
+    if(window._repRender)window._repRender();
+  },
+
+  // ── DEBTS ─────────────────────────────────────────────
+  async pageDebts() {
+    const {data:debts}=await sb.from('debts').select('*').eq('user_id',S.user.id)
+      .order('created_at',{ascending:false});
+
+    const view=$('av');
+    view.innerHTML=`
+      <div class="card" style="margin-bottom:1rem"><div class="cp">
+        <div class="pftitle">${S.lang==='sw'?'Rekodi Deni Jipya':'Record New Debt'}</div>
+        <div style="display:flex;flex-direction:column;gap:.75rem">
+          <div class="fr">
+            <div class="fg"><label class="fl">${S.lang==='sw'?'Jina la Mteja':'Customer Name'} <span style="color:var(--red)">*</span></label>
+              <input class="fi" id="d-name" placeholder="${S.lang==='sw'?'Jina la mteja':'Customer name'}"/></div>
+            <div class="fg"><label class="fl">${S.lang==='sw'?'Simu':'Phone'}</label>
+              <input class="fi" id="d-phone" type="tel" placeholder="07xxxxxxxx"/></div>
+          </div>
+          <div class="fr">
+            <div class="fg"><label class="fl">${S.lang==='sw'?'Kiasi':'Amount'} <span style="color:var(--red)">*</span></label>
+              <input class="fi" id="d-amt" type="number" min="0" placeholder="0"/></div>
+            <div class="fg"><label class="fl">${S.lang==='sw'?'Tarehe ya Kulipa':'Due Date'}</label>
+              <input class="fi" id="d-due" type="date"/></div>
+          </div>
+          <div class="fg"><label class="fl">${S.lang==='sw'?'Maelezo':'Description'}</label>
+            <input class="fi" id="d-desc" placeholder="${S.lang==='sw'?'mfano: Mkopo wa mchele':'e.g. Rice credit'}"/></div>
+          <button class="btn btn-p" onclick="App.addDebt()" style="max-width:200px">
+            <span id="add-debt-txt">${S.lang==='sw'?'Rekodi Deni':'Record Debt'}</span>
+          </button>
+        </div>
+      </div></div>
+      <div id="debts-list">
+        ${(debts||[]).map(d=>{
+          const paid=d.amount_paid||0;
+          const remain=d.amount-paid;
+          const pct=Math.min(100,Math.round(paid/d.amount*100));
+          return `<div class="dcard">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
+              <div>
+                <div style="font-weight:800">${d.customer_name}</div>
+                <div style="font-size:.75rem;color:var(--s500)">${d.customer_phone||''}</div>
+              </div>
+              <span class="pill ${d.status==='paid'?'p-paid':d.status==='partial'?'p-par':'p-unp'}">${d.status}</span>
+            </div>
+            <div class="dprog"><div class="dprogf" style="width:${pct}%"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.5rem">
+              <span style="color:var(--s500)">${S.lang==='sw'?'Kilicholipwa':'Paid'}: <strong style="color:var(--g700)">${fmt(paid)}</strong></span>
+              <span style="color:var(--s500)">${S.lang==='sw'?'Kinachobaki':'Remaining'}: <strong style="color:var(--red)">${fmt(remain)}</strong></span>
+            </div>
+            ${d.status!=='paid'?`<div style="display:flex;gap:.4rem;flex-wrap:wrap">
+              <input class="fi" id="dp-${d.id}" type="number" min="0" placeholder="${S.lang==='sw'?'Kiasi':'Amount'}" style="max-width:120px;padding:.4rem .6rem;font-size:.8rem"/>
+              <button class="bsm g" onclick="App.payDebt('${d.id}',${d.amount_paid||0})">${S.lang==='sw'?'Rekodi Malipo':'Record Payment'}</button>
+              <button class="bsm r" onclick="App.deleteDebt('${d.id}')">${S.lang==='sw'?'Futa':'Delete'}</button>
+            </div>`:''}
+          </div>`;
+        }).join('')||`<div class="empty"><div class="empty-ic">💳</div><div class="empty-t">${S.lang==='sw'?'Hakuna madeni':'No debts'}</div></div>`}
+      </div>`;
+  },
+
+  async addDebt() {
+    const name=$('d-name').value.trim(),phone=$('d-phone').value,
+      amt=parseFloat($('d-amt').value||'0'),due=$('d-due').value,desc=$('d-desc').value;
+    if(!name||!amt)return toast(S.lang==='sw'?'Jaza jina na kiasi':'Fill name and amount','e');
+    setBusy('add-debt-txt',true);
+    const {error}=await sb.from('debts').insert([{
+      user_id:S.user.id,customer_name:name,customer_phone:phone,
+      amount:amt,due_date:due||null,description:desc,status:'unpaid',
+    }]);
+    setBusy('add-debt-txt',false,S.lang==='sw'?'Rekodi Deni':'Record Debt');
+    if(error)return toast('Hitilafu','e');
+    toast(S.lang==='sw'?'Deni limerekodiwa! ✅':'Debt recorded! ✅','s');
+    App.pageDebts();
+  },
+
+  async payDebt(id,currentPaid) {
+    const extra=parseFloat($(`dp-${id}`)?.value||'0');
+    if(!extra)return toast(S.lang==='sw'?'Weka kiasi':'Enter amount','e');
+    const {data:debt}=await sb.from('debts').select('amount,amount_paid').eq('id',id).single();
+    const newPaid=(debt.amount_paid||0)+extra;
+    const status=newPaid>=debt.amount?'paid':newPaid>0?'partial':'unpaid';
+    await sb.from('debts').update({amount_paid:newPaid,status}).eq('id',id);
+    toast(S.lang==='sw'?'Malipo yamerekodiwa! ✅':'Payment recorded! ✅','s');
+    App.pageDebts();
+  },
+
+  async deleteDebt(id) {
+    if(!confirm(S.lang==='sw'?'Futa deni hili?':'Delete this debt?'))return;
+    await sb.from('debts').delete().eq('id',id);
+    toast(S.lang==='sw'?'Deni limefutwa':'Debt deleted','s');
+    App.pageDebts();
+  },
+
+  // ── USERS (Admin) ─────────────────────────────────────
+  async pageUsers() {
+    const {data:users}=await sb.from('profiles').select('*').order('created_at',{ascending:false});
+    const view=$('av');
+    view.innerHTML=`
+      <div class="card"><div class="cp">
+        <div class="sh"><span class="st">${t('users')}</span>
+          <span class="st" style="font-size:.75rem;color:var(--s500)">${(users||[]).length} ${S.lang==='sw'?'watumiaji':'users'}</span>
+        </div>
+        <div class="tw"><table class="dt">
           <thead><tr>
-            <th>${t('product_name')}</th><th>${t('product_category')}</th>
-            <th>${t('product_price')}</th><th>${t('product_unit')}</th>
-            <th>${t('stock_qty')}</th><th>${t('update_stock')}</th><th>${t('status')}</th>
+            <th>${S.lang==='sw'?'JINA':'NAME'}</th><th>${S.lang==='sw'?'SIMU':'PHONE'}</th>
+            <th>${S.lang==='sw'?'AINA':'ROLE'}</th><th>${S.lang==='sw'?'MKOA':'REGION'}</th>
+            <th>${S.lang==='sw'?'HALI':'STATUS'}</th>
           </tr></thead>
-          <tbody>${data.map(p=>`
+          <tbody>${(users||[]).map(u=>`
             <tr>
-              <td style="display:flex;align-items:center;gap:.6rem">
-                ${p.image_url?`<img src="${p.image_url}" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0"/>`:`<span style="font-size:1.2rem">${catIcon(p.category)}</span>`}
-                <strong>${p.product_name}</strong>
-              </td>
-              <td>${catLabel(p.category)}</td>
-              <td style="color:var(--green-mid);font-weight:700">${fmt(p.price)}</td>
-              <td style="color:var(--muted)">${p.selling_unit||'—'}</td>
-              <td><strong style="font-size:1rem">${p.stock_qty}</strong></td>
-              <td>
-                <div class="stock-edit">
-                  <input type="number" id="stock-input-${p.id}" value="${p.stock_qty}" min="0" step="1"/>
-                  <button class="btn-sm green" onclick="App._updateStock('${p.id}')">
-                    ${State.lang==='sw'?'Weka':'Set'}</button>
-                </div>
-              </td>
-              <td>${p.stock_qty===0?`<span class="pill pill-unpaid">✕ ${t('out_of_stock')}</span>`:
-                   p.stock_qty<10?`<span class="pill pill-pending">⚠ ${t('low_stock')}</span>`:
-                   `<span class="pill pill-paid">✓ ${t('in_stock')}</span>`}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div></div>`;
-  },
-
-  async _updateStock(productId){
-    const input=el(`stock-input-${productId}`); if(!input) return;
-    const newQty=parseInt(input.value,10);
-    if(isNaN(newQty)||newQty<0){showToast('⚠️ '+(State.lang==='sw'?'Idadi si sahihi':'Invalid quantity'),'error');return;}
-    try{
-      const {error}=await supabase.from('products').update({stock_qty:newQty}).eq('id',productId);
-      if(error) throw error;
-      showToast('✅ '+t('toast_stock_updated'),'success');
-      this._renderInventory();
-    }catch(e){showToast('❌ '+t('err_generic'),'error');}
-  },
-
-  // ── RETAILERS ─────────────────────────────────────────
-
-  async _renderRetailers(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    let orders=[];
-    try{
-      const {data:rows}=await supabase.from('orders')
-        .select('*,retailer:profiles!orders_retailer_id_fkey(id,store_name,district,ward,phone_number)')
-        .eq('distributor_id',State.user.id);
-      orders=rows||[];
-    }catch(e){console.error(e);}
-    if(!orders.length){
-      view.innerHTML=`<div class="empty-state"><div class="empty-icon">🏪</div>
-        <div class="empty-title">${t('no_retailers')||'Hakuna maduka bado'}</div></div>`;return;
-    }
-    const map={};
-    orders.forEach(o=>{
-      const r=o.retailer; if(!r) return;
-      if(!map[r.id]) map[r.id]={...r,totalOrders:0,totalSpent:0,lastOrder:o.created_at};
-      map[r.id].totalOrders++;
-      map[r.id].totalSpent+=Number(o.total_price);
-      if(new Date(o.created_at)>new Date(map[r.id].lastOrder)) map[r.id].lastOrder=o.created_at;
-    });
-    const retailers=Object.values(map).sort((a,b)=>b.totalSpent-a.totalSpent);
-    view.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.875rem">
-      ${retailers.map(r=>`
-        <div class="card card-pad">
-          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.875rem">
-            <div style="width:40px;height:40px;border-radius:10px;background:var(--green-light);
-              display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🏪</div>
-            <div>
-              <div style="font-weight:800;font-size:.85rem">${r.store_name}</div>
-              <div style="font-size:.72rem;color:var(--muted)">${[r.ward,r.district].filter(Boolean).join(', ')||'—'}</div>
-              ${r.phone_number?`<div style="font-size:.7rem;color:var(--muted)">${r.phone_number}</div>`:''}
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem">
-            <div style="background:var(--bg2);border-radius:.4rem;padding:.45rem;text-align:center;border:1px solid var(--border)">
-              <div style="font-size:.88rem;font-weight:800">${r.totalOrders}</div>
-              <div style="font-size:.6rem;color:var(--muted);font-weight:600">${t('total_orders')}</div>
-            </div>
-            <div style="background:var(--bg2);border-radius:.4rem;padding:.45rem;text-align:center;border:1px solid var(--border)">
-              <div style="font-size:.7rem;font-weight:800">${fmt(r.totalSpent)}</div>
-              <div style="font-size:.6rem;color:var(--muted);font-weight:600">${t('total_spent')}</div>
-            </div>
-            <div style="background:var(--bg2);border-radius:.4rem;padding:.45rem;text-align:center;border:1px solid var(--border)">
-              <div style="font-size:.68rem;font-weight:800">${fmtDate(r.lastOrder)}</div>
-              <div style="font-size:.6rem;color:var(--muted);font-weight:600">${t('last_order')}</div>
-            </div>
-          </div>
-        </div>`).join('')}
-    </div>`;
-  },
-
-  // ══════════════════════════════════════════════════════
-  //  ADMIN DASHBOARD
-  // ══════════════════════════════════════════════════════
-
-  async _renderAdminDashboard(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    let profiles=[],orders=[];
-    try{
-      const [r1,r2]=await Promise.all([
-        supabase.from('profiles').select('*').neq('role','admin'),
-        supabase.from('orders').select('*'),
-      ]);
-      profiles=r1.data||[]; orders=r2.data||[];
-    }catch(e){console.error(e);}
-    const totalUsers=profiles.length;
-    const dists=profiles.filter(p=>p.role==='distributor').length;
-    const rets=profiles.filter(p=>p.role==='retailer').length;
-    const gmv=orders.filter(o=>o.status!=='cancelled').reduce((a,o)=>a+Number(o.total_price),0);
-    const todOrders=orders.filter(o=>new Date(o.created_at).toDateString()===new Date().toDateString()).length;
-    view.innerHTML=`
-      <div class="stats-row">
-        <div class="stat-card green"><div class="stat-icon">👥</div>
-          <div class="stat-label">${t('stat_total_users')}</div><div class="stat-value">${totalUsers}</div></div>
-        <div class="stat-card blue"><div class="stat-icon">🚚</div>
-          <div class="stat-label">${t('stat_active_dist')}</div><div class="stat-value">${dists}</div></div>
-        <div class="stat-card amber"><div class="stat-icon">🏪</div>
-          <div class="stat-label">${t('stat_active_ret')}</div><div class="stat-value">${rets}</div></div>
-        <div class="stat-card purple"><div class="stat-icon">💰</div>
-          <div class="stat-label">${t('stat_total_revenue')}</div>
-          <div class="stat-value" style="font-size:1rem;color:var(--purple)">${fmt(gmv)}</div></div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.875rem;margin-bottom:1.1rem">
-        <div class="card card-pad" style="cursor:pointer" onclick="App.navigate('admin_users')">
-          <div style="font-size:.82rem;font-weight:700;margin-bottom:.35rem">${t('nav_users')}</div>
-          <div style="font-size:1.5rem;font-weight:800">${totalUsers}</div>
-          <div style="font-size:.7rem;color:var(--green-mid);margin-top:.25rem">${t('view_all')}</div>
-        </div>
-        <div class="card card-pad" style="cursor:pointer" onclick="App.navigate('admin_orders')">
-          <div style="font-size:.82rem;font-weight:700;margin-bottom:.35rem">${t('nav_all_orders')}</div>
-          <div style="font-size:1.5rem;font-weight:800">${orders.length}</div>
-          <div style="font-size:.7rem;color:var(--green-mid);margin-top:.25rem">${State.lang==='sw'?`${todOrders} leo`:`${todOrders} today`}</div>
-        </div>
-      </div>
-      <div class="section-header"><span class="section-title">${State.lang==='sw'?'Watumiaji wa Hivi Karibuni':'Recent Users'}</span></div>
-      <div class="card"><div class="table-wrap">
-        <table class="data-table">
-          <thead><tr>
-            <th>${t('lbl_store')}</th><th>${t('user_type')}</th>
-            <th>${t('lbl_district')}</th><th>${t('lbl_phone')}</th>
-            <th>${t('joined')}</th><th>${t('action')}</th>
-          </tr></thead>
-          <tbody>${profiles.slice(0,10).map(p=>`
-            <tr>
-              <td style="font-weight:700">${p.store_name}</td>
-              <td>${p.role==='distributor'?`<span class="pill pill-confirmed">${State.lang==='sw'?'Msambazaji':'Distributor'}</span>`:
-                  `<span class="pill pill-delivered">${State.lang==='sw'?'Duka':'Retailer'}</span>`}</td>
-              <td style="color:var(--muted)">${p.district||'—'}</td>
-              <td style="color:var(--muted)">${p.phone_number||'—'}</td>
-              <td class="mono">${fmtDate(p.created_at)}</td>
-              <td>
-                <button class="btn-sm ${p.is_active?'red':'green'}"
-                  onclick="App._toggleUser('${p.id}',${p.is_active})">
-                  ${p.is_active?t('suspend'):t('approve')}</button>
-              </td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div></div>`;
-  },
-
-  async _renderAdminUsers(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    let profiles=[];
-    try{
-      const {data:rows}=await supabase.from('profiles').select('*')
-        .neq('role','admin').order('created_at',{ascending:false});
-      profiles=rows||[];
-    }catch(e){console.error(e);}
-    view.innerHTML=`
-      <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
-        <span class="pill pill-confirmed">${profiles.filter(p=>p.role==='distributor').length} ${State.lang==='sw'?'Wasambazaji':'Distributors'}</span>
-        <span class="pill pill-delivered">${profiles.filter(p=>p.role==='retailer').length} ${State.lang==='sw'?'Maduka':'Retailers'}</span>
-        <span class="pill pill-pending">${profiles.filter(p=>!p.is_active).length} ${State.lang==='sw'?'Waliozuiwa':'Suspended'}</span>
-      </div>
-      <div class="card"><div class="table-wrap">
-        <table class="data-table">
-          <thead><tr>
-            <th>${t('lbl_store')}</th><th>${t('lbl_user')}</th>
-            <th>${t('user_type')}</th><th>${t('lbl_region')}</th>
-            <th>${t('lbl_district')}</th><th>${t('lbl_ward')}</th>
-            <th>${t('lbl_phone')}</th><th>${t('joined')}</th><th>${t('action')}</th>
-          </tr></thead>
-          <tbody>${profiles.map(p=>`
-            <tr style="${!p.is_active?'opacity:.5':''}">
-              <td style="font-weight:700">${p.store_name}</td>
-              <td class="mono">${p.username}</td>
-              <td>${p.role==='distributor'?`<span class="pill pill-confirmed">Dist</span>`:
-                  `<span class="pill pill-delivered">Ret</span>`}</td>
-              <td style="color:var(--muted)">${p.region||'—'}</td>
-              <td style="color:var(--muted)">${p.district||'—'}</td>
-              <td style="color:var(--muted)">${p.ward||'—'}</td>
-              <td style="color:var(--muted)">${p.phone_number||'—'}</td>
-              <td class="mono">${fmtDate(p.created_at)}</td>
-              <td>
-                <button class="btn-sm ${p.is_active?'red':'green'}"
-                  onclick="App._toggleUser('${p.id}',${p.is_active})">
-                  ${p.is_active?t('suspend'):t('approve')}</button>
-              </td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div></div>`;
-  },
-
-  async _renderAdminOrders(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    let orders=[];
-    try{
-      const {data:rows}=await supabase.from('orders')
-        .select('*,retailer:profiles!orders_retailer_id_fkey(store_name,district),distributor:profiles!orders_distributor_id_fkey(store_name)')
-        .order('created_at',{ascending:false}).limit(200);
-      orders=rows||[];
-    }catch(e){console.error(e);}
-    const gmv=orders.filter(o=>o.status!=='cancelled').reduce((a,o)=>a+Number(o.total_price),0);
-    view.innerHTML=`
-      <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem">
-        <div class="stat-card green"><div class="stat-icon">📋</div>
-          <div class="stat-label">${t('platform_orders')}</div><div class="stat-value">${orders.length}</div></div>
-        <div class="stat-card blue"><div class="stat-icon">⏳</div>
-          <div class="stat-label">${t('stat_pending')}</div>
-          <div class="stat-value">${orders.filter(o=>o.status==='pending').length}</div></div>
-        <div class="stat-card purple"><div class="stat-icon">💰</div>
-          <div class="stat-label">${t('platform_gmv')}</div>
-          <div class="stat-value" style="font-size:.95rem;color:var(--purple)">${fmt(gmv)}</div></div>
-      </div>
-      <div class="card"><div class="table-wrap">
-        <table class="data-table">
-          <thead><tr>
-            <th>${t('order_id')}</th><th>${t('retailer')}</th>
-            <th>${t('distributor')}</th><th>${t('total')}</th>
-            <th>${t('status')}</th><th>${t('date')}</th>
-          </tr></thead>
-          <tbody>${orders.map(o=>`
-            <tr><td class="mono">${o.order_ref}</td>
-            <td><div style="font-weight:700;font-size:.8rem">${o.retailer?.store_name||'—'}</div>
-              <div style="font-size:.7rem;color:var(--muted)">${o.retailer?.district||''}</div></td>
-            <td style="font-size:.8rem">${o.distributor?.store_name||'—'}</td>
-            <td style="color:var(--green-mid);font-weight:700">${fmt(o.total_price)}</td>
-            <td>${pill(o.status)}</td>
-            <td class="mono">${fmtDate(o.created_at)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div></div>`;
-  },
-
-  async _renderAdminAnalytics(){
-    const view=el('app-view'); if(!view) return;
-    view.innerHTML=loader();
-    let orders=[],profiles=[];
-    try{
-      const [r1,r2]=await Promise.all([
-        supabase.from('orders').select('*,distributor:profiles!orders_distributor_id_fkey(store_name)'),
-        supabase.from('profiles').select('*').neq('role','admin'),
-      ]);
-      orders=r1.data||[]; profiles=r2.data||[];
-    }catch(e){console.error(e);}
-    // Top distributors
-    const distMap={};
-    orders.filter(o=>o.status!=='cancelled').forEach(o=>{
-      const name=o.distributor?.store_name||o.distributor_id;
-      if(!distMap[name]) distMap[name]={name,orders:0,revenue:0};
-      distMap[name].orders++;
-      distMap[name].revenue+=Number(o.total_price);
-    });
-    const topDist=Object.values(distMap).sort((a,b)=>b.revenue-a.revenue).slice(0,10);
-    // Orders by status
-    const byStatus={pending:0,confirmed:0,delivered:0,cancelled:0};
-    orders.forEach(o=>{byStatus[o.status]=(byStatus[o.status]||0)+1;});
-    // Users by region
-    const byRegion={};
-    profiles.forEach(p=>{
-      const r=p.region||'Unknown';
-      if(!byRegion[r]) byRegion[r]=0;
-      byRegion[r]++;
-    });
-    view.innerHTML=`
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem">
-        <div class="report-section">
-          <div class="report-section-title">${State.lang==='sw'?'Maagizo kwa Hali':'Orders by Status'}</div>
-          ${Object.entries(byStatus).map(([s,n])=>`
-            <div class="report-row">
-              <span class="report-label">${pill(s)}</span>
-              <span class="report-value">${n} ${State.lang==='sw'?'('+Math.round(n/orders.length*100)+'%)':'('+Math.round(n/orders.length*100)+'%)'}</span>
-            </div>`).join('')}
-        </div>
-        <div class="report-section">
-          <div class="report-section-title">${State.lang==='sw'?'Watumiaji kwa Mkoa':'Users by Region'}</div>
-          ${Object.entries(byRegion).sort((a,b)=>b[1]-a[1]).map(([r,n])=>`
-            <div class="report-row">
-              <span class="report-label">${r}</span>
-              <span class="report-value">${n}</span>
-            </div>`).join('')}
-        </div>
-      </div>
-      <div class="report-section" style="margin-top:1rem">
-        <div class="report-section-title">${State.lang==='sw'?'Wasambazaji Bora':'Top Distributors'}</div>
-        <div class="table-wrap">
-        <table class="data-table">
-          <thead><tr>
-            <th>#</th><th>${State.lang==='sw'?'Msambazaji':'Distributor'}</th>
-            <th>${State.lang==='sw'?'Maagizo':'Orders'}</th>
-            <th>${State.lang==='sw'?'Mapato':'Revenue'}</th>
-          </tr></thead>
-          <tbody>${topDist.map((d,i)=>`
-            <tr>
-              <td style="font-weight:800;color:${i===0?'#f59e0b':i===1?'#94a3b8':'var(--muted)'}">#${i+1}</td>
-              <td style="font-weight:700">${d.name}</td>
-              <td>${d.orders}</td>
-              <td style="color:var(--green-mid);font-weight:700">${fmt(d.revenue)}</td>
+              <td><strong>${u.store_name}</strong></td>
+              <td style="font-size:.8rem;color:var(--s700)">${u.phone_number}</td>
+              <td>${statusBadge(u.role)}</td>
+              <td style="font-size:.78rem">${u.district||u.region||'—'}</td>
+              <td><span class="pill ${u.is_active?'p-del':'p-can'}">${u.is_active?'✅ Active':'❌ Blocked'}</span></td>
             </tr>`).join('')}
           </tbody>
         </table></div>
-      </div>`;
+      </div></div>`;
   },
 
-  async _toggleUser(id,currentlyActive){
-    try{
-      const {error}=await supabase.from('profiles').update({is_active:!currentlyActive}).eq('id',id);
-      if(error) throw error;
-      showToast(`✅ ${currentlyActive?(State.lang==='sw'?'Mtumiaji amezuiwa':'User suspended'):(State.lang==='sw'?'Mtumiaji ameruhusiwa':'User approved')}`, 'success');
-      if(State.activePage==='admin_dashboard') this._renderAdminDashboard();
-      else if(State.activePage==='admin_users') this._renderAdminUsers();
-    }catch(e){showToast('❌ '+t('err_generic'),'error');}
+  // ── ANALYTICS (Admin) ─────────────────────────────────
+  async pageAnalytics() {
+    const {data:profiles}=await sb.from('profiles').select('role');
+    const {data:orders}=await sb.from('orders').select('total_price,status');
+    const retailers=(profiles||[]).filter(p=>p.role==='retailer').length;
+    const distributors=(profiles||[]).filter(p=>p.role==='distributor').length;
+    const totalOrders=(orders||[]).length;
+    const totalValue=(orders||[]).reduce((s,o)=>s+(o.total_price||0),0);
+    const delivered=(orders||[]).filter(o=>o.status==='delivered').length;
+
+    const view=$('av');
+    view.innerHTML=`
+      <div class="sr">
+        <div class="sc g"><div class="sic">${svgIcon('users')}</div><div class="sl">Retailers</div><div class="sv">${retailers}</div></div>
+        <div class="sc b"><div class="sic">${svgIcon('orders')}</div><div class="sl">Distributors</div><div class="sv">${distributors}</div></div>
+        <div class="sc a"><div class="sic">${svgIcon('pkg')}</div><div class="sl">Orders</div><div class="sv">${totalOrders}</div></div>
+        <div class="sc g"><div class="sic">${svgIcon('revenue')}</div><div class="sl">GMV</div><div class="sv">${fmt(totalValue)}</div></div>
+      </div>
+      <div class="card"><div class="cp">
+        <div class="sh"><span class="st">Platform Stats</span></div>
+        <div class="rrow"><span class="rl">Total Orders</span><span class="rv">${totalOrders}</span></div>
+        <div class="rrow"><span class="rl">Delivered</span><span class="rv g">${delivered}</span></div>
+        <div class="rrow"><span class="rl">Platform GMV</span><span class="rv g">${fmt(totalValue)}</span></div>
+        <div class="rrow"><span class="rl">Avg Order Value</span><span class="rv">${fmt(totalOrders?totalValue/totalOrders:0)}</span></div>
+      </div></div>`;
   },
-};
 
-// Helper not in App object
-function pill_simple(label,color){
-  const map={amber:'pill-pending',green:'pill-paid',red:'pill-unpaid',blue:'pill-confirmed'};
-  return `<span class="pill ${map[color]||'pill-pending'}">${label}</span>`;
+}; // end App
+
+// ── SVG Icons ─────────────────────────────────────────────────
+function svgIcon(name) {
+  const icons = {
+    grid:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
+    store:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+    pkg:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+    orders:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`,
+    chart:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`,
+    pos:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+    debt:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+    invoice:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+    receipt:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="16" y1="8" x2="8" y2="8"/><line x1="16" y1="12" x2="8" y2="12"/><line x1="12" y1="16" x2="8" y2="16"/></svg>`,
+    users:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    analytics:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+    revenue:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+    profit:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
+    expense:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    print:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`,
+    sms:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  };
+  return icons[name]||'';
 }
 
-// ═══════════════════════════════════════════════════════════
-//  NOTIFICATION SOUND — Web Audio API (no file needed)
-// ═══════════════════════════════════════════════════════════
-
-// Single AudioContext shared across all sounds
-let _audioCtx = null;
-function _getAudioCtx(){
-  if(!_audioCtx || _audioCtx.state==='closed'){
-    try{ _audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
-    catch(e){ _audioCtx=null; }
-  }
-  return _audioCtx;
+// ── Status helpers ────────────────────────────────────────────
+function statusPill(status,lang) {
+  const map={
+    pending:{cls:'p-pen',sw:'Inasubiri',en:'Pending'},
+    confirmed:{cls:'p-con',sw:'Imethibitishwa',en:'Confirmed'},
+    delivered:{cls:'p-del',sw:'Imetolewa',en:'Delivered'},
+    cancelled:{cls:'p-can',sw:'Imefutwa',en:'Cancelled'},
+  };
+  const s=map[status]||{cls:'p-pen',sw:status,en:status};
+  return `<span class="pill ${s.cls}">${lang==='sw'?s.sw:s.en}</span>`;
 }
 
-/**
- * playSmsSound(type)
- *   'new_order'   — distributor: bright double-beep (kama SMS ya order mpya)
- *   'confirmed'   — retailer:    warm triple-tone (imani)
- *   'delivered'   — retailer:    upward chime (furaha)
- */
-function playSmsSound(type='new_order'){
-  const ctx=_getAudioCtx(); if(!ctx) return;
-  // Resume context if suspended (browser autoplay policy)
-  if(ctx.state==='suspended') ctx.resume();
+function statusBadge(role) {
+  const map={retailer:{cls:'rb-ret',label:'Duka'},distributor:{cls:'rb-dist',label:'Msambazaji'},admin:{cls:'rb-adm',label:'Admin'}};
+  const r=map[role]||{cls:'rb-ret',label:role};
+  return `<span class="rbadge ${r.cls}">${r.label}</span>`;
+}
 
-  const now=ctx.currentTime;
+// ── BOOT ─────────────────────────────────────────────────────
+async function boot() {
+  // Init location dropdowns
+  initLocDropdowns('reg-region','reg-district','reg-ward');
+  initLocDropdowns('dreg-region','dreg-district','dreg-ward');
+  buildCatGrid();
+  goStep(1);
 
-  if(type==='new_order'){
-    // Double beep: 880Hz → 1100Hz, kama Nokia SMS
-    [[880,0,0.12],[1100,0.16,0.12],[880,0.32,0.12],[1100,0.48,0.14]].forEach(([freq,delay,dur])=>{
-      const osc=ctx.createOscillator();
-      const gain=ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type='sine'; osc.frequency.setValueAtTime(freq,now+delay);
-      gain.gain.setValueAtTime(0,now+delay);
-      gain.gain.linearRampToValueAtTime(0.55,now+delay+0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001,now+delay+dur);
-      osc.start(now+delay); osc.stop(now+delay+dur+0.02);
-    });
-
-  } else if(type==='confirmed'){
-    // Triple ascending tone — imani / confirmed
-    [[523,0,0.18],[659,0.22,0.18],[784,0.44,0.28]].forEach(([freq,delay,dur])=>{
-      const osc=ctx.createOscillator();
-      const gain=ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type='triangle'; osc.frequency.setValueAtTime(freq,now+delay);
-      gain.gain.setValueAtTime(0,now+delay);
-      gain.gain.linearRampToValueAtTime(0.4,now+delay+0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001,now+delay+dur);
-      osc.start(now+delay); osc.stop(now+delay+dur+0.02);
-    });
-
-  } else if(type==='delivered'){
-    // Upward chime — bidhaa imefikia
-    [[392,0,0.1],[523,0.12,0.1],[659,0.24,0.1],[784,0.36,0.22],[1047,0.52,0.35]].forEach(([freq,delay,dur])=>{
-      const osc=ctx.createOscillator();
-      const gain=ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type='sine'; osc.frequency.setValueAtTime(freq,now+delay);
-      gain.gain.setValueAtTime(0,now+delay);
-      gain.gain.linearRampToValueAtTime(0.35,now+delay+0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001,now+delay+dur);
-      osc.start(now+delay); osc.stop(now+delay+dur+0.02);
-    });
+  if (loadSession()) {
+    if (S.user) {
+      // Session exists — show PIN screen (like WhatsApp)
+      S.pinBuf='';
+      $('pd0')?.classList.remove('on');$('pd1')?.classList.remove('on');
+      $('pd2')?.classList.remove('on');$('pd3')?.classList.remove('on');
+      setText('s7h', S.lang==='sw'?'Karibu!':'Welcome!');
+      setText('s7sub', S.user.store_name||'');
+      const prog=$('pfill');
+      if(prog)prog.style.width='90%';
+      goStep(7);
+    }
   }
 }
 
-// Unlock audio on first user interaction (browser requirement)
-function _unlockAudio(){
-  const ctx=_getAudioCtx();
-  if(ctx&&ctx.state==='suspended') ctx.resume();
-  document.removeEventListener('click',_unlockAudio);
-  document.removeEventListener('touchstart',_unlockAudio);
-}
-document.addEventListener('click',_unlockAudio,{once:true});
-document.addEventListener('touchstart',_unlockAudio,{once:true});
-
-// ═══════════════════════════════════════════════════════════
-//  GLOBAL SETUP
-// ═══════════════════════════════════════════════════════════
-window.App=App;
-window.State=State;
-
-document.addEventListener('click',e=>{
-  if(!el('notif-bell')?.contains(e.target)&&!el('notif-dropdown')?.contains(e.target)){
-    State.notifOpen=false;
-    el('notif-dropdown')?.classList.remove('open');
-  }
-});
-
-document.addEventListener('DOMContentLoaded',()=>{
-  if(App._restoreSession()){
-    App.launchApp();
-  }
-});
+boot();
