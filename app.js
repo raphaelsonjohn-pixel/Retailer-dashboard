@@ -1,7 +1,7 @@
 // BomaWave v3.1 — Multi-Store + POS Offline
 import { supabase as sb } from './supabase.js';
 
-const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/smooth-function';
+const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/otp';
 const SB_KEY  = 'sb_publishable_yJni7Xxl78x24V1mJvLjVg_RAWAsGOt';
 
 // ── State ─────────────────────────────────────────────────────
@@ -162,16 +162,16 @@ function setHtml(id, h) { const el=$(id); if(el) el.innerHTML=h; }
 
 // ── LocalStorage session ─────────────────────────────────────
 function saveSession() {
-  localStorage.setItem('bw_v3', JSON.stringify({ user: S.user, lang: S.lang }));
+  localStorage.setItem('bw_v4', JSON.stringify({ user: S.user, lang: S.lang, storeId: S.store?.id }));
 }
 function loadSession() {
   try {
-    const d = JSON.parse(localStorage.getItem('bw_v3') || 'null');
+    const d = JSON.parse(localStorage.getItem('bw_v4') || localStorage.getItem('bw_v3') || 'null');
     if (d?.user) { S.user = d.user; S.lang = d.lang || 'sw'; return true; }
   } catch {}
   return false;
 }
-function clearSession() { localStorage.removeItem('bw_v3'); }
+function clearSession() { localStorage.removeItem('bw_v4'); localStorage.removeItem('bw_v3'); }
 
 // ── OTP API call ─────────────────────────────────────────────
 async function callOTP(payload) {
@@ -1111,11 +1111,21 @@ window.App = {
     const view=$('av');
     view.innerHTML=`
       <div class="sr">
-        <div class="sc g"><div class="sic">${svgIcon('revenue')}</div><div class="sl">${S.lang==='sw'?'Mauzo Leo':'Today Sales'}</div><div class="sv">${fmt(todayRev)}</div></div>
-        <div class="sc g"><div class="sic">${svgIcon('profit')}</div><div class="sl">${t('profit')}</div><div class="sv">${fmt(todayProfit)}</div></div>
-        <div class="sc a"><div class="sic">${svgIcon('pkg')}</div><div class="sl">${S.lang==='sw'?'Yanasubiri':'Pending'}</div><div class="sv">${pending}</div></div>
-        <div class="sc b"><div class="sic">${svgIcon('orders')}</div><div class="sl">${S.lang==='sw'?'Zimetolewa':'Delivered'}</div><div class="sv">${delivered}</div></div>
-      </div>
+        <div class="sc g stat-anim"><div class="sic">${svgIcon('revenue')}</div><div class="sl">${S.lang==='sw'?'Mapato Leo':'Today Revenue'}</div><div class="sv" id="dash-rev">TZS 0</div></div>
+        <div class="sc g stat-anim"><div class="sic">${svgIcon('profit')}</div><div class="sl">${t('profit')}</div><div class="sv" id="dash-profit">TZS 0</div></div>
+        <div class="sc a stat-anim"><div class="sic">${svgIcon('pkg')}</div><div class="sl">${S.lang==='sw'?'Yanasubiri':'Pending'}</div><div class="sv">${pending}</div></div>
+        <div class="sc b stat-anim"><div class="sic">${svgIcon('orders')}</div><div class="sl">${S.lang==='sw'?'Zimetolewa':'Delivered'}</div><div class="sv">${delivered}</div></div>
+      </div>`;
+    // Count-up animation
+    function animCount(el, target) {
+      if (!el) return;
+      const dur=800, start=Date.now();
+      const tick=()=>{const p=Math.min((Date.now()-start)/dur,1),e=1-Math.pow(1-p,3);el.textContent='TZS '+Math.floor(target*e).toLocaleString();if(p<1)requestAnimationFrame(tick);};
+      requestAnimationFrame(tick);
+    }
+    setTimeout(()=>{animCount($('dash-rev'),todayRev);animCount($('dash-profit'),todayProfit);},300);
+    view.innerHTML += `
+
       <div class="card">
         <div class="cp">
           <div class="sh"><span class="st">${S.lang==='sw'?'Maagizo ya Hivi Karibuni':'Recent Orders'}</span>
@@ -1716,12 +1726,12 @@ window.App = {
 
     const view=$('av');
     view.innerHTML=`
-      <div class="ptabs" id="pos-tabs">
-        <button class="ptab on" onclick="App.posTab('sales',this)">
-          ${svgIcon('pos')} ${S.lang==='sw'?'Mauzo':'Sales'}
+      <div class="ptabs" id="pos-tabs" style="gap:.5rem;margin-bottom:1.25rem">
+        <button class="ptab on" onclick="App.posTab('sales',this)" style="font-size:.95rem;font-weight:800;min-height:54px;gap:.4rem">
+          ${svgIcon('pos')} <span>${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</span>
         </button>
-        <button class="ptab" onclick="App.posTab('expenses',this)">
-          ${svgIcon('expense')} ${S.lang==='sw'?'Matumizi':'Expenses'}
+        <button class="ptab" onclick="App.posTab('expenses',this)" style="font-size:.95rem;font-weight:800;min-height:54px;gap:.4rem">
+          ${svgIcon('expense')} <span>${S.lang==='sw'?'Rekodi Matumizi':'Expense'}</span>
         </button>
       </div>
 
@@ -1745,7 +1755,7 @@ window.App = {
               <div class="fg"><label class="fl">${S.lang==='sw'?'Bei ya Kuuza':'Selling Price'} <span style="color:var(--red)">*</span></label>
                 <input class="fi" id="s-sell" type="number" min="0" placeholder="0"/></div>
             </div>
-            <button class="btn btn-p" onclick="App.recordSale()" style="max-width:200px">
+            <button class="btn btn-p" onclick="App.recordSale()" style="width:100%;min-height:54px;font-size:1rem;font-weight:800;border-radius:.875rem;box-shadow:0 6px 20px rgba(22,163,74,.3)">
               <span id="rec-sale-txt">${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</span>
             </button>
           </div>
@@ -1789,7 +1799,7 @@ window.App = {
             </div>
             <div class="fg"><label class="fl">${S.lang==='sw'?'Maelezo':'Description'} <span style="color:var(--red)">*</span></label>
               <input class="fi" id="e-desc" placeholder="${S.lang==='sw'?'Maelezo ya matumizi':'Expense description'}"/></div>
-            <button class="btn btn-p" onclick="App.recordExpense()" style="max-width:200px">
+            <button class="btn btn-p" onclick="App.recordExpense()" style="width:100%;min-height:54px;font-size:1rem;font-weight:800;border-radius:.875rem;background:linear-gradient(135deg,#dc2626,#ef4444);box-shadow:0 6px 20px rgba(220,38,38,.25)">
               <span id="rec-exp-txt">${S.lang==='sw'?'Rekodi Matumizi':'Record Expense'}</span>
             </button>
           </div>
@@ -1869,18 +1879,25 @@ window.App = {
       const byCat={};
       (sales||[]).forEach(s=>{byCat[s.category]=(byCat[s.category]||0)+(s.revenue||0);});
 
+      const maxCatRev=Math.max(...Object.values(byCat),1);
+      const netProfitVal=profit-expTotal;
       $('rep-body').innerHTML=`
         <div class="rsec">
           <div class="rsec-t">${S.lang==='sw'?'Muhtasari wa Fedha':'Financial Summary'}</div>
-          <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla ya Mauzo':'Total Revenue'}</span><span class="rv g">${fmt(rev)}</span></div>
-          <div class="rrow"><span class="rl">${S.lang==='sw'?'Faida Kabla ya Matumizi':'Gross Profit'}</span><span class="rv g">${fmt(profit)}</span></div>
+          <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla ya Mapato':'Total Revenue'}</span><span class="rv g">${fmt(rev)}</span></div>
+          <div class="rrow"><span class="rl">${S.lang==='sw'?'Faida Ghafi':'Gross Profit'}</span><span class="rv g">${fmt(profit)}</span></div>
           <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla ya Matumizi':'Total Expenses'}</span><span class="rv r">${fmt(expTotal)}</span></div>
-          <div class="rrow div"><span class="rl">${S.lang==='sw'?'Faida Halisi':'Net Profit'}</span><span class="rv ${netProfit>=0?'g':'r'}">${fmt(netProfit)}</span></div>
+          <div class="rrow"><span class="rl">${S.lang==='sw'?'Margin':'Margin'}</span><span class="rv ${profit>0?'g':'r'}">${rev>0?Math.round(profit/rev*100):0}%</span></div>
+          <div class="rrow div"><span class="rl" style="font-size:.95rem;font-weight:800">${S.lang==='sw'?'Faida Halisi':'Net Profit'}</span><span class="rv ${netProfit>=0?'g':'r'}" style="font-size:1.05rem">${fmt(netProfit)}</span></div>
         </div>
         <div class="rsec">
-          <div class="rsec-t">${S.lang==='sw'?'Mauzo kwa Aina':'Sales by Category'}</div>
+          <div class="rsec-t">${S.lang==='sw'?'Mauzo kwa Aina (Bar Chart)':'Sales by Category'}</div>
           ${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,val])=>`
-            <div class="rrow"><span class="rl">${CAT_ICONS[cat]||''} ${cat}</span><span class="rv">${fmt(val)}</span></div>`).join('')||`<div class="rrow"><span class="rl">${S.lang==='sw'?'Hakuna data':'No data'}</span></div>`}
+            <div class="cat-bar-row">
+              <div class="cat-bar-label">${CAT_ICONS[cat]||''} ${cat}</div>
+              <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(val/maxCatRev*100)}%"></div></div>
+              <div class="cat-bar-val">${fmt(val)}</div>
+            </div>`).join('')||`<div style="color:var(--s500);font-size:.88rem">${S.lang==='sw'?'Hakuna data':'No data'}</div>`}
         </div>`;
     };
 
@@ -2094,6 +2111,31 @@ function statusBadge(role) {
 }
 
 // ── Inject styles ─────────────────────────────────────────────
+const _extraCSS=document.createElement('style');_extraCSS.textContent=`
+/* ── v4 Enhancements ── */
+.stat-anim { animation: fadeUp .5s ease forwards; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+.stat-anim:nth-child(1) { animation-delay: .05s; }
+.stat-anim:nth-child(2) { animation-delay: .1s; }
+.stat-anim:nth-child(3) { animation-delay: .15s; }
+.stat-anim:nth-child(4) { animation-delay: .2s; }
+#av { animation: fadeUp .3s ease; }
+.dt-row { transition: background .15s; }
+.dt-row:hover td { background: var(--g50) !important; }
+.card { transition: box-shadow .2s; }
+.card:hover { box-shadow: 0 4px 20px rgba(22,163,74,.08); }
+.bsm { transition: all .15s; }
+.btn-p:not(:disabled):hover { transform: translateY(-1px); }
+.pos-offline-bar { background:var(--ambl);border:1.5px solid #fde68a;border-radius:.65rem;padding:.7rem 1rem;margin-bottom:1rem;font-size:.9rem;font-weight:700;color:var(--amber);display:flex;align-items:center;gap:.5rem; }
+/* POS num inputs bigger */
+#s-qty, #s-buy, #s-sell, #e-amt { font-size:1.2rem !important; font-weight:800 !important; }
+/* Report bar charts */
+.cat-bar-row { display:grid; grid-template-columns:110px 1fr 90px; gap:.5rem; align-items:center; margin-bottom:.65rem; font-size:.88rem; }
+.cat-bar-track { height:8px; background:var(--g100); border-radius:4px; overflow:hidden; }
+.cat-bar-fill { height:100%; background:linear-gradient(90deg,var(--g700),var(--g500)); border-radius:4px; transition:width .8s ease; }
+.cat-bar-val { text-align:right; color:var(--g700); font-weight:700; }
+.cat-bar-label { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+`;document.head.appendChild(_extraCSS);
 const _style=document.createElement('style');
 _style.textContent=`
   #store-switcher{display:none;flex-direction:column;padding:.5rem .6rem;border-bottom:1px solid rgba(255,255,255,.06);}
