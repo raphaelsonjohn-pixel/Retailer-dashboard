@@ -1,7 +1,7 @@
 // BomaWave v3.1 — Multi-Store + POS Offline
 import { supabase as sb } from './supabase.js';
 
-const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/otp';
+const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/smooth-function`;
 const SB_KEY  = 'sb_publishable_yJni7Xxl78x24V1mJvLjVg_RAWAsGOt';
 
 // ── State ─────────────────────────────────────────────────────
