@@ -1,7 +1,7 @@
 // BomaWave v3.1 — Multi-Store + POS Offline
 import { supabase as sb } from './supabase.js';
 
-const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/otp';
+const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/smooth-function';
 const SB_KEY  = 'sb_publishable_yJni7Xxl78x24V1mJvLjVg_RAWAsGOt';
 
 // ── State ─────────────────────────────────────────────────────
@@ -14,6 +14,7 @@ let S = {
   stores: [],    // all stores for this user
   realtimeCh: null,
   isOnline: navigator.onLine,
+  supervisorOf: null,  // set when logged in as supervisor
 };
 
 
@@ -1078,6 +1079,8 @@ window.App = {
     setText('tbt', pageLabels[page]||page);
     setText('tbs', S.user?.store_name||'');
 
+    // Scroll to top on page change
+    window.scrollTo({top:0,behavior:'smooth'});
     const pages={
       dashboard:()=>App.pageDashboard(),
       marketplace:()=>App.pageMarketplace(),
@@ -1091,6 +1094,8 @@ window.App = {
       users:()=>App.pageUsers(),
       'my-stores':()=>App.pageMyStores(),
       analytics:()=>App.pageAnalytics(),
+      supervisor:()=>App.pageSupervisor(),
+      'supervisor-dash':()=>App.pageSupervisorDash(),
     };
     await (pages[page]||pages.dashboard)();
   },
@@ -1719,207 +1724,525 @@ window.App = {
 
   // ── POS ───────────────────────────────────────────────
   async pagePOS() {
-    const {data:sales}=await sb.from('sales').select('*').eq('user_id',S.user.id)
-      .gte('sale_date',today()).order('created_at',{ascending:false});
-    const {data:expenses}=await sb.from('expenses').select('*').eq('user_id',S.user.id)
-      .gte('expense_date',today()).order('created_at',{ascending:false});
+    const uid = S.user.id;
+    const sid = S.store?.id;
 
-    const view=$('av');
-    view.innerHTML=`
-      <div class="ptabs" id="pos-tabs" style="gap:.5rem;margin-bottom:1.25rem">
-        <button class="ptab on" onclick="App.posTab('sales',this)" style="font-size:.95rem;font-weight:800;min-height:54px;gap:.4rem">
-          ${svgIcon('pos')} <span>${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</span>
+    // Load today's data — online + offline
+    let onlineSales = [], onlineExps = [];
+    if (S.isOnline) {
+      let sq = sb.from('sales').select('*').eq('user_id', uid).gte('sale_date', today()).order('created_at', {ascending:false});
+      let eq = sb.from('expenses').select('*').eq('user_id', uid).gte('expense_date', today()).order('created_at', {ascending:false});
+      if (sid) { sq = sq.eq('store_id', sid); eq = eq.eq('store_id', sid); }
+      const [{data:s},{data:e}] = await Promise.all([sq, eq]);
+      onlineSales = s||[]; onlineExps = e||[];
+    }
+
+    // Offline pending records
+    const offS = (await posDbGetAll('sales')).filter(s=>!s.synced&&s.user_id===uid);
+    const offE = (await posDbGetAll('expenses')).filter(e=>!e.synced&&e.user_id===uid);
+
+    const allSales = [...offS.map(s=>({...s,_off:true})), ...onlineSales];
+    const allExps  = [...offE.map(e=>({...e,_off:true})), ...onlineExps];
+
+    // Summary stats
+    const todayRev    = allSales.reduce((s,r) => s+(r.revenue||r.selling_price*r.qty||0), 0);
+    const todayProfit = allSales.reduce((s,r) => s+(r.profit||(r.selling_price-r.buying_price)*r.qty||0), 0);
+    const todayExp    = allExps.reduce((s,e)  => s+(e.amount||0), 0);
+    const netProfit   = todayProfit - todayExp;
+    const margin      = todayRev > 0 ? Math.round(todayProfit/todayRev*100) : 0;
+
+    const view = $('av');
+    view.innerHTML = `
+      ${!S.isOnline ? `<div class="offline-banner">⚡ ${S.lang==='sw'?'Nje ya mtandao — data inashikiliwa hapa':'Offline — data saved locally, will sync when online'}</div>` : ''}
+
+      <!-- POS Summary Stats -->
+      <div class="sr" style="margin-bottom:1.1rem">
+        <div class="sc g"><div class="sic">${svgIcon('revenue')}</div><div class="sl">${S.lang==='sw'?'Mapato Leo':'Revenue'}</div><div class="sv" id="pos-rev">TZS 0</div></div>
+        <div class="sc g"><div class="sic">${svgIcon('profit')}</div><div class="sl">${S.lang==='sw'?'Faida':'Profit'}</div><div class="sv" id="pos-profit">TZS 0</div></div>
+        <div class="sc r"><div class="sic">${svgIcon('expense')}</div><div class="sl">${S.lang==='sw'?'Matumizi':'Expenses'}</div><div class="sv" id="pos-exp">TZS 0</div></div>
+        <div class="sc ${netProfit>=0?'g':'r'}"><div class="sic">${svgIcon('chart')}</div><div class="sl">${S.lang==='sw'?'Faida Halisi':'Net'}</div><div class="sv" id="pos-net">TZS 0</div></div>
+      </div>
+
+      <!-- Margin pill -->
+      <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1.1rem;flex-wrap:wrap">
+        <span style="background:${margin>=20?'var(--g100)':margin>=10?'var(--ambl)':'var(--redl)'};color:${margin>=20?'var(--g900)':margin>=10?'var(--amber)':'var(--red)'};padding:6px 16px;border-radius:20px;font-size:.82rem;font-weight:800">
+          📊 Margin: ${margin}%
+        </span>
+        <span style="font-size:.82rem;color:var(--s500)">${allSales.length} ${S.lang==='sw'?'mauzo leo':'sales today'}</span>
+        ${offS.length+offE.length>0?`<span style="background:var(--ambl);color:var(--amber);padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:700;cursor:pointer" onclick="syncOfflineData()">⚡ ${offS.length+offE.length} ${S.lang==='sw'?'offline — sync':'offline — tap to sync'}</span>`:''}
+      </div>
+
+      <!-- Tabs -->
+      <div class="ptabs" id="pos-tabs">
+        <button class="ptab on" onclick="App.posTab('sales',this)">
+          ${svgIcon('pos')} <span>${S.lang==='sw'?'Mauzo':'Sales'}</span>
         </button>
-        <button class="ptab" onclick="App.posTab('expenses',this)" style="font-size:.95rem;font-weight:800;min-height:54px;gap:.4rem">
-          ${svgIcon('expense')} <span>${S.lang==='sw'?'Rekodi Matumizi':'Expense'}</span>
+        <button class="ptab" onclick="App.posTab('expenses',this)">
+          ${svgIcon('expense')} <span>${S.lang==='sw'?'Matumizi':'Expenses'}</span>
+        </button>
+        <button class="ptab" onclick="App.posTab('history',this)">
+          ${svgIcon('chart')} <span>${S.lang==='sw'?'Historia':'History'}</span>
         </button>
       </div>
 
+      <!-- TAB 1: SALES FORM -->
       <div id="pos-sales">
         <div class="pform">
-          <div class="pftitle">${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</div>
-          <div style="display:flex;flex-direction:column;gap:.75rem">
-            <div class="fr">
-              <div class="fg"><label class="fl">${S.lang==='sw'?'Jina la Bidhaa':'Product Name'} <span style="color:var(--red)">*</span></label>
-                <input class="fi" id="s-prod" placeholder="${S.lang==='sw'?'Jina la bidhaa':'Product name'}"/></div>
-              <div class="fg"><label class="fl">${S.lang==='sw'?'Aina':'Category'}</label>
-                <select class="fi" id="s-cat">
-                  ${CATS.map(c=>`<option value="${c.id}">${CAT_ICONS[c.id]} ${S.lang==='sw'?c.sw:c.en}</option>`).join('')}
-                </select></div>
+          <div class="pftitle">🛒 ${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</div>
+          <div style="display:flex;flex-direction:column;gap:.875rem">
+            <div class="fg">
+              <label class="fl">${S.lang==='sw'?'Jina la Bidhaa':'Product Name'} *</label>
+              <input class="fi" id="s-prod" style="font-size:1rem" placeholder="${S.lang==='sw'?'Jina la bidhaa':'Product name'}" oninput="App.posCalc()"/>
             </div>
-            <div class="fr3">
-              <div class="fg"><label class="fl">${S.lang==='sw'?'Idadi':'Qty'} <span style="color:var(--red)">*</span></label>
-                <input class="fi" id="s-qty" type="number" min="1" value="1"/></div>
-              <div class="fg"><label class="fl">${S.lang==='sw'?'Bei ya Kununua':'Buying Price'}</label>
-                <input class="fi" id="s-buy" type="number" min="0" placeholder="0"/></div>
-              <div class="fg"><label class="fl">${S.lang==='sw'?'Bei ya Kuuza':'Selling Price'} <span style="color:var(--red)">*</span></label>
-                <input class="fi" id="s-sell" type="number" min="0" placeholder="0"/></div>
+            <div class="fg">
+              <label class="fl">${S.lang==='sw'?'Aina ya Bidhaa':'Category'}</label>
+              <select class="fi" id="s-cat" style="font-size:1rem">
+                ${CATS.map(c=>`<option value="${c.id}">${CAT_ICONS[c.id]} ${S.lang==='sw'?c.sw:c.en}</option>`).join('')}
+              </select>
             </div>
-            <button class="btn btn-p" onclick="App.recordSale()" style="width:100%;min-height:54px;font-size:1rem;font-weight:800;border-radius:.875rem;box-shadow:0 6px 20px rgba(22,163,74,.3)">
-              <span id="rec-sale-txt">${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</span>
+            <div class="pos-3grid">
+              <div class="fg">
+                <label class="fl">${S.lang==='sw'?'Idadi':'Qty'} *</label>
+                <input class="fi pos-big-input" id="s-qty" type="number" min="1" value="1" oninput="App.posCalc()"/>
+              </div>
+              <div class="fg">
+                <label class="fl">${S.lang==='sw'?'Bei Kununua':'Buy Price'}</label>
+                <input class="fi pos-big-input" id="s-buy" type="number" min="0" placeholder="0" oninput="App.posCalc()"/>
+              </div>
+              <div class="fg">
+                <label class="fl">${S.lang==='sw'?'Bei Kuuza':'Sell Price'} *</label>
+                <input class="fi pos-big-input" id="s-sell" type="number" min="0" placeholder="0" style="border-color:var(--g400)!important" oninput="App.posCalc()"/>
+              </div>
+            </div>
+            <!-- Live Calculator -->
+            <div id="pos-calc" class="pos-calc-card" style="display:none">
+              <div style="font-size:.72rem;font-weight:800;color:var(--g700);text-transform:uppercase;letter-spacing:1px;margin-bottom:.65rem">📊 ${S.lang==='sw'?'Hesabu ya Haraka':'Quick Calc'}</div>
+              <div class="pos-calc-row"><span>${S.lang==='sw'?'Mapato':'Revenue'}</span><strong id="calc-rev" style="color:var(--g700)">TZS 0</strong></div>
+              <div class="pos-calc-row"><span>${S.lang==='sw'?'Faida':'Profit'}</span><strong id="calc-profit" style="color:var(--g600)">TZS 0</strong></div>
+              <div class="pos-calc-row"><span>${S.lang==='sw'?'Margin':'Margin %'}</span><strong id="calc-margin" style="color:var(--b700)">0%</strong></div>
+            </div>
+            <button class="pos-rec-btn green" onclick="App.recordSale()">
+              <span id="rec-sale-txt">✓ ${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</span>
             </button>
           </div>
         </div>
-        <div class="card"><div class="cp">
-          <div class="sh"><span class="st">${S.lang==='sw'?'Mauzo ya Leo':'Today Sales'}</span></div>
+      </div>
+
+      <!-- TAB 2: EXPENSES FORM -->
+      <div id="pos-expenses" style="display:none">
+        <div class="pform" style="border-color:var(--redl)">
+          <div class="pftitle">💸 ${S.lang==='sw'?'Rekodi Matumizi':'Record Expense'}</div>
+          <div style="display:flex;flex-direction:column;gap:.875rem">
+            <div class="fg">
+              <label class="fl">${S.lang==='sw'?'Aina ya Matumizi':'Category'}</label>
+              <select class="fi" id="e-cat" style="font-size:1rem">
+                <option value="rent">${S.lang==='sw'?'Kodi':'Rent'}</option>
+                <option value="transport">${S.lang==='sw'?'Usafiri':'Transport'}</option>
+                <option value="salary">${S.lang==='sw'?'Mshahara':'Salary'}</option>
+                <option value="utilities">${S.lang==='sw'?'Umeme / Maji':'Utilities'}</option>
+                <option value="stock">${S.lang==='sw'?'Kununua Stok':'Stock Purchase'}</option>
+                <option value="other">${S.lang==='sw'?'Nyingine':'Other'}</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">${S.lang==='sw'?'Kiasi':'Amount'} *</label>
+              <input class="fi pos-big-input" id="e-amt" type="number" min="0" placeholder="0"/>
+            </div>
+            <div class="fg">
+              <label class="fl">${S.lang==='sw'?'Maelezo':'Description'} *</label>
+              <input class="fi" id="e-desc" style="font-size:1rem" placeholder="${S.lang==='sw'?'mfano: Kodi ya mwezi':'e.g. Monthly rent'}"/>
+            </div>
+            <button class="pos-rec-btn red" onclick="App.recordExpense()">
+              <span id="rec-exp-txt">✓ ${S.lang==='sw'?'Rekodi Matumizi':'Record Expense'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: HISTORY -->
+      <div id="pos-history" style="display:none">
+        <div class="card" style="margin-bottom:1rem"><div class="cp">
+          <div class="sh">
+            <span class="st">💰 ${S.lang==='sw'?'Mauzo ya Leo':'Today Sales'} (${allSales.length})</span>
+            ${offS.length>0?`<span style="background:var(--ambl);color:var(--amber);font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px">⚡ ${offS.length} offline</span>`:''}
+          </div>
           <div class="tw"><table class="dt">
             <thead><tr>
-              <th>${S.lang==='sw'?'BIDHAA':'PRODUCT'}</th><th>${S.lang==='sw'?'IDADI':'QTY'}</th>
-              <th>${S.lang==='sw'?'MAPATO':'REVENUE'}</th><th>${S.lang==='sw'?'FAIDA':'PROFIT'}</th>
-              <th>${S.lang==='sw'?'TAREHE':'TIME'}</th>
+              <th>${S.lang==='sw'?'BIDHAA':'PRODUCT'}</th>
+              <th>QTY</th>
+              <th>${S.lang==='sw'?'MAPATO':'REVENUE'}</th>
+              <th>${S.lang==='sw'?'FAIDA':'PROFIT'}</th>
+              <th>${S.lang==='sw'?'WAKATI':'TIME'}</th>
             </tr></thead>
-            <tbody>${(sales||[]).map(s=>`
-              <tr>
-                <td><strong>${s.product_name}</strong></td>
-                <td style="font-size:.95rem;font-weight:800">${s.qty}</td>
-                <td style="color:var(--g700);font-weight:800;font-size:.95rem">${fmt(s.revenue)}</td>
-                <td style="color:var(--g600);font-weight:700">${fmt(s.profit)}</td>
-                <td style="color:var(--s500);font-size:.75rem">${s.created_at?.slice(11,16)||'—'}</td>
-              </tr>`).join('')||`<tr><td colspan="5"><div class="empty"><div class="empty-ic">💰</div><div class="empty-s">${S.lang==='sw'?'Hakuna mauzo leo':'No sales today'}</div></div></td></tr>`}
+            <tbody>
+              ${allSales.map((s,i) => `
+                <tr class="dt-row${s._off?' offline-tr':''}">
+                  <td><strong>${s.product_name}</strong>${s._off?` <span style="font-size:.65rem;background:var(--ambl);color:var(--amber);padding:1px 6px;border-radius:8px">⚡</span>`:''}</td>
+                  <td style="font-size:1.05rem;font-weight:800;text-align:center">${s.qty}</td>
+                  <td style="color:var(--g700);font-weight:800">${fmt(s.revenue||s.selling_price*s.qty||0)}</td>
+                  <td style="color:${(s.profit||(s.selling_price-s.buying_price)*s.qty||0)<0?'var(--red)':'var(--g600)'};font-weight:700">
+                    ${(s.profit||(s.selling_price-s.buying_price)*s.qty||0)<0?'❌ ':''} ${fmt(Math.abs(s.profit||(s.selling_price-s.buying_price)*s.qty||0))}
+                  </td>
+                  <td style="color:var(--s500);font-size:.78rem">${s.created_at?.slice(11,16)||'—'}</td>
+                </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic">💰</div><div class="empty-s">${S.lang==='sw'?'Hakuna mauzo leo':'No sales today'}</div></div></td></tr>`}
             </tbody>
           </table></div>
         </div></div>
-      </div>
 
-      <div id="pos-expenses" style="display:none">
-        <div class="pform">
-          <div class="pftitle">${S.lang==='sw'?'Rekodi Matumizi':'Record Expense'}</div>
-          <div style="display:flex;flex-direction:column;gap:.75rem">
-            <div class="fr">
-              <div class="fg"><label class="fl">${S.lang==='sw'?'Aina':'Category'}</label>
-                <select class="fi" id="e-cat">
-                  <option value="rent">${S.lang==='sw'?'Kodi':'Rent'}</option>
-                  <option value="transport">${S.lang==='sw'?'Usafiri':'Transport'}</option>
-                  <option value="salary">${S.lang==='sw'?'Mshahara':'Salary'}</option>
-                  <option value="utilities">${S.lang==='sw'?'Umeme/Maji':'Utilities'}</option>
-                  <option value="other">${S.lang==='sw'?'Nyingine':'Other'}</option>
-                </select></div>
-              <div class="fg"><label class="fl">${S.lang==='sw'?'Kiasi':'Amount'} <span style="color:var(--red)">*</span></label>
-                <input class="fi" id="e-amt" type="number" min="0" placeholder="0"/></div>
-            </div>
-            <div class="fg"><label class="fl">${S.lang==='sw'?'Maelezo':'Description'} <span style="color:var(--red)">*</span></label>
-              <input class="fi" id="e-desc" placeholder="${S.lang==='sw'?'Maelezo ya matumizi':'Expense description'}"/></div>
-            <button class="btn btn-p" onclick="App.recordExpense()" style="width:100%;min-height:54px;font-size:1rem;font-weight:800;border-radius:.875rem;background:linear-gradient(135deg,#dc2626,#ef4444);box-shadow:0 6px 20px rgba(220,38,38,.25)">
-              <span id="rec-exp-txt">${S.lang==='sw'?'Rekodi Matumizi':'Record Expense'}</span>
-            </button>
-          </div>
-        </div>
         <div class="card"><div class="cp">
-          <div class="sh"><span class="st">${S.lang==='sw'?'Matumizi ya Leo':'Today Expenses'}</span></div>
+          <div class="sh">
+            <span class="st">💸 ${S.lang==='sw'?'Matumizi ya Leo':'Today Expenses'}</span>
+          </div>
           <div class="tw"><table class="dt">
             <thead><tr>
               <th>${S.lang==='sw'?'AINA':'CATEGORY'}</th>
               <th>${S.lang==='sw'?'MAELEZO':'DESCRIPTION'}</th>
               <th>${S.lang==='sw'?'KIASI':'AMOUNT'}</th>
             </tr></thead>
-            <tbody>${(expenses||[]).map(e=>`
-              <tr>
-                <td><span class="pill p-pen">${e.category}</span></td>
-                <td>${e.description}</td>
-                <td style="color:var(--red);font-weight:800">${fmt(e.amount)}</td>
-              </tr>`).join('')||`<tr><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></td></tr>`}
+            <tbody>
+              ${allExps.map(e => `
+                <tr class="dt-row${e._off?' offline-tr':''}">
+                  <td><span class="pill p-pen">${e.category}</span></td>
+                  <td>${e.description}</td>
+                  <td style="color:var(--red);font-weight:800">${fmt(e.amount)}</td>
+                </tr>`).join('') || `<tr><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></td></tr>`}
             </tbody>
           </table></div>
         </div></div>
       </div>`;
+
+    // Animate stat counts after render
+    setTimeout(() => {
+      animateCount($('pos-rev'),    todayRev,    'TZS ');
+      animateCount($('pos-profit'), todayProfit, 'TZS ');
+      animateCount($('pos-exp'),    todayExp,    'TZS ');
+      animateCount($('pos-net'),    netProfit,   'TZS ');
+    }, 300);
   },
 
   posTab(tab, btn) {
-    document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.ptab').forEach(b => b.classList.remove('on'));
     btn.classList.add('on');
-    $('pos-sales').style.display=tab==='sales'?'':'none';
-    $('pos-expenses').style.display=tab==='expenses'?'':'none';
+    ['pos-sales','pos-expenses','pos-history'].forEach(id => {
+      const el = $(id);
+      if (el) el.style.display = 'none';
+    });
+    const active = $(`pos-${tab}`);
+    if (active) {
+      active.style.display = '';
+      // Animate tab content entry
+      active.style.opacity = '0';
+      active.style.transform = 'translateY(10px)';
+      requestAnimationFrame(() => {
+        active.style.transition = 'opacity .3s ease, transform .3s ease';
+        active.style.opacity = '1';
+        active.style.transform = 'translateY(0)';
+      });
+    }
+  },
+
+  posCalc() {
+    const qty  = parseFloat($('s-qty')?.value  || 0);
+    const buy  = parseFloat($('s-buy')?.value  || 0);
+    const sell = parseFloat($('s-sell')?.value || 0);
+    const calc = $('pos-calc');
+    if (!calc) return;
+    if (sell > 0 && qty > 0) {
+      calc.style.display = '';
+      const rev    = sell * qty;
+      const profit = (sell - buy) * qty;
+      const margin = sell > 0 ? Math.round((sell-buy)/sell*100) : 0;
+      setText('calc-rev',    fmt(rev));
+      setText('calc-profit', fmt(profit));
+      setText('calc-margin', `${margin}%`);
+      $('calc-margin').style.color = margin >= 20 ? 'var(--g700)' : margin >= 10 ? 'var(--amber)' : 'var(--red)';
+    } else {
+      calc.style.display = 'none';
+    }
   },
 
   async recordSale() {
-    const prod=$('s-prod').value.trim(), cat=$('s-cat').value,
-      qty=parseInt($('s-qty').value||'1'),
-      buy=parseFloat($('s-buy').value||'0'),
-      sell=parseFloat($('s-sell').value||'0');
-    if(!prod||!sell||qty<1)return toast(S.lang==='sw'?'Jaza jina na bei':'Fill product and price','e');
-    setBusy('rec-sale-txt',true);
-    const {error}=await sb.from('sales').insert([{
-      user_id:S.user.id,product_name:prod,category:cat,
-      qty,buying_price:buy,selling_price:sell,sale_date:today(),
-    }]);
-    setBusy('rec-sale-txt',false,S.lang==='sw'?'Rekodi Mauzo':'Record Sale');
-    if(error)return toast('Hitilafu','e');
-    toast(S.lang==='sw'?'Mauzo yamerekodiwa! ✅':'Sale recorded! ✅','s');
+    const prod = $('s-prod')?.value.trim();
+    const cat  = $('s-cat')?.value;
+    const qty  = parseInt($('s-qty')?.value || '1');
+    const buy  = parseFloat($('s-buy')?.value || '0');
+    const sell = parseFloat($('s-sell')?.value || '0');
+    if (!prod || !sell || qty < 1)
+      return toast(S.lang==='sw' ? 'Jaza jina la bidhaa na bei ya kuuza' : 'Fill product name and selling price', 'e');
+    const data = {
+      user_id: S.user.id, product_name: prod, category: cat,
+      qty, buying_price: buy, selling_price: sell,
+      sale_date: today(), store_id: S.store?.id || null,
+    };
+    setBusy('rec-sale-txt', true);
+    if (S.isOnline) {
+      const {error} = await sb.from('sales').insert([data]);
+      if (error) {
+        await posDbAdd('sales', data);
+        toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w');
+      } else {
+        toast(S.lang==='sw' ? '✅ Mauzo yamerekodiwa!' : '✅ Sale recorded!', 's');
+      }
+    } else {
+      await posDbAdd('sales', data);
+      toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline — itasync baadaye' : '⚡ Saved offline', 'w');
+    }
+    setBusy('rec-sale-txt', false, `✓ ${S.lang==='sw' ? 'Rekodi Mauzo' : 'Record Sale'}`);
+    // Clear form
+    if($('s-prod')) $('s-prod').value = '';
+    if($('s-qty'))  $('s-qty').value  = '1';
+    if($('s-buy'))  $('s-buy').value  = '';
+    if($('s-sell')) $('s-sell').value = '';
+    if($('pos-calc')) $('pos-calc').style.display = 'none';
     App.pagePOS();
   },
 
   async recordExpense() {
-    const cat=$('e-cat').value,desc=$('e-desc').value.trim(),amt=parseFloat($('e-amt').value||'0');
-    if(!desc||!amt)return toast(S.lang==='sw'?'Jaza maelezo na kiasi':'Fill description and amount','e');
-    setBusy('rec-exp-txt',true);
-    const {error}=await sb.from('expenses').insert([{
-      user_id:S.user.id,category:cat,description:desc,amount:amt,expense_date:today(),
-    }]);
-    setBusy('rec-exp-txt',false,S.lang==='sw'?'Rekodi Matumizi':'Record Expense');
-    if(error)return toast('Hitilafu','e');
-    toast(S.lang==='sw'?'Matumizi yamerekodiwa! ✅':'Expense recorded! ✅','s');
+    const cat  = $('e-cat')?.value;
+    const desc = $('e-desc')?.value.trim();
+    const amt  = parseFloat($('e-amt')?.value || '0');
+    if (!desc || !amt)
+      return toast(S.lang==='sw' ? 'Jaza maelezo na kiasi' : 'Fill description and amount', 'e');
+    const data = {
+      user_id: S.user.id, category: cat, description: desc,
+      amount: amt, expense_date: today(), store_id: S.store?.id || null,
+    };
+    setBusy('rec-exp-txt', true);
+    if (S.isOnline) {
+      const {error} = await sb.from('expenses').insert([data]);
+      if (error) { await posDbAdd('expenses', data); toast('⚡ Saved offline', 'w'); }
+      else toast(S.lang==='sw' ? '✅ Matumizi yamerekodiwa!' : '✅ Expense recorded!', 's');
+    } else {
+      await posDbAdd('expenses', data);
+      toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w');
+    }
+    setBusy('rec-exp-txt', false, `✓ ${S.lang==='sw' ? 'Rekodi Matumizi' : 'Record Expense'}`);
+    if($('e-amt'))  $('e-amt').value  = '';
+    if($('e-desc')) $('e-desc').value = '';
     App.pagePOS();
   },
 
-  // ── REPORTS ───────────────────────────────────────────
+  // ── ADVANCED REPORTS ──────────────────────────────────
   async pageReports() {
-    let period='today', startDate=today();
-    const render=async()=>{
-      if(period==='today') startDate=today();
-      else if(period==='week') startDate=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
-      else if(period==='month') startDate=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
-      const {data:sales}=await sb.from('sales').select('*').eq('user_id',S.user.id).gte('sale_date',startDate);
-      const {data:exps}=await sb.from('expenses').select('*').eq('user_id',S.user.id).gte('expense_date',startDate);
-      const rev=sales?.reduce((s,r)=>s+(r.revenue||0),0)||0;
-      const profit=sales?.reduce((s,r)=>s+(r.profit||0),0)||0;
-      const expTotal=exps?.reduce((s,e)=>s+(e.amount||0),0)||0;
-      const netProfit=profit-expTotal;
-
-      // Category breakdown
-      const byCat={};
-      (sales||[]).forEach(s=>{byCat[s.category]=(byCat[s.category]||0)+(s.revenue||0);});
-
-      const maxCatRev=Math.max(...Object.values(byCat),1);
-      const netProfitVal=profit-expTotal;
-      $('rep-body').innerHTML=`
-        <div class="rsec">
-          <div class="rsec-t">${S.lang==='sw'?'Muhtasari wa Fedha':'Financial Summary'}</div>
-          <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla ya Mapato':'Total Revenue'}</span><span class="rv g">${fmt(rev)}</span></div>
-          <div class="rrow"><span class="rl">${S.lang==='sw'?'Faida Ghafi':'Gross Profit'}</span><span class="rv g">${fmt(profit)}</span></div>
-          <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla ya Matumizi':'Total Expenses'}</span><span class="rv r">${fmt(expTotal)}</span></div>
-          <div class="rrow"><span class="rl">${S.lang==='sw'?'Margin':'Margin'}</span><span class="rv ${profit>0?'g':'r'}">${rev>0?Math.round(profit/rev*100):0}%</span></div>
-          <div class="rrow div"><span class="rl" style="font-size:.95rem;font-weight:800">${S.lang==='sw'?'Faida Halisi':'Net Profit'}</span><span class="rv ${netProfit>=0?'g':'r'}" style="font-size:1.05rem">${fmt(netProfit)}</span></div>
-        </div>
-        <div class="rsec">
-          <div class="rsec-t">${S.lang==='sw'?'Mauzo kwa Aina (Bar Chart)':'Sales by Category'}</div>
-          ${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,val])=>`
-            <div class="cat-bar-row">
-              <div class="cat-bar-label">${CAT_ICONS[cat]||''} ${cat}</div>
-              <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(val/maxCatRev*100)}%"></div></div>
-              <div class="cat-bar-val">${fmt(val)}</div>
-            </div>`).join('')||`<div style="color:var(--s500);font-size:.88rem">${S.lang==='sw'?'Hakuna data':'No data'}</div>`}
-        </div>`;
-    };
-
-    const view=$('av');
-    view.innerHTML=`
-      <div class="pertabs" id="ptabs">
-        <button class="pertab on" onclick="App.repPeriod('today',this)">Leo</button>
-        <button class="pertab" onclick="App.repPeriod('week',this)">${S.lang==='sw'?'Wiki 1':'1 Week'}</button>
-        <button class="pertab" onclick="App.repPeriod('month',this)">${S.lang==='sw'?'Mwezi 1':'1 Month'}</button>
+    const view = $('av');
+    view.innerHTML = `
+      <div class="rep-period-tabs">
+        <button class="pertab on" onclick="App.loadReports('today',this)">${S.lang==='sw'?'Leo':'Today'}</button>
+        <button class="pertab" onclick="App.loadReports('week',this)">${S.lang==='sw'?'Wiki':'Week'}</button>
+        <button class="pertab" onclick="App.loadReports('month',this)">${S.lang==='sw'?'Mwezi':'Month'}</button>
+        <button class="pertab" onclick="App.loadReports('year',this)">${S.lang==='sw'?'Mwaka':'Year'}</button>
       </div>
-      <div id="rep-body"><div style="text-align:center;padding:2rem;color:var(--s500)"><span class="spin d"></span></div></div>`;
-
-    S._repPeriod='today';
-    window._repRender=render;
-    await render();
+      <div id="rep-body"><div class="page-loading"><span class="spin d"></span></div></div>`;
+    await App.loadReports('today', view.querySelector('.pertab'));
   },
 
-  repPeriod(p,btn) {
-    document.querySelectorAll('.pertab').forEach(b=>b.classList.remove('on'));
-    btn.classList.add('on');
-    S._repPeriod=p;
-    if(window._repRender)window._repRender();
+  async loadReports(period, btn) {
+    document.querySelectorAll('.pertab').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
+
+    const days = {today:0, week:7, month:30, year:365}[period] || 0;
+    const startDate = days === 0 ? today() : new Date(Date.now()-days*864e5).toISOString().slice(0,10);
+    const uid  = S.user.id;
+    const sid  = S.store?.id;
+
+    // Build queries
+    let sq = sb.from('sales').select('*').eq('user_id', uid).gte('sale_date', startDate);
+    let eq = sb.from('expenses').select('*').eq('user_id', uid).gte('expense_date', startDate);
+    if (sid) { sq = sq.eq('store_id', sid); eq = eq.eq('store_id', sid); }
+
+    const [{data:sales},{data:exps}] = await Promise.all([sq, eq]);
+    const allS = sales || [], allE = exps || [];
+
+    // Core metrics
+    const rev     = allS.reduce((s,r) => s+(r.revenue||r.selling_price*r.qty||0), 0);
+    const cost    = allS.reduce((s,r) => s+(r.buying_price*r.qty||0), 0);
+    const profit  = allS.reduce((s,r) => s+(r.profit||(r.selling_price-r.buying_price)*r.qty||0), 0);
+    const expT    = allE.reduce((s,e) => s+(e.amount||0), 0);
+    const net     = profit - expT;
+    const margin  = rev > 0 ? (profit/rev*100).toFixed(1) : 0;
+    const txCount = allS.length;
+    const avgSale = txCount > 0 ? rev/txCount : 0;
+
+    // Category breakdown
+    const byCat = {};
+    allS.forEach(s => {
+      const cat = s.category || 'other';
+      if (!byCat[cat]) byCat[cat] = {rev:0, profit:0, qty:0, count:0};
+      byCat[cat].rev    += s.revenue || s.selling_price*s.qty || 0;
+      byCat[cat].profit += s.profit  || (s.selling_price-s.buying_price)*s.qty || 0;
+      byCat[cat].qty    += s.qty || 0;
+      byCat[cat].count  += 1;
+    });
+
+    // Top products (by revenue)
+    const byProd = {};
+    allS.forEach(s => {
+      if (!byProd[s.product_name]) byProd[s.product_name] = {rev:0, qty:0, profit:0};
+      byProd[s.product_name].rev    += s.revenue || s.selling_price*s.qty || 0;
+      byProd[s.product_name].qty    += s.qty || 0;
+      byProd[s.product_name].profit += s.profit || (s.selling_price-s.buying_price)*s.qty || 0;
+    });
+    const topProds = Object.entries(byProd).sort((a,b)=>b[1].rev-a[1].rev).slice(0,5);
+    const maxProdRev = Math.max(...topProds.map(([,v])=>v.rev), 1);
+
+    // Expense breakdown
+    const byExp = {};
+    allE.forEach(e => { byExp[e.category] = (byExp[e.category]||0) + e.amount; });
+    const maxExpVal = Math.max(...Object.values(byExp), 1);
+
+    // Daily trend (last 7 days for week, last 30 for month)
+    const trendDays = period === 'today' ? 1 : period === 'week' ? 7 : period === 'month' ? 30 : 12;
+    const trend = {};
+    allS.forEach(s => {
+      const d = s.sale_date || s.created_at?.slice(0,10);
+      if (d) trend[d] = (trend[d]||0) + (s.revenue||s.selling_price*s.qty||0);
+    });
+
+    // Per-store breakdown (if multiple stores)
+    const storeBreakdown = {};
+    if (S.stores.length > 1) {
+      allS.forEach(s => {
+        const sname = S.stores.find(st=>st.id===s.store_id)?.store_name || 'Duka Kuu';
+        if (!storeBreakdown[sname]) storeBreakdown[sname] = {rev:0, profit:0};
+        storeBreakdown[sname].rev    += s.revenue||s.selling_price*s.qty||0;
+        storeBreakdown[sname].profit += s.profit||(s.selling_price-s.buying_price)*s.qty||0;
+      });
+    }
+    const maxCatRev = Math.max(...Object.values(byCat).map(v=>v.rev), 1);
+
+    $('rep-body').innerHTML = `
+      <!-- KPI Cards -->
+      <div class="rep-kpis">
+        <div class="rep-kpi green">
+          <div class="rep-kpi-label">${S.lang==='sw'?'Jumla Mapato':'Total Revenue'}</div>
+          <div class="rep-kpi-val">${fmt(rev)}</div>
+          <div class="rep-kpi-sub">${txCount} ${S.lang==='sw'?'mauzo':'transactions'}</div>
+        </div>
+        <div class="rep-kpi ${profit>=0?'green':'red'}">
+          <div class="rep-kpi-label">${S.lang==='sw'?'Faida Ghafi':'Gross Profit'}</div>
+          <div class="rep-kpi-val">${fmt(profit)}</div>
+          <div class="rep-kpi-sub">Margin: ${margin}%</div>
+        </div>
+        <div class="rep-kpi red">
+          <div class="rep-kpi-label">${S.lang==='sw'?'Matumizi':'Expenses'}</div>
+          <div class="rep-kpi-val">${fmt(expT)}</div>
+          <div class="rep-kpi-sub">${Object.keys(byExp).length} ${S.lang==='sw'?'aina':'categories'}</div>
+        </div>
+        <div class="rep-kpi ${net>=0?'green':'red'}">
+          <div class="rep-kpi-label">${S.lang==='sw'?'Faida Halisi':'Net Profit'}</div>
+          <div class="rep-kpi-val">${fmt(net)}</div>
+          <div class="rep-kpi-sub">${S.lang==='sw'?'Baada ya matumizi':'After expenses'}</div>
+        </div>
+      </div>
+
+      <!-- Financial Summary -->
+      <div class="rsec" style="margin-bottom:1rem">
+        <div class="rsec-t">📊 ${S.lang==='sw'?'Muhtasari wa Fedha':'Financial Summary'}</div>
+        <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla Mauzo (TX)':'Total Transactions'}</span><span class="rv">${txCount}</span></div>
+        <div class="rrow"><span class="rl">${S.lang==='sw'?'Wastani kwa Mauzo':'Avg per Sale'}</span><span class="rv">${fmt(avgSale)}</span></div>
+        <div class="rrow"><span class="rl">${S.lang==='sw'?'Gharama ya Bidhaa':'Cost of Goods'}</span><span class="rv r">${fmt(cost)}</span></div>
+        <div class="rrow"><span class="rl">${S.lang==='sw'?'Faida Ghafi':'Gross Profit'}</span><span class="rv ${profit>=0?'g':'r'}">${fmt(profit)}</span></div>
+        <div class="rrow"><span class="rl">${S.lang==='sw'?'Matumizi':'Expenses'}</span><span class="rv r">${fmt(expT)}</span></div>
+        <div class="rrow div">
+          <span class="rl" style="font-weight:800;font-size:.95rem">${S.lang==='sw'?'Faida Halisi':'Net Profit'}</span>
+          <span class="rv ${net>=0?'g':'r'}" style="font-size:1.1rem;font-weight:800">${fmt(net)}</span>
+        </div>
+      </div>
+
+      <!-- Top Products Bar Chart -->
+      <div class="rsec" style="margin-bottom:1rem">
+        <div class="rsec-t">🏆 ${S.lang==='sw'?'Bidhaa Zinazoongoza':'Top Products'}</div>
+        ${topProds.length ? topProds.map(([name,v], i) => {
+          // Red if cost >= revenue (selling at loss)
+          const isLoss = v.profit < 0;
+          const pct = Math.round(v.rev/maxProdRev*100);
+          return `<div class="top-prod-row">
+            <div class="top-prod-rank">${i+1}</div>
+            <div class="top-prod-info">
+              <div class="top-prod-name">${name}</div>
+              <div class="top-prod-bar-wrap">
+                <div class="top-prod-bar" style="width:${pct}%;background:${isLoss?'var(--red)':'linear-gradient(90deg,var(--g700),var(--g500))'}"></div>
+              </div>
+              <div class="top-prod-meta">
+                <span>${fmt(v.rev)}</span>
+                <span style="color:${isLoss?'var(--red)':'var(--g700)'};font-weight:700">${isLoss?'❌ Hasara':fmt(v.profit)+' faida'}</span>
+                <span style="color:var(--s500)">Qty: ${v.qty}</span>
+              </div>
+            </div>
+          </div>`;
+        }).join('') : `<div style="color:var(--s500);text-align:center;padding:1rem">${S.lang==='sw'?'Hakuna data':'No data'}</div>`}
+      </div>
+
+      <!-- Category Breakdown -->
+      <div class="rsec" style="margin-bottom:1rem">
+        <div class="rsec-t">📦 ${S.lang==='sw'?'Mauzo kwa Aina':'Sales by Category'}</div>
+        ${Object.entries(byCat).sort((a,b)=>b[1].rev-a[1].rev).map(([cat,v]) => {
+          const catMargin = v.rev > 0 ? Math.round(v.profit/v.rev*100) : 0;
+          const isLoss = v.profit < 0;
+          return `<div class="cat-bar-row" style="margin-bottom:.75rem">
+            <div class="cat-bar-label">${CAT_ICONS[cat]||'📦'} ${cat}</div>
+            <div>
+              <div class="cat-bar-track">
+                <div class="cat-bar-fill" style="width:${Math.round(v.rev/maxCatRev*100)}%;background:${isLoss?'var(--red)':''}"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-top:.2rem">
+                <span style="color:var(--s500)">${fmt(v.rev)}</span>
+                <span style="color:${isLoss?'var(--red)':catMargin>=15?'var(--g700)':'var(--s500)'}">
+                  ${isLoss?'❌ Hasara':`Faida: ${fmt(v.profit)}`}
+                </span>
+              </div>
+            </div>
+          </div>`;
+        }).join('') || `<div style="color:var(--s500);text-align:center;padding:1rem">${S.lang==='sw'?'Hakuna data':'No data'}</div>`}
+      </div>
+
+      <!-- Expense Breakdown -->
+      ${expT > 0 ? `<div class="rsec" style="margin-bottom:1rem">
+        <div class="rsec-t">💸 ${S.lang==='sw'?'Matumizi kwa Aina':'Expenses by Category'}</div>
+        ${Object.entries(byExp).sort((a,b)=>b[1]-a[1]).map(([cat,val]) => `
+          <div class="cat-bar-row" style="margin-bottom:.65rem">
+            <div class="cat-bar-label" style="color:var(--red)">${cat}</div>
+            <div>
+              <div class="cat-bar-track">
+                <div class="cat-bar-fill" style="width:${Math.round(val/maxExpVal*100)}%;background:linear-gradient(90deg,var(--red),#f87171)"></div>
+              </div>
+              <div style="font-size:.75rem;color:var(--red);font-weight:700;margin-top:.2rem">${fmt(val)}</div>
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
+
+      <!-- Multi-Store Breakdown -->
+      ${S.stores.length > 1 && Object.keys(storeBreakdown).length > 0 ? `
+      <div class="rsec" style="margin-bottom:1rem">
+        <div class="rsec-t">🏪 ${S.lang==='sw'?'Ufanisi kwa Duka':'Performance by Store'}</div>
+        ${Object.entries(storeBreakdown).sort((a,b)=>b[1].rev-a[1].rev).map(([name,v]) => {
+          const isLoss = v.profit < 0;
+          return `<div class="rrow">
+            <span class="rl">🏪 ${name}</span>
+            <div style="text-align:right">
+              <div style="font-weight:800">${fmt(v.rev)}</div>
+              <div style="font-size:.75rem;color:${isLoss?'var(--red)':'var(--g700)'}">${isLoss?'❌ Hasara':fmt(v.profit)+' faida'}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+
+      <!-- Daily trend for week/month -->
+      ${period !== 'today' && Object.keys(trend).length > 0 ? `
+      <div class="rsec">
+        <div class="rsec-t">📈 ${S.lang==='sw'?'Mwelekeo wa Mauzo':'Sales Trend'}</div>
+        <div class="trend-wrap">
+          ${Object.entries(trend).sort().slice(-14).map(([date,val]) => {
+            const maxT = Math.max(...Object.values(trend), 1);
+            const h = Math.max(8, Math.round(val/maxT*80));
+            return `<div class="trend-col">
+              <div class="trend-bar" style="height:${h}px" title="${date}: ${fmt(val)}"></div>
+              <div class="trend-label">${date.slice(5)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+    `;
   },
 
   // ── DEBTS ─────────────────────────────────────────────
@@ -2067,6 +2390,227 @@ window.App = {
       </div></div>`;
   },
 
+  // ══════════════════════════════════════════════════════════
+  //  SUPERVISOR / BOSS FEATURE
+  // ══════════════════════════════════════════════════════════
+  async pageSupervisor() {
+    // Load existing supervisors for this business
+    const {data:sups} = await sb.from('supervisors')
+      .select('*').eq('business_id', S.user.id).eq('is_active', true);
+
+    $('av').innerHTML = `
+      <div class="sup-hero">
+        <div class="sup-hero-icon">👔</div>
+        <div>
+          <div class="sup-hero-title">${S.lang==='sw'?'Wasimamizi wa Biashara':'Business Supervisors'}</div>
+          <div class="sup-hero-sub">${S.lang==='sw'?'Mtu anayeweza kuona ufanisi wako bila ya kuingiliana na data':'Someone who can view your business performance remotely'}</div>
+        </div>
+      </div>
+
+      <!-- Add new supervisor -->
+      <div class="card anim-card" style="margin-bottom:1rem"><div class="cp">
+        <div class="page-title">➕ ${S.lang==='sw'?'Ongeza Msimamizi':'Add Supervisor'}</div>
+        <div style="display:flex;flex-direction:column;gap:.875rem;margin-top:.875rem">
+          <div class="fg">
+            <label class="fl">${S.lang==='sw'?'Jina la Msimamizi':'Supervisor Name'} *</label>
+            <input class="fi" id="sup-name" placeholder="${S.lang==='sw'?'mfano: Baba John':'e.g. John Smith'}"/>
+          </div>
+          <div class="fg">
+            <label class="fl">${S.lang==='sw'?'Namba ya Simu':'Phone Number'} *</label>
+            <div class="iw">
+              <div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
+              <input class="fi fi-phone" id="sup-phone" type="tel" inputmode="numeric" maxlength="9"
+                placeholder="712 345 678" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
+            </div>
+          </div>
+          <div class="fg">
+            <label class="fl">${S.lang==='sw'?'Kiwango cha Ufikiaji':'Access Level'}</label>
+            <select class="fi" id="sup-access">
+              <option value="read">${S.lang==='sw'?'Kuona tu (Read Only)':'View Only (Read Only)'}</option>
+              <option value="full">${S.lang==='sw'?'Kamili (Kuona + Kutuma)':'Full Access'}</option>
+            </select>
+          </div>
+          <div class="alert al-i" style="margin:0">
+            ℹ️ ${S.lang==='sw'?'Msimamizi atapata namba ya siri kupitia SMS ili aingie kwenye dashibodi yake':'Supervisor will receive a PIN via SMS to access their dashboard'}
+          </div>
+          <button class="btn btn-p" onclick="App.addSupervisor()">
+            <span id="add-sup-txt">+ ${S.lang==='sw'?'Ongeza Msimamizi':'Add Supervisor'}</span>
+          </button>
+        </div>
+      </div></div>
+
+      <!-- Existing supervisors -->
+      <div class="page-title" style="margin-bottom:.875rem">
+        ${S.lang==='sw'?'Wasimamizi Waliopo':'Current Supervisors'} (${(sups||[]).length})
+      </div>
+      ${(sups||[]).length === 0
+        ? `<div class="empty"><div class="empty-ic">👔</div>
+           <div class="empty-t">${S.lang==='sw'?'Hakuna msimamizi bado':'No supervisors yet'}</div>
+           <div class="empty-s">${S.lang==='sw'?'Ongeza msimamizi ili awaeza kukuangalia biashara yako':'Add a supervisor so they can monitor your business'}</div>
+           </div>`
+        : (sups||[]).map(sup => `
+          <div class="sup-card anim-card">
+            <div class="sup-avatar">${sup.name[0].toUpperCase()}</div>
+            <div class="sup-info">
+              <div class="sup-name">${sup.name}</div>
+              <div class="sup-phone">${sup.phone_number}</div>
+              <div class="sup-access">${sup.access_level === 'full'
+                ? `<span style="color:var(--g700)">✅ ${S.lang==='sw'?'Ufikiaji Kamili':'Full Access'}</span>`
+                : `<span style="color:var(--b700)">👁 ${S.lang==='sw'?'Kuona Tu':'View Only'}</span>`}
+              </div>
+            </div>
+            <button class="bsm r" onclick="App.removeSupervisor('${sup.id}')">
+              ${S.lang==='sw'?'Ondoa':'Remove'}
+            </button>
+          </div>`).join('')}
+    `;
+    staggerCards('.anim-card', 80);
+  },
+
+  async addSupervisor() {
+    const name  = $('sup-name')?.value.trim();
+    const rawPh = $('sup-phone')?.value.trim();
+    const access = $('sup-access')?.value || 'read';
+    if (!name) return toast(S.lang==='sw'?'Weka jina la msimamizi':'Enter supervisor name','e');
+    const phone = normPhone(rawPh);
+    if (!phone) return toast(S.lang==='sw'?'Namba si sahihi':'Invalid phone number','e');
+
+    setBusy('add-sup-txt', true);
+
+    // Check if phone already registered — link to their profile
+    const {data:existing} = await sb.from('profiles').select('id,store_name')
+      .eq('phone_number', phone).maybeSingle();
+
+    const {error} = await sb.from('supervisors').insert([{
+      business_id:   S.user.id,
+      supervisor_id: existing?.id || null,
+      phone_number:  phone,
+      name,
+      access_level:  access,
+      is_active:     true,
+    }]);
+
+    setBusy('add-sup-txt', false, `+ ${S.lang==='sw'?'Ongeza Msimamizi':'Add Supervisor'}`);
+    if (error) return toast(S.lang==='sw'?'Hitilafu ya kuongeza':'Error adding supervisor','e');
+
+    // Send SMS notification to supervisor
+    if (S.isOnline) {
+      try {
+        const msg = S.lang==='sw'
+          ? `Umewekwa msimamizi wa biashara ya ${S.user.store_name} kwenye BomaWave. Ingia kwa: ${window.location.origin}`
+          : `You have been added as supervisor for ${S.user.store_name} on BomaWave. Login at: ${window.location.origin}`;
+        await fetch(OTP_URL, {
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':`Bearer ${SB_KEY}`},
+          body: JSON.stringify({action:'send_otp', phone, _notif: msg})
+        });
+      } catch(e) {}
+    }
+
+    toast(S.lang==='sw'?'✅ Msimamizi ameongezwa!':'Supervisor added!','s');
+    App.pageSupervisor();
+  },
+
+  async removeSupervisor(supId) {
+    if (!confirm(S.lang==='sw'?'Ondoa msimamizi huyu?':'Remove this supervisor?')) return;
+    await sb.from('supervisors').update({is_active:false}).eq('id', supId);
+    toast(S.lang==='sw'?'Msimamizi ameondolewa':'Supervisor removed','s');
+    App.pageSupervisor();
+  },
+
+  // Supervisor Dashboard — what the boss sees
+  async pageSupervisorDash() {
+    // Find which business this supervisor monitors
+    const {data:supRecord} = await sb.from('supervisors')
+      .select('*,profiles!business_id(id,store_name,role,region,district)')
+      .eq('phone_number', S.user.phone_number)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!supRecord) {
+      $('av').innerHTML = `<div class="empty"><div class="empty-ic">👔</div>
+        <div class="empty-t">${S.lang==='sw'?'Huna biashara unayoangalia':'No business assigned to supervise'}</div></div>`;
+      return;
+    }
+
+    const bizId   = supRecord.business_id;
+    const bizName = supRecord.profiles?.store_name || 'Biashara';
+    const period  = 30;
+    const startDate = new Date(Date.now()-period*864e5).toISOString().slice(0,10);
+
+    const [{data:sales},{data:exps},{data:orders},{data:debts}] = await Promise.all([
+      sb.from('sales').select('revenue,profit,sale_date,product_name,qty').eq('user_id',bizId).gte('sale_date',startDate),
+      sb.from('expenses').select('amount,category,expense_date').eq('user_id',bizId).gte('expense_date',startDate),
+      sb.from('orders').select('total_price,status').or(`retailer_id.eq.${bizId},distributor_id.eq.${bizId}`),
+      sb.from('debts').select('amount,amount_paid,status').eq('user_id',bizId),
+    ]);
+
+    const rev30    = (sales||[]).reduce((s,r)=>s+(r.revenue||0),0);
+    const profit30 = (sales||[]).reduce((s,r)=>s+(r.profit||0),0);
+    const exp30    = (exps||[]).reduce((s,e)=>s+(e.amount||0),0);
+    const net30    = profit30 - exp30;
+    const totDebt  = (debts||[]).filter(d=>d.status!=='paid').reduce((s,d)=>s+(d.amount-d.amount_paid||0),0);
+    const margin   = rev30 > 0 ? (profit30/rev30*100).toFixed(1) : 0;
+
+    // Top 5 products
+    const byProd = {};
+    (sales||[]).forEach(s=>{
+      byProd[s.product_name] = (byProd[s.product_name]||0)+(s.revenue||0);
+    });
+    const topP = Object.entries(byProd).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    $('av').innerHTML = `
+      <div class="sup-dash-header">
+        <div class="sup-dash-biz">
+          <div class="sup-dash-avatar">${bizName[0]}</div>
+          <div>
+            <div class="sup-dash-name">${bizName}</div>
+            <div class="sup-dash-role">👔 ${S.lang==='sw'?'Dashibodi ya Msimamizi':'Supervisor Dashboard'} · ${period}d</div>
+          </div>
+        </div>
+        <span class="pill p-del">${S.lang==='sw'?'Mtazamo tu':'View Only'}</span>
+      </div>
+
+      <div class="sr">
+        <div class="sc g anim-card"><div class="sic">${svgIcon('revenue')}</div><div class="sl">${S.lang==='sw'?'Mapato':'Revenue'}</div><div class="sv" id="sdrev">TZS 0</div></div>
+        <div class="sc ${profit30>=0?'g':'r'} anim-card"><div class="sic">${svgIcon('profit')}</div><div class="sl">${S.lang==='sw'?'Faida':'Profit'}</div><div class="sv" id="sdpro">TZS 0</div></div>
+        <div class="sc r anim-card"><div class="sic">${svgIcon('expense')}</div><div class="sl">${S.lang==='sw'?'Matumizi':'Expenses'}</div><div class="sv" id="sdexp">TZS 0</div></div>
+        <div class="sc ${net30>=0?'g':'r'} anim-card"><div class="sic">${svgIcon('chart')}</div><div class="sl">Net</div><div class="sv" id="sdnet">TZS 0</div></div>
+      </div>
+
+      <!-- Key metrics -->
+      <div class="rsec anim-card" style="margin-bottom:1rem">
+        <div class="rsec-t">📊 ${S.lang==='sw'?'Viashiria Muhimu':'Key Metrics'} (${period} days)</div>
+        <div class="rrow"><span class="rl">Profit Margin</span><span class="rv ${margin>=15?'g':margin>=5?'a':'r'}">${margin}%</span></div>
+        <div class="rrow"><span class="rl">${S.lang==='sw'?'Madeni Yanayobaki':'Outstanding Debts'}</span><span class="rv ${totDebt>0?'r':'g'}">${fmt(totDebt)}</span></div>
+        <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla Maagizo':'Total Orders'}</span><span class="rv">${(orders||[]).length}</span></div>
+        <div class="rrow div">
+          <span class="rl" style="font-weight:800">Net Profit</span>
+          <span class="rv ${net30>=0?'g':'r'}" style="font-size:1.1rem;font-weight:800">${fmt(net30)}</span>
+        </div>
+      </div>
+
+      <!-- Top products -->
+      <div class="rsec anim-card">
+        <div class="rsec-t">🏆 ${S.lang==='sw'?'Bidhaa Zinazoongoza':'Top Products'}</div>
+        ${topP.length ? topP.map(([name,rev],i) => `
+          <div class="rrow">
+            <span class="rl"><strong>${i+1}.</strong> ${name}</span>
+            <span class="rv g">${fmt(rev)}</span>
+          </div>`).join('')
+        : `<div style="color:var(--s500);text-align:center;padding:.875rem">${S.lang==='sw'?'Hakuna data':'No data'}</div>`}
+      </div>
+    `;
+    staggerCards('.anim-card', 80);
+    setTimeout(() => {
+      animateCount($('sdrev'), rev30, 'TZS ');
+      animateCount($('sdpro'), profit30, 'TZS ');
+      animateCount($('sdexp'), exp30, 'TZS ');
+      animateCount($('sdnet'), net30, 'TZS ');
+    }, 300);
+  },
+
+
 }; // end App
 
 // ── SVG Icons ─────────────────────────────────────────────────
@@ -2112,29 +2656,342 @@ function statusBadge(role) {
 
 // ── Inject styles ─────────────────────────────────────────────
 const _extraCSS=document.createElement('style');_extraCSS.textContent=`
-/* ── v4 Enhancements ── */
-.stat-anim { animation: fadeUp .5s ease forwards; }
-@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-.stat-anim:nth-child(1) { animation-delay: .05s; }
-.stat-anim:nth-child(2) { animation-delay: .1s; }
-.stat-anim:nth-child(3) { animation-delay: .15s; }
-.stat-anim:nth-child(4) { animation-delay: .2s; }
-#av { animation: fadeUp .3s ease; }
-.dt-row { transition: background .15s; }
-.dt-row:hover td { background: var(--g50) !important; }
-.card { transition: box-shadow .2s; }
-.card:hover { box-shadow: 0 4px 20px rgba(22,163,74,.08); }
-.bsm { transition: all .15s; }
-.btn-p:not(:disabled):hover { transform: translateY(-1px); }
-.pos-offline-bar { background:var(--ambl);border:1.5px solid #fde68a;border-radius:.65rem;padding:.7rem 1rem;margin-bottom:1rem;font-size:.9rem;font-weight:700;color:var(--amber);display:flex;align-items:center;gap:.5rem; }
-/* POS num inputs bigger */
-#s-qty, #s-buy, #s-sell, #e-amt { font-size:1.2rem !important; font-weight:800 !important; }
-/* Report bar charts */
-.cat-bar-row { display:grid; grid-template-columns:110px 1fr 90px; gap:.5rem; align-items:center; margin-bottom:.65rem; font-size:.88rem; }
-.cat-bar-track { height:8px; background:var(--g100); border-radius:4px; overflow:hidden; }
-.cat-bar-fill { height:100%; background:linear-gradient(90deg,var(--g700),var(--g500)); border-radius:4px; transition:width .8s ease; }
-.cat-bar-val { text-align:right; color:var(--g700); font-weight:700; }
-.cat-bar-label { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* ════════════════════════════════════════════
+   BOMAWAVE v4 — ANIMATION & UI SYSTEM
+   ════════════════════════════════════════════ */
+
+/* ── Page entry animations ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideRight{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideLeft{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+@keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes ripple{0%{transform:scale(0);opacity:.6}100%{transform:scale(4);opacity:0}}
+
+/* ── Page container ── */
+#av{animation:fadeUp .32s cubic-bezier(.4,0,.2,1)}
+
+/* ── Stat cards staggered ── */
+.sc{
+  opacity:0;
+  animation:fadeUp .4s cubic-bezier(.34,1.4,.64,1) forwards;
+  transition:transform .2s,box-shadow .2s;
+}
+.sc:nth-child(1){animation-delay:.04s}
+.sc:nth-child(2){animation-delay:.1s}
+.sc:nth-child(3){animation-delay:.16s}
+.sc:nth-child(4){animation-delay:.22s}
+.sc:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(34,197,94,.18)!important}
+.sc.g{box-shadow:0 4px 16px rgba(34,197,94,.12)}
+.sc.b{box-shadow:0 4px 16px rgba(37,99,235,.08)}
+.sc.a{box-shadow:0 4px 16px rgba(217,119,6,.08)}
+.sc.r{box-shadow:0 4px 16px rgba(220,38,38,.08)}
+
+/* ── Stat value pop ── */
+.sv{
+  animation:countUp .5s cubic-bezier(.34,1.56,.64,1) .3s both;
+  letter-spacing:-.5px;
+}
+
+/* ── Cards ── */
+.card{
+  transition:transform .2s,box-shadow .2s,border-color .2s;
+  border:1px solid #e8f8ee!important;
+}
+.card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 28px rgba(34,197,94,.12)!important;
+  border-color:var(--g400)!important;
+}
+
+/* ── Anim card ── */
+.anim-card{
+  opacity:0;
+  animation:fadeUp .38s cubic-bezier(.4,0,.2,1) forwards;
+}
+.anim-card:nth-child(1){animation-delay:.05s}
+.anim-card:nth-child(2){animation-delay:.12s}
+.anim-card:nth-child(3){animation-delay:.19s}
+.anim-card:nth-child(4){animation-delay:.26s}
+
+/* ── Table rows ── */
+.dt tr{transition:background .12s}
+.dt tr:hover td{background:#f0fdf4!important}
+.dt-row{animation:slideRight .3s ease forwards;opacity:0}
+.dt-row:nth-child(1){animation-delay:.03s}
+.dt-row:nth-child(2){animation-delay:.06s}
+.dt-row:nth-child(3){animation-delay:.09s}
+.dt-row:nth-child(4){animation-delay:.12s}
+.dt-row:nth-child(5){animation-delay:.15s}
+.dt-row:nth-child(6){animation-delay:.18s}
+.dt-row:nth-child(n+7){animation-delay:.2s}
+
+/* ── Buttons ── */
+.btn-p{
+  transition:all .2s cubic-bezier(.34,1.56,.64,1)!important;
+  position:relative;overflow:hidden;
+}
+.btn-p::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(255,255,255,.15);
+  opacity:0;transition:opacity .2s;
+}
+.btn-p:hover:not(:disabled)::after{opacity:1}
+.btn-p:active{transform:scale(.97)!important}
+.bsm{transition:all .15s;position:relative}
+.bsm:hover{transform:translateY(-1px)}
+.bsm.g:hover{box-shadow:0 4px 12px rgba(22,163,74,.35)}
+.bsm.b:hover{box-shadow:0 4px 12px rgba(37,99,235,.3)}
+
+/* ── Bottom nav ── */
+.bni{transition:all .2s cubic-bezier(.34,1.56,.64,1)}
+.bni.on{color:var(--g700)}
+.bni.on svg{color:var(--g700);filter:drop-shadow(0 0 4px rgba(34,197,94,.4))}
+.bni:active{transform:scale(.88)}
+
+/* ── Sidebar nav ── */
+.ni{transition:all .18s cubic-bezier(.4,0,.2,1)}
+.ni:hover{transform:translateX(3px)}
+.ni.on{
+  background:rgba(74,222,128,.18)!important;
+  border-left:3px solid var(--g500)!important;
+  color:#fff!important;
+}
+.ni.on .nic svg{filter:drop-shadow(0 0 5px rgba(74,222,128,.6))}
+
+/* ── POS tabs ── */
+.pos-tab,.ptab{transition:all .2s}
+.pos-tab.on,.ptab.on{
+  background:#fff!important;
+  color:var(--g700)!important;
+  box-shadow:0 2px 12px rgba(34,197,94,.15)!important;
+}
+
+/* ── Product cards ── */
+.pcard{
+  transition:all .22s cubic-bezier(.4,0,.2,1);
+  animation:fadeUp .35s ease forwards;opacity:0;
+}
+.pcard:hover{
+  transform:translateY(-4px) scale(1.01);
+  box-shadow:0 10px 32px rgba(34,197,94,.18);
+  border-color:var(--g600)!important;
+}
+.pcard:nth-child(1){animation-delay:.04s}
+.pcard:nth-child(2){animation-delay:.08s}
+.pcard:nth-child(3){animation-delay:.12s}
+.pcard:nth-child(4){animation-delay:.16s}
+.pcard:nth-child(5){animation-delay:.2s}
+.pcard:nth-child(n+6){animation-delay:.24s}
+
+/* ── Add to cart button ── */
+.adbtn{transition:all .18s cubic-bezier(.34,1.56,.64,1)}
+.adbtn:hover{transform:scale(1.15);box-shadow:0 4px 14px rgba(22,163,74,.4)}
+.adbtn:active{transform:scale(.9)}
+
+/* ── Cart panel ── */
+.cpanel{transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.cpi{animation:slideLeft .25s ease forwards}
+
+/* ── Toast ── */
+.toast{animation:slideLeft .28s cubic-bezier(.34,1.4,.64,1)}
+
+/* ── Store pick cards ── */
+.store-pick-card{transition:all .2s cubic-bezier(.34,1.4,.64,1)}
+.store-pick-card:hover{transform:translateX(4px);border-color:var(--g600)!important}
+.store-card{transition:all .2s cubic-bezier(.4,0,.2,1)}
+.store-card:hover{transform:translateX(3px)}
+
+/* ── Reports bar charts animate ── */
+.cat-bar-fill{transition:width 1s cubic-bezier(.4,0,.2,1) .2s}
+.cat-bar-fill-init{width:0!important}
+
+/* ── Debt cards ── */
+.debt-card{
+  animation:fadeUp .35s ease forwards;opacity:0;
+  transition:transform .2s,box-shadow .2s;
+}
+.debt-card:hover{transform:translateX(3px)}
+.debt-bar{transition:width .8s cubic-bezier(.4,0,.2,1)}
+
+/* ── POS calc ── */
+#pos-calc{animation:popIn .2s ease}
+
+/* ── OTP boxes ── */
+.ob{transition:all .15s cubic-bezier(.34,1.56,.64,1)}
+.ob.on{transform:scale(1.05);border-color:var(--g600)}
+.ob.err{animation:shake .3s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* ── PIN keys ── */
+.pk{transition:all .12s cubic-bezier(.34,1.56,.64,1)}
+.pk:active{transform:scale(.88);background:var(--g100)}
+
+/* ── PIN dots ── */
+.pd{transition:all .18s cubic-bezier(.34,1.56,.64,1)}
+.pd.on{transform:scale(1.15);background:var(--g700)}
+
+/* ── Role cards ── */
+.rc{transition:all .2s cubic-bezier(.34,1.4,.64,1)}
+.rc:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1)}
+
+/* ── Lang buttons ── */
+.lang-btn{transition:all .2s cubic-bezier(.34,1.4,.64,1)}
+.lang-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1)}
+
+/* ── Page loading skeleton ── */
+.page-loading{
+  display:flex;align-items:center;justify-content:center;
+  gap:.75rem;height:240px;color:var(--s500);font-size:.95rem;
+}
+
+/* ── Skeleton shimmer ── */
+.skeleton{
+  background:linear-gradient(90deg,#f0f7f0 25%,#e0f5e0 50%,#f0f7f0 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.5s infinite;
+  border-radius:.5rem;
+}
+
+/* ── Topbar icon ── */
+.tbic{background:var(--g50)!important;transition:all .2s}
+.tbic svg{color:var(--g700)}
+
+/* ── Notification dot bounce ── */
+.ndot{animation:bounce 2s infinite}
+
+/* ── Sync badge ── */
+.sync-pill{animation:pulse 2s infinite}
+
+/* ── Green scrollbar ── */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--g400);border-radius:3px}
+::-webkit-scrollbar-track{background:var(--g50)}
+
+/* ── Ripple on buttons ── */
+.btn-p,.pos-record-btn{overflow:hidden;position:relative}
+
+/* ── Mobile POS inputs large ── */
+#s-qty,#s-buy,#s-sell,#e-amt{
+  font-size:1.25rem!important;font-weight:800!important;text-align:center!important;
+}
+
+/* ── Green inputs ── */
+.fi{
+  border-color:#bbf7d0!important;
+  background:#f8fff9!important;
+  transition:all .2s!important;
+}
+.fi:focus{
+  border-color:var(--g600)!important;
+  background:#fff!important;
+  box-shadow:0 0 0 3px rgba(34,197,94,.15)!important;
+}
+
+/* ── Category chips ── */
+.cat-chip{transition:all .15s;cursor:pointer}
+.cat-chip:hover{border-color:var(--g600);background:var(--g50);transform:scale(1.02)}
+.cat-chip.on{border-color:var(--g700);background:var(--g100);color:var(--g900)}
+
+/* ── Report bars ── */
+.cat-bar-row{display:grid;grid-template-columns:110px 1fr 90px;gap:.5rem;align-items:center;margin-bottom:.65rem;font-size:.88rem}
+.cat-bar-track{height:8px;background:var(--g100);border-radius:4px;overflow:hidden}
+.cat-bar-fill{height:100%;background:linear-gradient(90deg,var(--g700),var(--g500));border-radius:4px;transition:width 1s cubic-bezier(.4,0,.2,1) .3s}
+.cat-bar-val{text-align:right;color:var(--g700);font-weight:700}
+.cat-bar-label{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── Primary store checkbox ── */
+.primary-check{background:var(--g50)!important;border-color:var(--g100)!important}
+.primary-check input{accent-color:var(--g700)}
+
+/* ── Offline banner ── */
+.offline-banner{animation:pulse 2s infinite}
+
+/* ── Mobile responsive ── */
+@media(max-width:768px){
+  .rep-grid{display:flex;flex-direction:column}
+  .pos-3col{grid-template-columns:1fr 1fr}
+  .cat-bar-row{grid-template-columns:80px 1fr 70px}
+  .action-bar{flex-direction:column}
+}
+@media(max-width:480px){
+  .pos-3col{grid-template-columns:1fr}
+  .pos-3grid{grid-template-columns:1fr}
+}
+
+/* ── Supervisor Feature ── */
+.sup-hero{display:flex;align-items:center;gap:1rem;background:linear-gradient(135deg,var(--g700),var(--g600));border-radius:var(--rl);padding:1.25rem;margin-bottom:1.25rem;color:#fff}
+.sup-hero-icon{font-size:2.5rem;flex-shrink:0}
+.sup-hero-title{font-size:1.05rem;font-weight:800;margin-bottom:.25rem}
+.sup-hero-sub{font-size:.78rem;color:rgba(255,255,255,.8);line-height:1.5}
+.sup-card{display:flex;align-items:center;gap:.875rem;background:#fff;border:1.5px solid var(--g100);border-radius:var(--rl);padding:1rem;margin-bottom:.75rem;transition:all .2s}
+.sup-card:hover{border-color:var(--g400);box-shadow:0 4px 16px rgba(34,197,94,.12)}
+.sup-avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--g600),var(--g500));color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:800;flex-shrink:0}
+.sup-info{flex:1}
+.sup-name{font-size:.95rem;font-weight:800;color:var(--s900)}
+.sup-phone{font-size:.8rem;color:var(--s500);margin:.1rem 0}
+.sup-access{font-size:.78rem;margin-top:.2rem}
+/* Supervisor Dashboard */
+.sup-dash-header{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,var(--g900),var(--g700));border-radius:var(--rl);padding:1.1rem 1.25rem;margin-bottom:1.1rem;color:#fff}
+.sup-dash-biz{display:flex;align-items:center;gap:.875rem}
+.sup-dash-avatar{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:800;flex-shrink:0}
+.sup-dash-name{font-size:1rem;font-weight:800}
+.sup-dash-role{font-size:.75rem;color:rgba(255,255,255,.75);margin-top:.15rem}
+/* Reports KPI cards */
+.rep-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;margin-bottom:1.1rem}
+.rep-kpi{background:#fff;border-radius:var(--rl);padding:1rem;border:1.5px solid var(--g100);animation:fadeUp .4s ease forwards;opacity:0}
+.rep-kpi:nth-child(1){animation-delay:.05s}.rep-kpi:nth-child(2){animation-delay:.1s}
+.rep-kpi:nth-child(3){animation-delay:.15s}.rep-kpi:nth-child(4){animation-delay:.2s}
+.rep-kpi.green{border-left:4px solid var(--g600)}
+.rep-kpi.red{border-left:4px solid var(--red)}
+.rep-kpi.blue{border-left:4px solid var(--b700)}
+.rep-kpi-label{font-size:.68rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:.75px;margin-bottom:.35rem}
+.rep-kpi-val{font-size:1.3rem;font-weight:800;color:var(--s900);letter-spacing:-.5px;line-height:1}
+.rep-kpi-sub{font-size:.72rem;color:var(--s500);margin-top:.25rem}
+/* Top products */
+.top-prod-row{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.875rem}
+.top-prod-rank{width:24px;height:24px;border-radius:50%;background:var(--g100);color:var(--g700);font-size:.78rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.15rem}
+.top-prod-info{flex:1}
+.top-prod-name{font-size:.9rem;font-weight:700;margin-bottom:.3rem}
+.top-prod-bar-wrap{height:7px;background:var(--g100);border-radius:4px;overflow:hidden;margin-bottom:.25rem}
+.top-prod-bar{height:100%;border-radius:4px;transition:width 1s cubic-bezier(.4,0,.2,1) .3s}
+.top-prod-meta{display:flex;gap:.875rem;font-size:.75rem;flex-wrap:wrap}
+/* Trend chart */
+.trend-wrap{display:flex;align-items:flex-end;gap:4px;height:100px;padding:.5rem 0;overflow-x:auto}
+.trend-col{display:flex;flex-direction:column;align-items:center;gap:.25rem;min-width:28px}
+.trend-bar{background:linear-gradient(to top,var(--g700),var(--g500));border-radius:3px 3px 0 0;width:20px;transition:height .8s cubic-bezier(.4,0,.2,1);cursor:pointer}
+.trend-bar:hover{background:linear-gradient(to top,var(--g900),var(--g600))}
+.trend-label{font-size:.55rem;color:var(--s500);white-space:nowrap}
+/* Period tabs */
+.rep-period-tabs{display:flex;gap:.35rem;margin-bottom:1.1rem;flex-wrap:wrap}
+@media(max-width:768px){
+  .rep-kpis{grid-template-columns:repeat(2,1fr)}
+  .top-prod-meta{gap:.5rem}
+}
+
+
+/* ── POS Specific Styles ── */
+.pos-3grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem}
+.pos-big-input{font-size:1.2rem!important;font-weight:800!important;text-align:center!important;padding:.9rem!important}
+.pos-calc-card{background:linear-gradient(135deg,var(--g50),#f0fff4);border:1.5px solid var(--g100);border-radius:.75rem;padding:1rem 1.1rem;margin:.25rem 0}
+.pos-calc-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;font-size:.92rem;border-bottom:1px solid var(--g100)}
+.pos-calc-row:last-child{border-bottom:none}
+.pos-rec-btn{width:100%;padding:1.1rem;border:none;border-radius:.875rem;font-family:'DM Sans',sans-serif;font-size:1.05rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .2s;min-height:56px;letter-spacing:.3px;margin-top:.25rem}
+.pos-rec-btn.green{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;box-shadow:0 6px 20px rgba(34,197,94,.35)}
+.pos-rec-btn.green:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(34,197,94,.45)}
+.pos-rec-btn.red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;box-shadow:0 6px 20px rgba(220,38,38,.25)}
+.pos-rec-btn.red:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(220,38,38,.35)}
+.pos-rec-btn:active{transform:scale(.97)!important}
+.offline-banner{background:linear-gradient(135deg,var(--ambl),#fef9c3);border:1.5px solid #fde68a;border-radius:.75rem;padding:.8rem 1.1rem;margin-bottom:1rem;font-size:.9rem;font-weight:700;color:var(--amber);display:flex;align-items:center;gap:.5rem}
+.offline-tr{background:#fffbeb!important}
+@media(max-width:640px){.pos-3grid{grid-template-columns:1fr 1fr}}
+@media(max-width:420px){.pos-3grid{grid-template-columns:1fr}}
+
 `;document.head.appendChild(_extraCSS);
 const _style=document.createElement('style');
 _style.textContent=`
