@@ -4,7 +4,9 @@ import { supabase as sb } from './supabase.js';
 const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/smooth-function';
 const SB_KEY  = 'sb_publishable_yJni7Xxl78x24V1mJvLjVg_RAWAsGOt';
 
-// ── FIX: Add DIST_PLANS and RETAILER_PLANS ─────────────────────────
+// ══════════════════════════════════════════════════════════════
+// FIX: ADD DIST_PLANS AND RETAILER_PLANS (ZILIZOKOSA)
+// ══════════════════════════════════════════════════════════════
 const DIST_PLANS = {
   free:    { name: 'Free', price: 0 },
   premium: { name: 'Premium', price: 20000 },
@@ -16,7 +18,7 @@ const RETAILER_PLANS = {
   premium: { name: 'Premium', price: 12000 },
   pro:     { name: 'Pro', price: 20000 }
 };
-// ────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
 
 // ── State ─────────────────────────────────────────────────────
 let S = {
@@ -29,10 +31,10 @@ let S = {
   realtimeCh: null,
   isOnline: navigator.onLine,
   supervisorOf: null,  // set when logged in as supervisor
-  _savedStoreId: null,
-  resendTimer: null,
-  loginResendTimer: null,
-  forgotResendTimer: null
+  _savedStoreId: null,  // FIX: Added missing property
+  resendTimer: null,    // FIX: Added missing property
+  loginResendTimer: null,  // FIX: Added missing property
+  forgotResendTimer: null   // FIX: Added missing property
 };
 
 
@@ -785,7 +787,7 @@ window.App = {
   showAddStore() {
     const view = document.getElementById('av');
     setText('tbt', S.lang==='sw'?'Ongeza Duka':'Add Store');
-    App.initLocDropdowns('as-region','as-district','as-ward');
+    initLoc('as-region','as-district','as-ward');
     view.innerHTML = `
       <div style="max-width:480px;margin:0 auto">
         <div class="card"><div class="cp">
@@ -825,13 +827,7 @@ window.App = {
           </div>
         </div></div>
       </div>`;
-    App.initLocDropdowns('as-region','as-district','as-ward');
-  },
-
-  initLocDropdowns(regionId, districtId, wardId) {
-    fillSelect(regionId, Object.keys(LOC), S.lang==='sw'?'Chagua Mkoa':'Select Region');
-    fillSelect(districtId, [], S.lang==='sw'?'— Chagua Wilaya —':'— Select District —');
-    if (wardId) fillSelect(wardId, [], S.lang==='sw'?'— Chagua Kata —':'— Select Ward —');
+    initLoc('as-region','as-district','as-ward');
   },
 
   onASRegion() { const r=document.getElementById('as-region').value; fillSelect('as-district',r?Object.keys(LOC[r]||[]):[]);fillSelect('as-ward',[]); },
@@ -946,8 +942,8 @@ window.App = {
     const bb=$('sbb');
     if(bb){bb.className=`rbadge ${badgeClass}`;bb.textContent=badgeTxt;}
 
-    // FIXED: Use DIST_PLANS and RETAILER_PLANS (defined at top)
-    const plan = 'free';
+    // FIXED: Use DIST_PLANS and RETAILER_PLANS instead of undefined variable
+    const plan = 'free'; // Default plan
     const planData = (u.role === 'distributor' ? DIST_PLANS : RETAILER_PLANS)[plan] || RETAILER_PLANS.free;
 
     // Nav items by role
@@ -1912,7 +1908,7 @@ window.App = {
                     ${(s.profit||(s.selling_price-s.buying_price)*s.qty||0)<0?'❌ ':''} ${fmt(Math.abs(s.profit||(s.selling_price-s.buying_price)*s.qty||0))}
                    </span></td>
                   <td style="color:var(--s500);font-size:.78rem">${s.created_at?.slice(11,16)||'—'}</span></td>
-                </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic">💰</div><div class="empty-s">${S.lang==='sw'?'Hakuna mauzo leo':'No sales today'}</div></div></span></td>`}
+                <tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic">💰</div><div class="empty-s">${S.lang==='sw'?'Hakuna mauzo leo':'No sales today'}</div></div></span></td>`}
             </tbody>
           </table></div>
         </div></div>
@@ -1933,7 +1929,7 @@ window.App = {
                   <td><span class="pill p-pen">${e.category}</span></td>
                   <td>${e.description}</span></td>
                   <td style="color:var(--red);font-weight:800">${fmt(e.amount)}</span></td>
-                </tr>`).join('') || `<tr><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></span></tr>`}
+                </tr>`).join('') || `<td><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></span></td>`}
             </tbody>
           </table></div>
         </div></div>
