@@ -1,4 +1,28 @@
 // BomaWave v5.0 — Subscription + Full Features
+
+// ── STATE (MOVED TO VERY TOP) ─────────────────────────────────────────────────────
+let S = {
+  user: null, lang: 'sw', role: null,
+  pendingPhone: null, pendingData: null,
+  pinBuf: '', cart: [], cartDist: null,
+  page: 'dashboard', notifs: [],
+  store: null,   // active store for multi-store
+  stores: [],    // all stores for this user
+  realtimeCh: null,
+  isOnline: navigator.onLine,
+  supervisorOf: null,
+  subscription: null,
+  quickProds: [],
+  resendTimer: null,
+  loginResendTimer: null,
+  forgotResendTimer: null,
+  _savedStoreId: null,
+  _twTimer: null
+};
+
+// Placeholder App object so onclick handlers don't break during load
+window.App = window.App || {};
+
 import { supabase as sb } from './supabase.js';
 
 const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/smooth-function';
@@ -33,11 +57,28 @@ function can(feature) {
   return (PLANS[roleKey]?.[plan]?.features || []).includes(feature);
 }
 
+function canAccess(feature) { return can(feature); }
+
 function isTrial() { return S.subscription?.status === 'trial'; }
 
 function trialDaysLeft() {
   if (!S.subscription?.trial_ends_at) return 0;
   return Math.max(0, Math.ceil((new Date(S.subscription.trial_ends_at) - new Date()) / 864e5));
+}
+
+function showUpgradeModal(feature) {
+  const modal = document.createElement('div');
+  modal.className = 'upgrade-overlay';
+  modal.innerHTML = '<div class="upgrade-modal">'
+    + '<div class="upgrade-title">' + ic('crown') + ' ' + (S.lang==='sw'?'Inahitaji Upgrade':'Upgrade Required') + '</div>'
+    + '<div class="upgrade-feature">' + feature + '</div>'
+    + '<div class="upgrade-desc">' + (S.lang==='sw'?'Kufungua kipengele hiki, panda hadi Premium au Pro':'To unlock this feature, upgrade to Premium or Pro') + '</div>'
+    + '<div class="upgrade-actions">'
+    + '<button class="btn btn-s" onclick="this.closest(\'.upgrade-overlay\').remove()">' + (S.lang==='sw'?'Funga':'Cancel') + '</button>'
+    + '<button class="btn btn-p" onclick="App.navTo(\'subscription\');this.closest(\'.upgrade-overlay\').remove()">' + (S.lang==='sw'?'Panda Sasa':'Upgrade Now') + '</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('show'));
 }
 
 async function loadSubscription() {
@@ -71,7 +112,7 @@ function lockedPageHTML(feature) {
   const plan=getPlan(), role=S.user?.role||'retailer';
   const np=plan==='free'?'Premium':'Pro';
   const price=(role==='distributor')?(plan==='free'?'TZS 20,000':'TZS 35,000'):(plan==='free'?'TZS 12,000':'TZS 20,000');
-  return '<div class="locked-page"><div class="locked-page-icon">'+ic('lock')+'</div><div class="locked-page-title">'+(S.lang==='sw'?'Inahitaji '+np:'Requires '+np)+'</div><div class="locked-page-sub">'+(S.lang==='sw'?'Panda hadi '+np+' ili ufikia feature hii':'Upgrade to '+np+' to access this feature')+'</div><div class="locked-page-price">'+price+' / '+(S.lang==='sw'?'mwezi':'month')+'</div><button class="btn btn-p" style="max-width:220px;margin:0 auto" onclick="App.navTo('subscription')">'+(S.lang==='sw'?'Panda Plan':'Upgrade')+' '+ic('arrow-right')+'</button><button class="btn btn-s" style="max-width:220px;margin:.5rem auto" onclick="App.navTo('dashboard')">'+(S.lang==='sw'?'Rudi':'Go Home')+'</button></div>';
+  return '<div class="locked-page"><div class="locked-page-icon">'+ic('lock')+'</div><div class="locked-page-title">'+(S.lang==='sw'?'Inahitaji '+np:'Requires '+np)+'</div><div class="locked-page-sub">'+(S.lang==='sw'?'Panda hadi '+np+' ili ufikia feature hii':'Upgrade to '+np+' to access this feature')+'</div><div class="locked-page-price">'+price+' / '+(S.lang==='sw'?'mwezi':'month')+'</div><button class="btn btn-p" style="max-width:220px;margin:0 auto" onclick="App.navTo(\'subscription\')">'+(S.lang==='sw'?'Panda Plan':'Upgrade')+' '+ic('arrow-right')+'</button><button class="btn btn-s" style="max-width:220px;margin:.5rem auto" onclick="App.navTo(\'dashboard\')">'+(S.lang==='sw'?'Rudi':'Go Home')+'</button></div>';
 }
 
 function getFeatureList(planKey, role) {
@@ -111,22 +152,6 @@ function showSaleSuccess(amount) {
 }
 
 // Feature gates per plan
-
-// ── State ─────────────────────────────────────────────────────
-let S = {
-  user: null, lang: 'sw', role: null,
-  pendingPhone: null, pendingData: null,
-  pinBuf: '', cart: [], cartDist: null,
-  page: 'dashboard', notifs: [],
-  store: null,   // active store for multi-store
-  stores: [],    // all stores for this user
-  realtimeCh: null,
-  isOnline: navigator.onLine,
-  supervisorOf: null,
-  subscription: null,
-  quickProds: [],
-};
-
 
 // ── Tanzania Location Data ────────────────────────────────────
 const LOC = {
@@ -247,7 +272,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 function toast(msg, type='s') {
   const wrap = $('twrap');
   const el = document.createElement('div');
-  const icons = {s:'✅', e:'❌', i:'ℹ️'};
+  const icons = {s:'✅', e:'❌', i:'ℹ️', w:'⚠️'};
   el.className = `toast ${type}`;
   el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
   wrap.appendChild(el);
@@ -278,7 +303,7 @@ function saveSession() {
 function loadSession() {
   try {
     const d = JSON.parse(localStorage.getItem('bw_v4') || localStorage.getItem('bw_v3') || 'null');
-    if (d?.user) { S.user = d.user; S.lang = d.lang || 'sw'; return true; }
+    if (d?.user) { S.user = d.user; S.lang = d.lang || 'sw'; S._savedStoreId = d.storeId; return true; }
   } catch {}
   return false;
 }
@@ -293,14 +318,14 @@ function showDevOTP(otp) {
     + '<div><div class="dev-otp-label">' + (S.lang==='sw'?'SMS haikufika — OTP:':'SMS failed — OTP:') + '</div>'
     + '<div class="dev-otp-code">' + otp + '</div></div>'
     + '<div class="dev-otp-actions">'
-    + '<button class="dev-otp-btn" onclick="fillDevOTP('' + otp + '')">Jaza OTP</button>'
-    + '<button class="dev-otp-close" onclick="document.getElementById('dev-otp-banner').remove()">X</button>'
+    + '<button class="dev-otp-btn" onclick="fillDevOTP(\'' + otp + '\')">Jaza OTP</button>'
+    + '<button class="dev-otp-close" onclick="document.getElementById(\'dev-otp-banner\').remove()">X</button>'
     + '</div></div>';
   document.body.appendChild(b);
   setTimeout(() => b.classList.add('show'), 10);
 }
 
-function fillDevOTP(otp) {
+window.fillDevOTP = function(otp) {
   for (const p of ['ob','lb','fb']) {
     if ($(p+'0')) {
       otp.split('').forEach((d, i) => {
@@ -315,7 +340,7 @@ function fillDevOTP(otp) {
       break;
     }
   }
-}
+};
 
 async function callOTP(payload) {
   const res = await fetch(OTP_URL, {
@@ -355,7 +380,6 @@ function goStep(n) {
   const el = $('s'+n);
   if (el) {
     el.classList.add('active');
-    // Animate step entrance
     el.style.opacity='0'; el.style.transform='translateY(12px)';
     requestAnimationFrame(()=>{
       el.style.transition='opacity .3s ease,transform .3s cubic-bezier(.34,1.4,.64,1)';
@@ -535,7 +559,6 @@ function renderStoreSwitcher() {
 window.App = {
   goStep(n) { goStep(n); },
 
-
   // ── Language ─────────────────────────────────────────────
   setLang(lang) {
     S.lang = lang;
@@ -557,12 +580,10 @@ window.App = {
     S.role = role;
     $('rb-ret').classList.toggle('sel', role==='retailer');
     $('rb-dist').classList.toggle('sel', role==='distributor');
-    // Show checkmarks with animation
     const ckRet = $('ck-ret'), ckDist = $('ck-dist');
     if (ckRet) ckRet.classList.toggle('show', role==='retailer');
     if (ckDist) ckDist.classList.toggle('show', role==='distributor');
     $('rnext').style.display = 'flex';
-    // Animate button entrance
     const btn = $('rnext');
     if (btn) {
       btn.style.opacity = '0'; btn.style.transform = 'translateY(8px)';
@@ -740,7 +761,6 @@ window.App = {
       for(let i=0;i<6;i++) $(`ob${i}`)?.classList.add('err');
       return toast(r.message||'Nambari si sahihi','e');
     }
-    // OTP OK — create account
     const reg = await callOTP({ action:'complete_registration', phone: S.pendingPhone, ...S.pendingData });
     setBusy('vbtn', false, 'Thibitisha');
     if (!reg.success) return toast(reg.message||'Tatizo la kuunda akaunti','e');
@@ -772,13 +792,13 @@ window.App = {
     goStep(9);
   },
 
-  loi(i,el) {
+  loi(i,el){
     el.value=el.value.replace(/\D/g,'').slice(-1);
     el.classList.toggle('on',!!el.value);
     if(el.value&&i<5)$(`lb${i+1}`)?.focus();
     if(i===5&&el.value)App.verifyLoginOTP();
   },
-  lok(i,e) { if(e.key==='Backspace'&&!$(`lb${i}`).value&&i>0)$(`lb${i-1}`)?.focus(); },
+  lok(i,e){ if(e.key==='Backspace'&&!$(`lb${i}`).value&&i>0)$(`lb${i-1}`)?.focus(); },
 
   startLoginResendTimer() {
     clearInterval(S.loginResendTimer);
@@ -812,7 +832,6 @@ window.App = {
       return toast(S.lang==='sw'?'Namba hii haijasajiliwa. Unda akaunti kwanza.':'Number not registered. Please create account.','e');
     S.user=r.user; saveSession();
     await loadStores();
-    // Show PIN screen
     S.pinBuf=''; App.renderPinDots();
     setText('s7h', S.lang==='sw'?'Karibu!':'Welcome!');
     setText('s7sub', r.user.store_name||'');
@@ -876,7 +895,6 @@ window.App = {
     const r=await callOTP({action:'verify_otp',phone:S.pendingPhone,otp_code:code});
     setBusy('fvbtn',false,'Thibitisha');
     if(!r.success){for(let i=0;i<6;i++)$(`fb${i}`)?.classList.add('err');return toast(r.message||'Nambari si sahihi','e');}
-    // Check user exists with this phone
     if(!r.user_exists)return toast(S.lang==='sw'?'Namba hii haijasajiliwa.':'Number not registered.','e');
     S.user=r.user; goStep(12);
   },
@@ -906,7 +924,6 @@ window.App = {
     App.setupRealtime();
   },
 
-
   // ── Store methods ──────────────────────────────────────
   async renderSyncBadge() {
     const el = document.getElementById('sync-badge'); if (!el) return;
@@ -930,7 +947,7 @@ window.App = {
   showAddStore() {
     const view = document.getElementById('av');
     setText('tbt', S.lang==='sw'?'Ongeza Duka':'Add Store');
-    initLoc('as-region','as-district','as-ward');
+    App.initLocDropdowns('as-region','as-district','as-ward');
     view.innerHTML = `
       <div style="max-width:480px;margin:0 auto">
         <div class="card"><div class="cp">
@@ -970,7 +987,13 @@ window.App = {
           </div>
         </div></div>
       </div>`;
-    initLoc('as-region','as-district','as-ward');
+    App.initLocDropdowns('as-region','as-district','as-ward');
+  },
+
+  initLocDropdowns(regionId, districtId, wardId) {
+    fillSelect(regionId, Object.keys(LOC), S.lang==='sw'?'Chagua Mkoa':'Select Region');
+    fillSelect(districtId, [], S.lang==='sw'?'— Chagua Wilaya —':'— Select District —');
+    if (wardId) fillSelect(wardId, [], S.lang==='sw'?'— Chagua Kata —':'— Select Ward —');
   },
 
   onASRegion() { const r=document.getElementById('as-region').value; fillSelect('as-district',r?Object.keys(LOC[r]||[]):[]);fillSelect('as-ward',[]); },
@@ -1077,12 +1100,10 @@ window.App = {
   // ══════════════════════════════════════════════════════════
   renderApp() {
     const u=S.user;
-    // Sidebar user info
     const av=u.store_name?.[0]?.toUpperCase()||'U';
     setText('sbav',av);
     const storeLine=S.store?S.store.store_name:u.store_name;
     setText('sbn',storeLine||'—');
-    // Update plan badge
     const plan=getPlan();
     const planData=(u.role==='distributor'?DIST_PLANS:PLANS)[plan]||PLANS.free;
     const pb=$('plan-badge');
@@ -1099,7 +1120,6 @@ window.App = {
     const bb=$('sbb');
     if(bb){bb.className=`rbadge ${badgeClass}`;bb.textContent=badgeTxt;}
 
-    // Nav items by role
     const navItems = App.getNavItems(u.role);
     const nav=$('sbnav');
     if(nav){
@@ -1110,7 +1130,6 @@ window.App = {
         </button>`).join('');
     }
 
-    // Bottom nav (mobile)
     const mobileNav=navItems.slice(0,5);
     const bn=$('bn');
     if(bn){
@@ -1120,11 +1139,9 @@ window.App = {
         </button>`).join('');
     }
 
-    // Lang toggle
     $('lsw-sw')?.classList.toggle('on',S.lang==='sw');
     $('lsw-en')?.classList.toggle('on',S.lang==='en');
 
-    // Render page
     App.renderPage(S.page);
   },
 
@@ -1256,7 +1273,6 @@ window.App = {
     setText('tbt', pageLabels[page]||page);
     setText('tbs', S.user?.store_name||'');
 
-    // Scroll to top on page change
     window.scrollTo({top:0,behavior:'smooth'});
     const pages={
       dashboard:()=>App.pageDashboard(),
@@ -1300,7 +1316,6 @@ window.App = {
         <div class="sc a stat-anim"><div class="sic">${svgIcon('pkg')}</div><div class="sl">${S.lang==='sw'?'Yanasubiri':'Pending'}</div><div class="sv">${pending}</div></div>
         <div class="sc b stat-anim"><div class="sic">${svgIcon('orders')}</div><div class="sl">${S.lang==='sw'?'Zimetolewa':'Delivered'}</div><div class="sv">${delivered}</div></div>
       </div>`;
-    // Count-up animation
     function animCount(el, target) {
       if (!el) return;
       const dur=800, start=Date.now();
@@ -1323,7 +1338,7 @@ window.App = {
             <tbody>${(orders||[]).slice(0,5).map(o=>`
               <tr>
                 <td><span style="font-size:.75rem;font-weight:700;color:var(--g700)">${o.order_ref}</span></td>
-                <td>${statusPill(o.status,S.lang)}</td>
+                <td>${statusPill(o.status,S.lang)}</span></td>
                 <td style="font-weight:700">${fmt(o.total_price)}</td>
                 <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</td>
               </tr>`).join('')||`<tr><td colspan="4"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
@@ -1336,12 +1351,10 @@ window.App = {
   // ── MARKETPLACE (Retailer) ─────────────────────────────
   async pageMarketplace() {
     const u=S.user;
-    // Load distributors — filtered by location first
     const {data:allDists}=await sb.from('profiles')
       .select('id,store_name,region,district,coverage_area,min_delivery_amount')
       .eq('role','distributor').eq('is_active',true);
 
-    // Sort: same region first, then same district
     const sorted=(allDists||[]).sort((a,b)=>{
       const aScore=(a.region===u.region?2:0)+(a.district===u.district?1:0);
       const bScore=(b.region===u.region?2:0)+(b.district===u.district?1:0);
@@ -1350,7 +1363,6 @@ window.App = {
 
     const distOpts=sorted.map(d=>`<option value="${d.id}">${d.store_name} — ${d.district||d.region||''}${d.region===u.region?' ⭐':''}</option>`).join('');
 
-    // Load products
     const distId=S.cartDist||(sorted[0]?.id||'');
     let products=[];
     if(distId){
@@ -1414,10 +1426,8 @@ window.App = {
       </div>
       <div class="pgrid" id="pgrid">${renderProducts('all')}</div>`;
 
-    // Set current dist selector
     if($('dist-sel')&&distId)$('dist-sel').value=distId;
 
-    // Update cart FAB
     const fab=$('cfab');
     if(fab){fab.style.display=S.cart.length?'flex':'none';}
     App.renderCartPanel();
@@ -1430,7 +1440,6 @@ window.App = {
   filterCat(cat,btn) {
     document.querySelectorAll('.fp').forEach(b=>b.classList.remove('on'));
     btn.classList.add('on');
-    // Re-render products with filter
     App.pageMarketplace().then(()=>{
       setTimeout(()=>{
         document.querySelectorAll('.fp').forEach(b=>{
@@ -1505,7 +1514,6 @@ window.App = {
   async placeOrder() {
     if(!S.cart.length)return toast(t('cartEmpty'),'e');
 
-    // MOQ check
     const moqFail=S.cart.filter(c=>c.qty<c.min_order_qty);
     if(moqFail.length){
       toast(`${S.lang==='sw'?'Kiwango cha chini hafikiwi:':'MOQ not met:'} ${moqFail.map(c=>c.product_name).join(', ')}`,'e');
@@ -1563,7 +1571,7 @@ window.App = {
           <tbody>${(orders||[]).map(o=>`
             <tr>
               <td><strong style="color:var(--g700)">${o.order_ref}</strong></td>
-              <td>${statusPill(o.status,S.lang)}</td>
+              <td>${statusPill(o.status,S.lang)}</span></td>
               <td>${o.items_count}</td>
               <td><strong>${fmt(o.total_price)}</strong></td>
               <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</td>
@@ -1595,7 +1603,7 @@ window.App = {
           <tbody>${(orders||[]).map(o=>`
             <tr>
               <td><strong style="color:var(--g700)">${o.order_ref}</strong></td>
-              <td>${statusPill(o.status,S.lang)}</td>
+              <td>${statusPill(o.status,S.lang)}</span></td>
               <td><strong>${fmt(o.total_price)}</strong></td>
               <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</td>
               <td style="display:flex;gap:.3rem;flex-wrap:wrap">
@@ -1614,7 +1622,6 @@ window.App = {
     const {error}=await sb.from('orders').update({status}).eq('id',orderId);
     if(error)return toast('Hitilafu ya kubadilisha hali','e');
     toast(S.lang==='sw'?`Hali imebadilishwa: ${status}`:`Status updated: ${status}`,'s');
-    // Auto-create receipt on delivery
     if(status==='delivered'){
       const {data:o}=await sb.from('orders').select('*').eq('id',orderId).single();
       if(o){
@@ -1696,7 +1703,6 @@ window.App = {
     const {data:invoice}=await sb.from('invoices').select('*').eq('order_id',orderId).maybeSingle();
     const inv=invoice||{invoice_ref:genRef('INV'),issued_at:new Date().toISOString(),due_date:'',status:'unpaid'};
 
-    // Build share text
     const shareText=encodeURIComponent(
       `*ANKARA YA BOMAWAVE*\n` +
       `Ref: ${inv.invoice_ref}\n` +
@@ -1787,7 +1793,7 @@ window.App = {
               <td><strong style="color:var(--g700)">${inv.invoice_ref}</strong></td>
               <td><span class="pill ${inv.status==='paid'?'p-paid':'p-unp'}">${inv.status==='paid'?'Imelipwa':'Haijalipwa'}</span></td>
               <td><strong>${fmt(inv.amount)}</strong></td>
-              <td style="color:var(--s500);font-size:.75rem">${inv.issued_at?.slice(0,10)}</td>
+              <td style="color:var(--s500);font-size:.75rem">${inv.issued_at?.slice(0,10)}</span></td>
               <td style="display:flex;gap:.3rem;flex-wrap:wrap">
                 ${inv.order_id?`<button class="bsm b" onclick="App.showInvoice('${inv.order_id}')">${t('shareInvoice')}</button>`:''}
                 ${inv.status==='unpaid'?`<button class="bsm g" onclick="App.markInvPaid('${inv.id}')">${S.lang==='sw'?'Malipo Yamefika':'Mark Paid'}</button>`:''}
@@ -1911,8 +1917,8 @@ window.App = {
       + '<input class="fi" id="reorder-qty" type="number" min="1" value="50" style="font-size:1.2rem;text-align:center"/>'
       + '</div>'
       + '<div class="upgrade-actions">'
-      + '<button class="btn btn-s" onclick="this.closest('.upgrade-overlay').remove()">' + (S.lang==='sw'?'Funga':'Cancel') + '</button>'
-      + '<button class="btn btn-p" onclick="App.confirmReorder('' + id + '');this.closest('.upgrade-overlay').remove()">'
+      + '<button class="btn btn-s" onclick="this.closest(\'.upgrade-overlay\').remove()">' + (S.lang==='sw'?'Funga':'Cancel') + '</button>'
+      + '<button class="btn btn-p" onclick="App.confirmReorder(\'' + id + '\');this.closest(\'.upgrade-overlay\').remove()">'
       + ic('check') + ' ' + (S.lang==='sw'?'Ongeza Stok':'Add Stock') + '</button>'
       + '</div></div>';
     document.body.appendChild(modal);
@@ -1942,7 +1948,6 @@ window.App = {
     const uid = S.user.id;
     const sid = S.store?.id;
 
-    // Load today's data — online + offline
     let onlineSales = [], onlineExps = [];
     if (S.isOnline) {
       let sq = sb.from('sales').select('*').eq('user_id', uid).gte('sale_date', today()).order('created_at', {ascending:false});
@@ -1952,14 +1957,12 @@ window.App = {
       onlineSales = s||[]; onlineExps = e||[];
     }
 
-    // Offline pending records
     const offS = (await posDbGetAll('sales')).filter(s=>!s.synced&&s.user_id===uid);
     const offE = (await posDbGetAll('expenses')).filter(e=>!e.synced&&e.user_id===uid);
 
     const allSales = [...offS.map(s=>({...s,_off:true})), ...onlineSales];
     const allExps  = [...offE.map(e=>({...e,_off:true})), ...onlineExps];
 
-    // Summary stats
     const todayRev    = allSales.reduce((s,r) => s+(r.revenue||r.selling_price*r.qty||0), 0);
     const todayProfit = allSales.reduce((s,r) => s+(r.profit||(r.selling_price-r.buying_price)*r.qty||0), 0);
     const todayExp    = allExps.reduce((s,e)  => s+(e.amount||0), 0);
@@ -1970,7 +1973,6 @@ window.App = {
     view.innerHTML = `
       ${!S.isOnline ? `<div class="offline-banner">⚡ ${S.lang==='sw'?'Nje ya mtandao — data inashikiliwa hapa':'Offline — data saved locally, will sync when online'}</div>` : ''}
 
-      <!-- POS Summary Stats -->
       <div class="sr" style="margin-bottom:1.1rem">
         <div class="sc g"><div class="sic">${svgIcon('revenue')}</div><div class="sl">${S.lang==='sw'?'Mapato Leo':'Revenue'}</div><div class="sv" id="pos-rev">TZS 0</div></div>
         <div class="sc g"><div class="sic">${svgIcon('profit')}</div><div class="sl">${S.lang==='sw'?'Faida':'Profit'}</div><div class="sv" id="pos-profit">TZS 0</div></div>
@@ -1978,7 +1980,6 @@ window.App = {
         <div class="sc ${netProfit>=0?'g':'r'}"><div class="sic">${svgIcon('chart')}</div><div class="sl">${S.lang==='sw'?'Faida Halisi':'Net'}</div><div class="sv" id="pos-net">TZS 0</div></div>
       </div>
 
-      <!-- Margin pill -->
       <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1.1rem;flex-wrap:wrap">
         <span style="background:${margin>=20?'var(--g100)':margin>=10?'var(--ambl)':'var(--redl)'};color:${margin>=20?'var(--g900)':margin>=10?'var(--amber)':'var(--red)'};padding:6px 16px;border-radius:20px;font-size:.82rem;font-weight:800">
           📊 Margin: ${margin}%
@@ -1987,7 +1988,6 @@ window.App = {
         ${offS.length+offE.length>0?`<span style="background:var(--ambl);color:var(--amber);padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:700;cursor:pointer" onclick="syncOfflineData()">⚡ ${offS.length+offE.length} ${S.lang==='sw'?'offline — sync':'offline — tap to sync'}</span>`:''}
       </div>
 
-      <!-- Tabs -->
       <div class="ptabs" id="pos-tabs">
         <button class="ptab on" onclick="App.posTab('sales',this)">
           ${svgIcon('pos')} <span>${S.lang==='sw'?'Mauzo':'Sales'}</span>
@@ -2000,7 +2000,6 @@ window.App = {
         </button>
       </div>
 
-      <!-- TAB 1: SALES FORM -->
       <div id="pos-sales">
         <div class="pform">
           <div class="pftitle">🛒 ${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</div>
@@ -2029,7 +2028,6 @@ window.App = {
                 <input class="fi pos-big-input" id="s-sell" type="number" min="0" placeholder="0" style="border-color:var(--g400)!important" oninput="App.posCalc()"/>
               </div>
             </div>
-            <!-- Live Calculator -->
             <div id="pos-calc" class="pos-calc-card" style="display:none">
               <div style="font-size:.72rem;font-weight:800;color:var(--g700);text-transform:uppercase;letter-spacing:1px;margin-bottom:.65rem">📊 ${S.lang==='sw'?'Hesabu ya Haraka':'Quick Calc'}</div>
               <div class="pos-calc-row"><span>${S.lang==='sw'?'Mapato':'Revenue'}</span><strong id="calc-rev" style="color:var(--g700)">TZS 0</strong></div>
@@ -2043,7 +2041,6 @@ window.App = {
         </div>
       </div>
 
-      <!-- TAB 2: EXPENSES FORM -->
       <div id="pos-expenses" style="display:none">
         <div class="pform" style="border-color:var(--redl)">
           <div class="pftitle">💸 ${S.lang==='sw'?'Rekodi Matumizi':'Record Expense'}</div>
@@ -2074,7 +2071,6 @@ window.App = {
         </div>
       </div>
 
-      <!-- TAB 3: HISTORY -->
       <div id="pos-history" style="display:none">
         <div class="card" style="margin-bottom:1rem"><div class="cp">
           <div class="sh">
@@ -2094,7 +2090,7 @@ window.App = {
                 <tr class="dt-row${s._off?' offline-tr':''}">
                   <td><strong>${s.product_name}</strong>${s._off?` <span style="font-size:.65rem;background:var(--ambl);color:var(--amber);padding:1px 6px;border-radius:8px">⚡</span>`:''}</td>
                   <td style="font-size:1.05rem;font-weight:800;text-align:center">${s.qty}</td>
-                  <td style="color:var(--g700);font-weight:800">${fmt(s.revenue||s.selling_price*s.qty||0)}</td>
+                  <td style="color:var(--g700);font-weight:800">${fmt(s.revenue||s.selling_price*s.qty||0)}</span></td>
                   <td style="color:${(s.profit||(s.selling_price-s.buying_price)*s.qty||0)<0?'var(--red)':'var(--g600)'};font-weight:700">
                     ${(s.profit||(s.selling_price-s.buying_price)*s.qty||0)<0?'❌ ':''} ${fmt(Math.abs(s.profit||(s.selling_price-s.buying_price)*s.qty||0))}
                   </td>
@@ -2119,19 +2115,18 @@ window.App = {
                 <tr class="dt-row${e._off?' offline-tr':''}">
                   <td><span class="pill p-pen">${e.category}</span></td>
                   <td>${e.description}</td>
-                  <td style="color:var(--red);font-weight:800">${fmt(e.amount)}</td>
+                  <td style="color:var(--red);font-weight:800">${fmt(e.amount)}</span></td>
                 </tr>`).join('') || `<tr><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></td></tr>`}
             </tbody>
           </table></div>
         </div></div>
       </div>`;
 
-    // Animate stat counts after render
     setTimeout(() => {
-      animateCount($('pos-rev'),    todayRev,    'TZS ');
+      animateCount($('pos-rev'), todayRev, 'TZS ');
       animateCount($('pos-profit'), todayProfit, 'TZS ');
-      animateCount($('pos-exp'),    todayExp,    'TZS ');
-      animateCount($('pos-net'),    netProfit,   'TZS ');
+      animateCount($('pos-exp'), todayExp, 'TZS ');
+      animateCount($('pos-net'), netProfit, 'TZS ');
     }, 300);
   },
 
@@ -2145,7 +2140,6 @@ window.App = {
     const active = $(`pos-${tab}`);
     if (active) {
       active.style.display = '';
-      // Animate tab content entry
       active.style.opacity = '0';
       active.style.transform = 'translateY(10px)';
       requestAnimationFrame(() => {
@@ -2167,7 +2161,7 @@ window.App = {
       const rev    = sell * qty;
       const profit = (sell - buy) * qty;
       const margin = sell > 0 ? Math.round((sell-buy)/sell*100) : 0;
-      setText('calc-rev',    fmt(rev));
+      setText('calc-rev', fmt(rev));
       setText('calc-profit', fmt(profit));
       setText('calc-margin', `${margin}%`);
       $('calc-margin').style.color = margin >= 20 ? 'var(--g700)' : margin >= 10 ? 'var(--amber)' : 'var(--red)';
@@ -2193,17 +2187,16 @@ window.App = {
     if (S.isOnline) {
       const {error} = await sb.from('sales').insert([data]);
       if (error) {
-        if(canAccess('offline_pos')){ await posDbAdd('sales', data); toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w'); }
+        if(can('offline_pos')){ await posDbAdd('sales', data); toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w'); }
         else toast(S.lang==='sw'?'Hitilafu ya kuhifadhi':'Save error','e');
       } else {
         toast(S.lang==='sw' ? '✅ Mauzo yamerekodiwa!' : '✅ Sale recorded!', 's');
       }
     } else {
-      if(canAccess('offline_pos')){ await posDbAdd('sales', data); toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w'); }
+      if(can('offline_pos')){ await posDbAdd('sales', data); toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w'); }
       else { toast(S.lang==='sw'?'Unahitaji mtandao. Upgrade kwa Offline POS':'Need internet. Upgrade for Offline POS','w'); return; }
     }
     setBusy('rec-sale-txt', false, `✓ ${S.lang==='sw' ? 'Rekodi Mauzo' : 'Record Sale'}`);
-    // Clear form
     if($('s-prod')) $('s-prod').value = '';
     if($('s-qty'))  $('s-qty').value  = '1';
     if($('s-buy'))  $('s-buy').value  = '';
@@ -2254,17 +2247,15 @@ window.App = {
   async loadReports(period, btn) {
     document.querySelectorAll('.pertab').forEach(b => b.classList.remove('on'));
     if (btn) btn.classList.add('on');
-    // Gate check
-    if(period==='week'&&!canAccess('reports_week')){showUpgradeModal('reports_week');return;}
-    if(period==='month'&&!canAccess('reports_month')){showUpgradeModal('reports_month');return;}
-    if(period==='year'&&!canAccess('reports_year')){showUpgradeModal('reports_year');return;}
+    if(period==='week'&&!can('reports_week')){showUpgradeModal('reports_week');return;}
+    if(period==='month'&&!can('reports_month')){showUpgradeModal('reports_month');return;}
+    if(period==='year'&&!can('reports_year')){showUpgradeModal('reports_year');return;}
 
     const days = {today:0, week:7, month:30, year:365}[period] || 0;
     const startDate = days === 0 ? today() : new Date(Date.now()-days*864e5).toISOString().slice(0,10);
     const uid  = S.user.id;
     const sid  = S.store?.id;
 
-    // Build queries
     let sq = sb.from('sales').select('*').eq('user_id', uid).gte('sale_date', startDate);
     let eq = sb.from('expenses').select('*').eq('user_id', uid).gte('expense_date', startDate);
     if (sid) { sq = sq.eq('store_id', sid); eq = eq.eq('store_id', sid); }
@@ -2272,7 +2263,6 @@ window.App = {
     const [{data:sales},{data:exps}] = await Promise.all([sq, eq]);
     const allS = sales || [], allE = exps || [];
 
-    // Core metrics
     const rev     = allS.reduce((s,r) => s+(r.revenue||r.selling_price*r.qty||0), 0);
     const cost    = allS.reduce((s,r) => s+(r.buying_price*r.qty||0), 0);
     const profit  = allS.reduce((s,r) => s+(r.profit||(r.selling_price-r.buying_price)*r.qty||0), 0);
@@ -2282,7 +2272,6 @@ window.App = {
     const txCount = allS.length;
     const avgSale = txCount > 0 ? rev/txCount : 0;
 
-    // Category breakdown
     const byCat = {};
     allS.forEach(s => {
       const cat = s.category || 'other';
@@ -2293,7 +2282,6 @@ window.App = {
       byCat[cat].count  += 1;
     });
 
-    // Top products (by revenue)
     const byProd = {};
     allS.forEach(s => {
       if (!byProd[s.product_name]) byProd[s.product_name] = {rev:0, qty:0, profit:0};
@@ -2304,12 +2292,10 @@ window.App = {
     const topProds = Object.entries(byProd).sort((a,b)=>b[1].rev-a[1].rev).slice(0,5);
     const maxProdRev = Math.max(...topProds.map(([,v])=>v.rev), 1);
 
-    // Expense breakdown
     const byExp = {};
     allE.forEach(e => { byExp[e.category] = (byExp[e.category]||0) + e.amount; });
     const maxExpVal = Math.max(...Object.values(byExp), 1);
 
-    // Daily trend (last 7 days for week, last 30 for month)
     const trendDays = period === 'today' ? 1 : period === 'week' ? 7 : period === 'month' ? 30 : 12;
     const trend = {};
     allS.forEach(s => {
@@ -2317,7 +2303,6 @@ window.App = {
       if (d) trend[d] = (trend[d]||0) + (s.revenue||s.selling_price*s.qty||0);
     });
 
-    // Per-store breakdown (if multiple stores)
     const storeBreakdown = {};
     if (S.stores.length > 1) {
       allS.forEach(s => {
@@ -2330,7 +2315,6 @@ window.App = {
     const maxCatRev = Math.max(...Object.values(byCat).map(v=>v.rev), 1);
 
     $('rep-body').innerHTML = `
-      <!-- KPI Cards -->
       <div class="rep-kpis">
         <div class="rep-kpi green">
           <div class="rep-kpi-label">${S.lang==='sw'?'Jumla Mapato':'Total Revenue'}</div>
@@ -2354,7 +2338,6 @@ window.App = {
         </div>
       </div>
 
-      <!-- Financial Summary -->
       <div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">📊 ${S.lang==='sw'?'Muhtasari wa Fedha':'Financial Summary'}</div>
         <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla Mauzo (TX)':'Total Transactions'}</span><span class="rv">${txCount}</span></div>
@@ -2368,11 +2351,9 @@ window.App = {
         </div>
       </div>
 
-      <!-- Top Products Bar Chart (Premium+) -->
       <div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">🏆 ${S.lang==='sw'?'Bidhaa Zinazoongoza':'Top Products'}</div>
         ${topProds.length ? topProds.map(([name,v], i) => {
-          // Red if cost >= revenue (selling at loss)
           const isLoss = v.profit < 0;
           const pct = Math.round(v.rev/maxProdRev*100);
           return `<div class="top-prod-row">
@@ -2392,7 +2373,6 @@ window.App = {
         }).join('') : `<div style="color:var(--s500);text-align:center;padding:1rem">${S.lang==='sw'?'Hakuna data':'No data'}</div>`}
       </div>
 
-      <!-- Category Breakdown -->
       <div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">📦 ${S.lang==='sw'?'Mauzo kwa Aina':'Sales by Category'}</div>
         ${Object.entries(byCat).sort((a,b)=>b[1].rev-a[1].rev).map(([cat,v]) => {
@@ -2415,7 +2395,6 @@ window.App = {
         }).join('') || `<div style="color:var(--s500);text-align:center;padding:1rem">${S.lang==='sw'?'Hakuna data':'No data'}</div>`}
       </div>
 
-      <!-- Expense Breakdown -->
       ${expT > 0 ? `<div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">💸 ${S.lang==='sw'?'Matumizi kwa Aina':'Expenses by Category'}</div>
         ${Object.entries(byExp).sort((a,b)=>b[1]-a[1]).map(([cat,val]) => `
@@ -2430,7 +2409,6 @@ window.App = {
           </div>`).join('')}
       </div>` : ''}
 
-      <!-- Multi-Store Breakdown -->
       ${S.stores.length > 1 && Object.keys(storeBreakdown).length > 0 ? `
       <div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">🏪 ${S.lang==='sw'?'Ufanisi kwa Duka':'Performance by Store'}</div>
@@ -2446,7 +2424,6 @@ window.App = {
         }).join('')}
       </div>` : ''}
 
-      <!-- Daily trend for week/month -->
       ${period !== 'today' && Object.keys(trend).length > 0 ? `
       <div class="rsec">
         <div class="rsec-t">📈 ${S.lang==='sw'?'Mwelekeo wa Mauzo':'Sales Trend'}</div>
@@ -2498,7 +2475,7 @@ window.App = {
           ).join('')
         + '</div>'
         + '<button class="sub-plan-btn'+(isCur?' current-btn':key==='pro'?' pro-btn':'')+'" '
-        + 'onclick="'+(isCur?'':key==='free'?'App.downgradePlan()':'App.requestUpgrade(''+key+'')')+'">'
+        + 'onclick="'+(isCur?'':key==='free'?'App.downgradePlan()':'App.requestUpgrade(\''+key+'\')')+'">'
         + (isCur?(S.lang==='sw'?'Mpango Wako':'Current Plan'):key==='free'?(S.lang==='sw'?'Shuka':'Downgrade'):(S.lang==='sw'?'Panda '+p.label:'Upgrade to '+p.label))
         + '</button></div>';
     }
@@ -2642,9 +2619,9 @@ window.App = {
           <tbody>${(users||[]).map(u=>`
             <tr>
               <td><strong>${u.store_name}</strong></td>
-              <td style="font-size:.8rem;color:var(--s700)">${u.phone_number}</td>
-              <td>${statusBadge(u.role)}</td>
-              <td style="font-size:.78rem">${u.district||u.region||'—'}</td>
+              <td style="font-size:.8rem;color:var(--s700)">${u.phone_number}</span></td>
+              <td>${statusBadge(u.role)}</span></td>
+              <td style="font-size:.78rem">${u.district||u.region||'—'}</span></td>
               <td><span class="pill ${u.is_active?'p-del':'p-can'}">${u.is_active?'✅ Active':'❌ Blocked'}</span></td>
             </tr>`).join('')}
           </tbody>
@@ -2763,7 +2740,6 @@ window.App = {
       ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--g700)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
       : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
 
-    // Trial days remaining
     const expires = S.user.plan_expires_at ? new Date(S.user.plan_expires_at) : null;
     const daysLeft = expires ? Math.max(0, Math.ceil((expires-new Date())/864e5)) : 0;
 
@@ -2782,7 +2758,6 @@ window.App = {
       </div>
 
       <div class="plan-cards-wrap">
-        <!-- FREE -->
         <div class="plan-card${plan==='free'?' active':''}">
           ${plan==='free'?`<div style="position:absolute;top:1rem;left:1rem;background:var(--g100);color:var(--g700);font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px">PLANI YAKO</div>`:''}
           <div style="padding-top:${plan==='free'?'1.5rem':'0'}">
@@ -2795,7 +2770,6 @@ window.App = {
           <button class="plan-cta-btn free" onclick="App.navTo('dashboard')">${plan==='free'?S.lang==='sw'?'Plani ya Sasa':'Current Plan':S.lang==='sw'?'Chagua Bure':'Use Free'}</button>
         </div>
 
-        <!-- PREMIUM -->
         <div class="plan-card popular${plan==='premium'?' active':''}">
           ${plan==='premium'?`<div style="position:absolute;top:1rem;left:1rem;background:var(--g100);color:var(--g700);font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px">PLANI YAKO</div>`:''}
           <div style="padding-top:${plan==='premium'?'1.5rem':'0'}">
@@ -2808,7 +2782,6 @@ window.App = {
           <button class="plan-cta-btn premium" onclick="App.showPaymentModal('premium',${prices.premium})">${plan==='premium'?S.lang==='sw'?'Plani ya Sasa':'Current Plan':S.lang==='sw'?'Panda Premium':'Get Premium'}</button>
         </div>
 
-        <!-- PRO -->
         <div class="plan-card${plan==='pro'?' active':''}">
           ${plan==='pro'?`<div style="position:absolute;top:1rem;left:1rem;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px">PLANI YAKO</div>`:''}
           <div style="padding-top:${plan==='pro'?'1.5rem':'0'}">
@@ -2858,8 +2831,7 @@ window.App = {
   //  SUPERVISOR / BOSS FEATURE
   // ══════════════════════════════════════════════════════════
   async pageSupervisor() {
-    if(!canAccess('supervisor'))return;
-    // Load existing supervisors for this business
+    if(!can('supervisor'))return;
     const {data:sups} = await sb.from('supervisors')
       .select('*').eq('business_id', S.user.id).eq('is_active', true);
 
@@ -2872,7 +2844,6 @@ window.App = {
         </div>
       </div>
 
-      <!-- Add new supervisor -->
       <div class="card anim-card" style="margin-bottom:1rem"><div class="cp">
         <div class="page-title">➕ ${S.lang==='sw'?'Ongeza Msimamizi':'Add Supervisor'}</div>
         <div style="display:flex;flex-direction:column;gap:.875rem;margin-top:.875rem">
@@ -2904,7 +2875,6 @@ window.App = {
         </div>
       </div></div>
 
-      <!-- Existing supervisors -->
       <div class="page-title" style="margin-bottom:.875rem">
         ${S.lang==='sw'?'Wasimamizi Waliopo':'Current Supervisors'} (${(sups||[]).length})
       </div>
@@ -2942,7 +2912,6 @@ window.App = {
 
     setBusy('add-sup-txt', true);
 
-    // Check if phone already registered — link to their profile
     const {data:existing} = await sb.from('profiles').select('id,store_name')
       .eq('phone_number', phone).maybeSingle();
 
@@ -2958,7 +2927,6 @@ window.App = {
     setBusy('add-sup-txt', false, `+ ${S.lang==='sw'?'Ongeza Msimamizi':'Add Supervisor'}`);
     if (error) return toast(S.lang==='sw'?'Hitilafu ya kuongeza':'Error adding supervisor','e');
 
-    // Send SMS notification to supervisor
     if (S.isOnline) {
       try {
         const msg = S.lang==='sw'
@@ -2983,9 +2951,7 @@ window.App = {
     App.pageSupervisor();
   },
 
-  // Supervisor Dashboard — what the boss sees
   async pageSupervisorDash() {
-    // Find which business this supervisor monitors
     const {data:supRecord} = await sb.from('supervisors')
       .select('*,profiles!business_id(id,store_name,role,region,district)')
       .eq('phone_number', S.user.phone_number)
@@ -3017,7 +2983,6 @@ window.App = {
     const totDebt  = (debts||[]).filter(d=>d.status!=='paid').reduce((s,d)=>s+(d.amount-d.amount_paid||0),0);
     const margin   = rev30 > 0 ? (profit30/rev30*100).toFixed(1) : 0;
 
-    // Top 5 products
     const byProd = {};
     (sales||[]).forEach(s=>{
       byProd[s.product_name] = (byProd[s.product_name]||0)+(s.revenue||0);
@@ -3043,7 +3008,6 @@ window.App = {
         <div class="sc ${net30>=0?'g':'r'} anim-card"><div class="sic">${svgIcon('chart')}</div><div class="sl">Net</div><div class="sv" id="sdnet">TZS 0</div></div>
       </div>
 
-      <!-- Key metrics -->
       <div class="rsec anim-card" style="margin-bottom:1rem">
         <div class="rsec-t">📊 ${S.lang==='sw'?'Viashiria Muhimu':'Key Metrics'} (${period} days)</div>
         <div class="rrow"><span class="rl">Profit Margin</span><span class="rv ${margin>=15?'g':margin>=5?'a':'r'}">${margin}%</span></div>
@@ -3055,7 +3019,6 @@ window.App = {
         </div>
       </div>
 
-      <!-- Top products -->
       <div class="rsec anim-card">
         <div class="rsec-t">🏆 ${S.lang==='sw'?'Bidhaa Zinazoongoza':'Top Products'}</div>
         ${topP.length ? topP.map(([name,rev],i) => `
@@ -3074,7 +3037,6 @@ window.App = {
       animateCount($('sdnet'), net30, 'TZS ');
     }, 300);
   },
-
 
 }; // end App
 
@@ -3120,6 +3082,49 @@ function statusBadge(role) {
   const map={retailer:{cls:'rb-ret',label:'Duka'},distributor:{cls:'rb-dist',label:'Msambazaji'},admin:{cls:'rb-adm',label:'Admin'}};
   const r=map[role]||{cls:'rb-ret',label:role};
   return `<span class="rbadge ${r.cls}">${r.label}</span>`;
+}
+
+function animateCount(el, target, prefix='') {
+  if (!el) return;
+  const start = 0;
+  const duration = 800;
+  const startTime = performance.now();
+  const animate = (now) => {
+    const elapsed = now - startTime;
+    const progress = Math.min(1, elapsed / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.floor(target * eased);
+    el.textContent = prefix + current.toLocaleString();
+    if (progress < 1) requestAnimationFrame(animate);
+    else el.textContent = prefix + target.toLocaleString();
+  };
+  requestAnimationFrame(animate);
+}
+
+function staggerCards(selector, delayMs = 80) {
+  const cards = document.querySelectorAll(selector);
+  cards.forEach((card, idx) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(12px)';
+    setTimeout(() => {
+      card.style.transition = 'opacity .3s cubic-bezier(.34,1.4,.64,1), transform .3s cubic-bezier(.34,1.4,.64,1)';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, idx * delayMs);
+  });
+}
+
+function ic(name) {
+  const map = {
+    check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>',
+    x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    lock: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    'arrow-right': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>',
+    crown: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>',
+    info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    refresh: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+  };
+  return map[name] || '';
 }
 
 // ── Inject styles ─────────────────────────────────────────────
@@ -3529,7 +3534,6 @@ async function boot() {
   buildCatGrid();
   goStep(1);
 
-  // Add store-switcher div to sidebar
   const sbnav=document.getElementById('sbnav');
   if(sbnav && !document.getElementById('store-switcher')) {
     const div=document.createElement('div');
@@ -3537,7 +3541,6 @@ async function boot() {
     sbnav.parentNode.insertBefore(div,sbnav);
   }
 
-  // Add sync badge to topbar
   const tbr=document.querySelector('.tbr');
   if(tbr && !document.getElementById('sync-badge')) {
     const span=document.createElement('span');
