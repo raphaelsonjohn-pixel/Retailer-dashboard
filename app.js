@@ -1,6 +1,24 @@
-// BomaWave v5.0 — Subscription + Full Features
+// BomaWave v3.1 — Multi-Store + POS Offline
+import { supabase as sb } from './supabase.js';
 
-// ── STATE (MOVED TO VERY TOP) ─────────────────────────────────────────────────────
+const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/smooth-function';
+const SB_KEY  = 'sb_publishable_yJni7Xxl78x24V1mJvLjVg_RAWAsGOt';
+
+// ── FIX: Add DIST_PLANS and RETAILER_PLANS ─────────────────────────
+const DIST_PLANS = {
+  free:    { name: 'Free', price: 0 },
+  premium: { name: 'Premium', price: 20000 },
+  pro:     { name: 'Pro', price: 35000 }
+};
+
+const RETAILER_PLANS = {
+  free:    { name: 'Free', price: 0 },
+  premium: { name: 'Premium', price: 12000 },
+  pro:     { name: 'Pro', price: 20000 }
+};
+// ────────────────────────────────────────────────────────────────
+
+// ── State ─────────────────────────────────────────────────────
 let S = {
   user: null, lang: 'sw', role: null,
   pendingPhone: null, pendingData: null,
@@ -10,148 +28,13 @@ let S = {
   stores: [],    // all stores for this user
   realtimeCh: null,
   isOnline: navigator.onLine,
-  supervisorOf: null,
-  subscription: null,
-  quickProds: [],
+  supervisorOf: null,  // set when logged in as supervisor
+  _savedStoreId: null,
   resendTimer: null,
   loginResendTimer: null,
-  forgotResendTimer: null,
-  _savedStoreId: null,
-  _twTimer: null
+  forgotResendTimer: null
 };
 
-// Placeholder App object so onclick handlers don't break during load
-window.App = window.App || {};
-
-import { supabase as sb } from './supabase.js';
-
-const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/smooth-function';
-const SB_KEY  = 'sb_publishable_yJni7Xxl78x24V1mJvLjVg_RAWAsGOt';
-
-// ── Subscription Feature Gates ────────────────────────────────
-const PLANS = {
-  retailer: {
-    free:    { label:'Free',    price:0,     features:['dashboard','pos','marketplace','reports_today','orders'] },
-    premium: { label:'Premium', price:12000, features:['dashboard','pos','marketplace','reports_today','reports_week','reports_month','receipts','invoices','whatsapp','offline_pos','multi_store','supervisor','debts','top_selling','orders'] },
-    pro:     { label:'Pro',     price:20000, features:['dashboard','pos','marketplace','reports_today','reports_week','reports_month','reports_year','receipts','invoices','whatsapp','offline_pos','multi_store','multi_store_unlimited','supervisor','supervisors_unlimited','debts','debts_unlimited','top_selling','stock_alerts','advanced_analytics','trend_charts','orders'] },
-  },
-  distributor: {
-    free:    { label:'Free',    price:0,     features:['dashboard','pos','marketplace','reports_today','orders'] },
-    premium: { label:'Premium', price:20000, features:['dashboard','pos','marketplace','reports_today','reports_week','reports_month','orders','receipts','invoices','whatsapp','offline_pos','multi_store','supervisor','debts','top_selling'] },
-    pro:     { label:'Pro',     price:35000, features:['dashboard','pos','marketplace','reports_today','reports_week','reports_month','reports_year','orders','receipts','invoices','whatsapp','offline_pos','multi_store','multi_store_unlimited','supervisor','supervisors_unlimited','debts','debts_unlimited','top_selling','stock_alerts','advanced_analytics','trend_charts'] },
-  },
-};
-const DEBT_LIMITS = { free: 0, premium: 15, pro: Infinity };
-
-function getPlan() {
-  const sub = S.subscription;
-  if (!sub) return 'free';
-  if (sub.status === 'trial') return 'pro';
-  return sub.plan || 'free';
-}
-
-function can(feature) {
-  const role = S.user?.role || 'retailer';
-  const plan = getPlan();
-  const roleKey = role === 'admin' ? 'retailer' : role;
-  return (PLANS[roleKey]?.[plan]?.features || []).includes(feature);
-}
-
-function canAccess(feature) { return can(feature); }
-
-function isTrial() { return S.subscription?.status === 'trial'; }
-
-function trialDaysLeft() {
-  if (!S.subscription?.trial_ends_at) return 0;
-  return Math.max(0, Math.ceil((new Date(S.subscription.trial_ends_at) - new Date()) / 864e5));
-}
-
-function showUpgradeModal(feature) {
-  const modal = document.createElement('div');
-  modal.className = 'upgrade-overlay';
-  modal.innerHTML = '<div class="upgrade-modal">'
-    + '<div class="upgrade-title">' + ic('crown') + ' ' + (S.lang==='sw'?'Inahitaji Upgrade':'Upgrade Required') + '</div>'
-    + '<div class="upgrade-feature">' + feature + '</div>'
-    + '<div class="upgrade-desc">' + (S.lang==='sw'?'Kufungua kipengele hiki, panda hadi Premium au Pro':'To unlock this feature, upgrade to Premium or Pro') + '</div>'
-    + '<div class="upgrade-actions">'
-    + '<button class="btn btn-s" onclick="this.closest(\'.upgrade-overlay\').remove()">' + (S.lang==='sw'?'Funga':'Cancel') + '</button>'
-    + '<button class="btn btn-p" onclick="App.navTo(\'subscription\');this.closest(\'.upgrade-overlay\').remove()">' + (S.lang==='sw'?'Panda Sasa':'Upgrade Now') + '</button>'
-    + '</div></div>';
-  document.body.appendChild(modal);
-  requestAnimationFrame(() => modal.classList.add('show'));
-}
-
-async function loadSubscription() {
-  if (!S.user) return;
-  const {data} = await sb.from('subscriptions').select('*').eq('user_id', S.user.id).maybeSingle();
-  if (!data) {
-    const {data:ns} = await sb.from('subscriptions').insert([{
-      user_id:S.user.id, plan:'free', status:'trial',
-      trial_ends_at: new Date(Date.now()+14*864e5).toISOString(),
-      current_period_end: new Date(Date.now()+14*864e5).toISOString(),
-    }]).select().single();
-    S.subscription = ns;
-  } else {
-    if (data.status==='trial' && new Date(data.trial_ends_at) < new Date()) {
-      await sb.from('subscriptions').update({status:'active',plan:'free'}).eq('id',data.id);
-      S.subscription = {...data, status:'active', plan:'free'};
-    } else {
-      S.subscription = data;
-    }
-  }
-}
-
-function planBadgeHtml() {
-  const plan=getPlan(), trial=isTrial();
-  const lbl={free:'Free',premium:'Premium',pro:'Pro'};
-  const c=trial?'var(--amber)':'rgba(255,255,255,.65)';
-  return '<span style="font-size:.62rem;font-weight:800;color:'+c+';background:rgba(255,255,255,.1);padding:2px 8px;border-radius:20px">'+(trial?'Pro Trial':lbl[plan]||'Free')+'</span>';
-}
-
-function lockedPageHTML(feature) {
-  const plan=getPlan(), role=S.user?.role||'retailer';
-  const np=plan==='free'?'Premium':'Pro';
-  const price=(role==='distributor')?(plan==='free'?'TZS 20,000':'TZS 35,000'):(plan==='free'?'TZS 12,000':'TZS 20,000');
-  return '<div class="locked-page"><div class="locked-page-icon">'+ic('lock')+'</div><div class="locked-page-title">'+(S.lang==='sw'?'Inahitaji '+np:'Requires '+np)+'</div><div class="locked-page-sub">'+(S.lang==='sw'?'Panda hadi '+np+' ili ufikia feature hii':'Upgrade to '+np+' to access this feature')+'</div><div class="locked-page-price">'+price+' / '+(S.lang==='sw'?'mwezi':'month')+'</div><button class="btn btn-p" style="max-width:220px;margin:0 auto" onclick="App.navTo(\'subscription\')">'+(S.lang==='sw'?'Panda Plan':'Upgrade')+' '+ic('arrow-right')+'</button><button class="btn btn-s" style="max-width:220px;margin:.5rem auto" onclick="App.navTo(\'dashboard\')">'+(S.lang==='sw'?'Rudi':'Go Home')+'</button></div>';
-}
-
-function getFeatureList(planKey, role) {
-  const roleKey=role==='admin'?'retailer':role;
-  const feats=PLANS[roleKey]?.[planKey]?.features||[];
-  const all=[
-    {id:'dashboard',name:S.lang==='sw'?'Dashibodi':'Dashboard'},
-    {id:'pos',name:'POS (Online)'},
-    {id:'marketplace',name:'Marketplace'},
-    {id:'reports_today',name:S.lang==='sw'?'Ripoti za Leo':'Today Reports'},
-    {id:'reports_week',name:S.lang==='sw'?'Ripoti Wiki/Mwezi':'Week/Month Reports'},
-    {id:'reports_year',name:S.lang==='sw'?'Ripoti Mwaka':'Year Reports'},
-    {id:'debts',name:'Madeni ('+(planKey==='premium'?'Limit 15':planKey==='pro'?'Unlimited':'Hakuna')+')'},
-    {id:'receipts',name:S.lang==='sw'?'Risiti / Ankara':'Receipts / Invoices'},
-    {id:'whatsapp',name:'WhatsApp Sharing'},
-    {id:'offline_pos',name:'Offline POS'},
-    {id:'multi_store',name:'Maduka ('+(planKey==='pro'?'Unlimited':'3 max')+')'},
-    {id:'supervisor',name:'Msimamizi ('+(planKey==='pro'?'Unlimited':'1')+')'},
-    {id:'top_selling',name:S.lang==='sw'?'Bidhaa Zinazoongoza':'Top Selling Products'},
-    {id:'stock_alerts',name:'Stock Alerts + Reorder (Pro)'},
-    {id:'advanced_analytics',name:S.lang==='sw'?'Takwimu za Kina (Pro)':'Advanced Analytics (Pro)'},
-  ];
-  return all.map(f=>({...f,available:feats.includes(f.id)||feats.includes(f.id+'_unlimited')||feats.some(ff=>ff.startsWith(f.id))}));
-}
-
-function showSaleSuccess(amount) {
-  const cols=['#16a34a','#22c55e','#4ade80','#86efac'];
-  for(let i=0;i<12;i++){
-    const el=document.createElement('div');
-    el.style.cssText='position:fixed;width:8px;height:8px;border-radius:50%;background:'+cols[i%4]+';top:50%;left:50%;z-index:9999;pointer-events:none;animation:confetti-pop .8s ease forwards';
-    const ang=(i/12)*360,dist=60+Math.random()*60;
-    el.style.setProperty('--dx',Math.cos(ang*Math.PI/180)*dist+'px');
-    el.style.setProperty('--dy',Math.sin(ang*Math.PI/180)*dist+'px');
-    document.body.appendChild(el);
-    setTimeout(()=>el.remove(),900);
-  }
-}
-
-// Feature gates per plan
 
 // ── Tanzania Location Data ────────────────────────────────────
 const LOC = {
@@ -309,48 +192,15 @@ function loadSession() {
 }
 function clearSession() { localStorage.removeItem('bw_v4'); localStorage.removeItem('bw_v3'); }
 
-// ── OTP API call + Dev Mode ──────────────────────────────────
-function showDevOTP(otp) {
-  document.getElementById('dev-otp-banner')?.remove();
-  const b = document.createElement('div');
-  b.id = 'dev-otp-banner';
-  b.innerHTML = '<div class="dev-otp-inner">'
-    + '<div><div class="dev-otp-label">' + (S.lang==='sw'?'SMS haikufika — OTP:':'SMS failed — OTP:') + '</div>'
-    + '<div class="dev-otp-code">' + otp + '</div></div>'
-    + '<div class="dev-otp-actions">'
-    + '<button class="dev-otp-btn" onclick="fillDevOTP(\'' + otp + '\')">Jaza OTP</button>'
-    + '<button class="dev-otp-close" onclick="document.getElementById(\'dev-otp-banner\').remove()">X</button>'
-    + '</div></div>';
-  document.body.appendChild(b);
-  setTimeout(() => b.classList.add('show'), 10);
-}
-
-window.fillDevOTP = function(otp) {
-  for (const p of ['ob','lb','fb']) {
-    if ($(p+'0')) {
-      otp.split('').forEach((d, i) => {
-        const el = $(p+i); if (el) { el.value=d; el.classList.add('on'); }
-      });
-      setTimeout(() => {
-        if (p==='ob') App.verifyRegOTP();
-        else if (p==='lb') App.verifyLoginOTP();
-        else App.verifyForgotOTP();
-      }, 400);
-      document.getElementById('dev-otp-banner')?.remove();
-      break;
-    }
-  }
-};
-
+// ── OTP API call ─────────────────────────────────────────────
 async function callOTP(payload) {
   const res = await fetch(OTP_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
+    headers: { 'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SB_KEY}` },
     body: JSON.stringify(payload),
   });
-  const data = await res.json();
-  if (data.success && data.dev_otp && data.sms_failed) showDevOTP(data.dev_otp);
-  return data;
+  return res.json();
 }
 
 // ── Phone normalizer ─────────────────────────────────────────
@@ -377,19 +227,13 @@ const STEP_MAX = { 1:10,2:20,3:50,4:50,5:75,7:90,8:30,9:60,10:30,11:60,12:85 };
 
 function goStep(n) {
   document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-  const el = $('s'+n);
-  if (el) {
-    el.classList.add('active');
-    el.style.opacity='0'; el.style.transform='translateY(12px)';
-    requestAnimationFrame(()=>{
-      el.style.transition='opacity .3s ease,transform .3s cubic-bezier(.34,1.4,.64,1)';
-      el.style.opacity='1'; el.style.transform='translateY(0)';
-    });
-  }
+  const el = $(`s${n}`);
+  if (el) el.classList.add('active');
   const pct = STEP_MAX[n] || 10;
-  const pf = $('pfill'); if(pf) pf.style.width = pct+'%';
-  const pp = $('ppct'); if(pp) pp.textContent = pct+'%';
-  const pl = $('plbl'); if(pl) { const name = STEP_NAMES[S.lang]?.[n]||'Hatua '+n; pl.textContent=name; }
+  const name = STEP_NAMES[S.lang]?.[n] || `Hatua ${n}`;
+  setText('plbl', name);
+  setText('ppct', pct+'%');
+  $('pfill').style.width = pct+'%';
 }
 
 // ── Init location dropdowns ──────────────────────────────────
@@ -557,7 +401,6 @@ function renderStoreSwitcher() {
 }
 
 window.App = {
-  goStep(n) { goStep(n); },
 
   // ── Language ─────────────────────────────────────────────
   setLang(lang) {
@@ -580,18 +423,9 @@ window.App = {
     S.role = role;
     $('rb-ret').classList.toggle('sel', role==='retailer');
     $('rb-dist').classList.toggle('sel', role==='distributor');
-    const ckRet = $('ck-ret'), ckDist = $('ck-dist');
-    if (ckRet) ckRet.classList.toggle('show', role==='retailer');
-    if (ckDist) ckDist.classList.toggle('show', role==='distributor');
+    $('ck-ret').style.display = role==='retailer'?'':'none';
+    $('ck-dist').style.display = role==='distributor'?'':'none';
     $('rnext').style.display = 'flex';
-    const btn = $('rnext');
-    if (btn) {
-      btn.style.opacity = '0'; btn.style.transform = 'translateY(8px)';
-      requestAnimationFrame(() => {
-        btn.style.transition = 'opacity .3s ease, transform .3s cubic-bezier(.34,1.4,.64,1)';
-        btn.style.opacity = '1'; btn.style.transform = 'translateY(0)';
-      });
-    }
   },
 
   proceedFromRole() {
@@ -761,6 +595,7 @@ window.App = {
       for(let i=0;i<6;i++) $(`ob${i}`)?.classList.add('err');
       return toast(r.message||'Nambari si sahihi','e');
     }
+    // OTP OK — create account
     const reg = await callOTP({ action:'complete_registration', phone: S.pendingPhone, ...S.pendingData });
     setBusy('vbtn', false, 'Thibitisha');
     if (!reg.success) return toast(reg.message||'Tatizo la kuunda akaunti','e');
@@ -782,7 +617,7 @@ window.App = {
     const phone = normPhone(raw);
     if (!phone) return toast('Namba ya simu si sahihi','e');
     S.pendingPhone = phone;
-    setBusy('lotp-btn', false);
+    setBusy('lotp-txt', false);
     const r = await callOTP({ action:'send_otp', phone });
     if (!r.success) return toast(r.message||'Hitilafu','e');
     toast('OTP imetumwa! ✅','s');
@@ -792,13 +627,13 @@ window.App = {
     goStep(9);
   },
 
-  loi(i,el){
+  loi(i,el) {
     el.value=el.value.replace(/\D/g,'').slice(-1);
     el.classList.toggle('on',!!el.value);
     if(el.value&&i<5)$(`lb${i+1}`)?.focus();
     if(i===5&&el.value)App.verifyLoginOTP();
   },
-  lok(i,e){ if(e.key==='Backspace'&&!$(`lb${i}`).value&&i>0)$(`lb${i-1}`)?.focus(); },
+  lok(i,e) { if(e.key==='Backspace'&&!$(`lb${i}`).value&&i>0)$(`lb${i-1}`)?.focus(); },
 
   startLoginResendTimer() {
     clearInterval(S.loginResendTimer);
@@ -832,6 +667,7 @@ window.App = {
       return toast(S.lang==='sw'?'Namba hii haijasajiliwa. Unda akaunti kwanza.':'Number not registered. Please create account.','e');
     S.user=r.user; saveSession();
     await loadStores();
+    // Show PIN screen
     S.pinBuf=''; App.renderPinDots();
     setText('s7h', S.lang==='sw'?'Karibu!':'Welcome!');
     setText('s7sub', r.user.store_name||'');
@@ -895,6 +731,7 @@ window.App = {
     const r=await callOTP({action:'verify_otp',phone:S.pendingPhone,otp_code:code});
     setBusy('fvbtn',false,'Thibitisha');
     if(!r.success){for(let i=0;i<6;i++)$(`fb${i}`)?.classList.add('err');return toast(r.message||'Nambari si sahihi','e');}
+    // Check user exists with this phone
     if(!r.user_exists)return toast(S.lang==='sw'?'Namba hii haijasajiliwa.':'Number not registered.','e');
     S.user=r.user; goStep(12);
   },
@@ -923,6 +760,7 @@ window.App = {
     App.renderApp();
     App.setupRealtime();
   },
+
 
   // ── Store methods ──────────────────────────────────────
   async renderSyncBadge() {
@@ -1100,26 +938,19 @@ window.App = {
   // ══════════════════════════════════════════════════════════
   renderApp() {
     const u=S.user;
+    // Sidebar user info
     const av=u.store_name?.[0]?.toUpperCase()||'U';
-    setText('sbav',av);
-    const storeLine=S.store?S.store.store_name:u.store_name;
-    setText('sbn',storeLine||'—');
-    const plan=getPlan();
-    const planData=(u.role==='distributor'?DIST_PLANS:PLANS)[plan]||PLANS.free;
-    const pb=$('plan-badge');
-    const pnb=$('plan-name-badge');
-    const pul=$('plan-upgrade-link');
-    if(pb){
-      pb.style.background=plan==='free'?'rgba(255,255,255,.08)':plan==='trial'?'rgba(217,119,6,.15)':plan==='premium'?'rgba(34,197,94,.15)':'rgba(99,102,241,.15)';
-      pb.style.borderColor=plan==='free'?'rgba(255,255,255,.1)':plan==='trial'?'rgba(217,119,6,.3)':plan==='premium'?'rgba(34,197,94,.3)':'rgba(99,102,241,.3)';
-    }
-    if(pnb)pnb.textContent=planData.name+(plan==='trial'?' (Trial)':'');
-    if(pul)pul.style.display=plan==='pro'?'none':'';
+    setText('sbav',av); setText('sbn',u.store_name||'—');
     const badgeClass={retailer:'rb-ret',distributor:'rb-dist',admin:'rb-adm'}[u.role]||'rb-ret';
     const badgeTxt={retailer:'Duka',distributor:'Msambazaji',admin:'Admin'}[u.role]||u.role;
     const bb=$('sbb');
     if(bb){bb.className=`rbadge ${badgeClass}`;bb.textContent=badgeTxt;}
 
+    // FIXED: Use DIST_PLANS and RETAILER_PLANS (defined at top)
+    const plan = 'free';
+    const planData = (u.role === 'distributor' ? DIST_PLANS : RETAILER_PLANS)[plan] || RETAILER_PLANS.free;
+
+    // Nav items by role
     const navItems = App.getNavItems(u.role);
     const nav=$('sbnav');
     if(nav){
@@ -1130,6 +961,7 @@ window.App = {
         </button>`).join('');
     }
 
+    // Bottom nav (mobile)
     const mobileNav=navItems.slice(0,5);
     const bn=$('bn');
     if(bn){
@@ -1139,9 +971,11 @@ window.App = {
         </button>`).join('');
     }
 
+    // Lang toggle
     $('lsw-sw')?.classList.toggle('on',S.lang==='sw');
     $('lsw-en')?.classList.toggle('on',S.lang==='en');
 
+    // Render page
     App.renderPage(S.page);
   },
 
@@ -1273,6 +1107,7 @@ window.App = {
     setText('tbt', pageLabels[page]||page);
     setText('tbs', S.user?.store_name||'');
 
+    // Scroll to top on page change
     window.scrollTo({top:0,behavior:'smooth'});
     const pages={
       dashboard:()=>App.pageDashboard(),
@@ -1289,8 +1124,6 @@ window.App = {
       analytics:()=>App.pageAnalytics(),
       supervisor:()=>App.pageSupervisor(),
       'supervisor-dash':()=>App.pageSupervisorDash(),
-      subscription:()=>App.pageSubscription(),
-      plans:()=>App.pagePlans(),
     };
     await (pages[page]||pages.dashboard)();
   },
@@ -1316,6 +1149,7 @@ window.App = {
         <div class="sc a stat-anim"><div class="sic">${svgIcon('pkg')}</div><div class="sl">${S.lang==='sw'?'Yanasubiri':'Pending'}</div><div class="sv">${pending}</div></div>
         <div class="sc b stat-anim"><div class="sic">${svgIcon('orders')}</div><div class="sl">${S.lang==='sw'?'Zimetolewa':'Delivered'}</div><div class="sv">${delivered}</div></div>
       </div>`;
+    // Count-up animation
     function animCount(el, target) {
       if (!el) return;
       const dur=800, start=Date.now();
@@ -1339,8 +1173,8 @@ window.App = {
               <tr>
                 <td><span style="font-size:.75rem;font-weight:700;color:var(--g700)">${o.order_ref}</span></td>
                 <td>${statusPill(o.status,S.lang)}</span></td>
-                <td style="font-weight:700">${fmt(o.total_price)}</td>
-                <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</td>
+                <td style="font-weight:700">${fmt(o.total_price)}</span></td>
+                <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</span></td>
               </tr>`).join('')||`<tr><td colspan="4"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
             </tbody>
           </table></div>
@@ -1351,10 +1185,12 @@ window.App = {
   // ── MARKETPLACE (Retailer) ─────────────────────────────
   async pageMarketplace() {
     const u=S.user;
+    // Load distributors — filtered by location first
     const {data:allDists}=await sb.from('profiles')
       .select('id,store_name,region,district,coverage_area,min_delivery_amount')
       .eq('role','distributor').eq('is_active',true);
 
+    // Sort: same region first, then same district
     const sorted=(allDists||[]).sort((a,b)=>{
       const aScore=(a.region===u.region?2:0)+(a.district===u.district?1:0);
       const bScore=(b.region===u.region?2:0)+(b.district===u.district?1:0);
@@ -1363,6 +1199,7 @@ window.App = {
 
     const distOpts=sorted.map(d=>`<option value="${d.id}">${d.store_name} — ${d.district||d.region||''}${d.region===u.region?' ⭐':''}</option>`).join('');
 
+    // Load products
     const distId=S.cartDist||(sorted[0]?.id||'');
     let products=[];
     if(distId){
@@ -1426,8 +1263,10 @@ window.App = {
       </div>
       <div class="pgrid" id="pgrid">${renderProducts('all')}</div>`;
 
+    // Set current dist selector
     if($('dist-sel')&&distId)$('dist-sel').value=distId;
 
+    // Update cart FAB
     const fab=$('cfab');
     if(fab){fab.style.display=S.cart.length?'flex':'none';}
     App.renderCartPanel();
@@ -1440,6 +1279,7 @@ window.App = {
   filterCat(cat,btn) {
     document.querySelectorAll('.fp').forEach(b=>b.classList.remove('on'));
     btn.classList.add('on');
+    // Re-render products with filter
     App.pageMarketplace().then(()=>{
       setTimeout(()=>{
         document.querySelectorAll('.fp').forEach(b=>{
@@ -1514,6 +1354,7 @@ window.App = {
   async placeOrder() {
     if(!S.cart.length)return toast(t('cartEmpty'),'e');
 
+    // MOQ check
     const moqFail=S.cart.filter(c=>c.qty<c.min_order_qty);
     if(moqFail.length){
       toast(`${S.lang==='sw'?'Kiwango cha chini hafikiwi:':'MOQ not met:'} ${moqFail.map(c=>c.product_name).join(', ')}`,'e');
@@ -1574,7 +1415,7 @@ window.App = {
               <td>${statusPill(o.status,S.lang)}</span></td>
               <td>${o.items_count}</td>
               <td><strong>${fmt(o.total_price)}</strong></td>
-              <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</td>
+              <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</span></td>
               <td>
                 ${o.status==='delivered'?`<button class="bsm b" onclick="App.showInvoice('${o.id}')">${svgIcon('invoice')} ${t('invoices')}</button>`:''}
               </td>
@@ -1605,7 +1446,7 @@ window.App = {
               <td><strong style="color:var(--g700)">${o.order_ref}</strong></td>
               <td>${statusPill(o.status,S.lang)}</span></td>
               <td><strong>${fmt(o.total_price)}</strong></td>
-              <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</td>
+              <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0,10)}</span></td>
               <td style="display:flex;gap:.3rem;flex-wrap:wrap">
                 ${o.status==='pending'?`<button class="bsm b" onclick="App.updateOrderStatus('${o.id}','confirmed')">${S.lang==='sw'?'Thibitisha':'Confirm'}</button>`:''}
                 ${o.status==='confirmed'?`<button class="bsm g" onclick="App.updateOrderStatus('${o.id}','delivered')">${S.lang==='sw'?'Toa':'Deliver'}</button>`:''}
@@ -1622,6 +1463,7 @@ window.App = {
     const {error}=await sb.from('orders').update({status}).eq('id',orderId);
     if(error)return toast('Hitilafu ya kubadilisha hali','e');
     toast(S.lang==='sw'?`Hali imebadilishwa: ${status}`:`Status updated: ${status}`,'s');
+    // Auto-create receipt on delivery
     if(status==='delivered'){
       const {data:o}=await sb.from('orders').select('*').eq('id',orderId).single();
       if(o){
@@ -1703,6 +1545,7 @@ window.App = {
     const {data:invoice}=await sb.from('invoices').select('*').eq('order_id',orderId).maybeSingle();
     const inv=invoice||{invoice_ref:genRef('INV'),issued_at:new Date().toISOString(),due_date:'',status:'unpaid'};
 
+    // Build share text
     const shareText=encodeURIComponent(
       `*ANKARA YA BOMAWAVE*\n` +
       `Ref: ${inv.invoice_ref}\n` +
@@ -1897,43 +1740,7 @@ window.App = {
   async updateStock(id) {
     const qty=parseInt($(`sq-${id}`)?.value||'0');
     await sb.from('products').update({stock_qty:qty}).eq('id',id);
-    if (qty<=10 && can('stock_alerts')) {
-      await sb.from('stock_alerts').upsert([{product_id:id,distributor_id:S.user.id,alert_type:qty===0?'out_of_stock':'low_stock',threshold:10,is_read:false}],{onConflict:'product_id'});
-    } else {
-      await sb.from('stock_alerts').delete().eq('product_id',id);
-    }
     toast(S.lang==='sw'?'Stok imehifadhiwa':'Stock updated','s');
-    App.pageProducts();
-  },
-
-  async reorderProduct(id, name) {
-    const modal = document.createElement('div');
-    modal.className = 'upgrade-overlay';
-    modal.innerHTML = '<div class="upgrade-modal">'
-      + '<div class="upgrade-title">' + ic('refresh') + ' ' + (S.lang==='sw'?'Ununua Tena':'Reorder') + '</div>'
-      + '<div class="upgrade-feature">' + name + '</div>'
-      + '<div class="fg" style="margin:1rem 0">'
-      + '<label class="fl">' + (S.lang==='sw'?'Idadi ya Kuongeza':'Quantity to Add') + '</label>'
-      + '<input class="fi" id="reorder-qty" type="number" min="1" value="50" style="font-size:1.2rem;text-align:center"/>'
-      + '</div>'
-      + '<div class="upgrade-actions">'
-      + '<button class="btn btn-s" onclick="this.closest(\'.upgrade-overlay\').remove()">' + (S.lang==='sw'?'Funga':'Cancel') + '</button>'
-      + '<button class="btn btn-p" onclick="App.confirmReorder(\'' + id + '\');this.closest(\'.upgrade-overlay\').remove()">'
-      + ic('check') + ' ' + (S.lang==='sw'?'Ongeza Stok':'Add Stock') + '</button>'
-      + '</div></div>';
-    document.body.appendChild(modal);
-    requestAnimationFrame(() => modal.classList.add('show'));
-  },
-
-  async confirmReorder(id) {
-    const qty = parseInt(document.getElementById('reorder-qty')?.value || '0');
-    if (!qty) return toast(S.lang==='sw'?'Weka idadi':'Enter quantity', 'e');
-    const {data:p} = await sb.from('products').select('stock_qty').eq('id',id).single();
-    const newQty = (p?.stock_qty || 0) + qty;
-    await sb.from('products').update({stock_qty: newQty}).eq('id', id);
-    await sb.from('stock_alerts').delete().eq('product_id', id);
-    toast(S.lang==='sw'?'Stok imeongezwa! Mpya: '+newQty:'Stock updated! New qty: '+newQty, 's');
-    App.pageProducts();
   },
 
   async deleteProduct(id) {
@@ -1948,6 +1755,7 @@ window.App = {
     const uid = S.user.id;
     const sid = S.store?.id;
 
+    // Load today's data — online + offline
     let onlineSales = [], onlineExps = [];
     if (S.isOnline) {
       let sq = sb.from('sales').select('*').eq('user_id', uid).gte('sale_date', today()).order('created_at', {ascending:false});
@@ -1957,12 +1765,14 @@ window.App = {
       onlineSales = s||[]; onlineExps = e||[];
     }
 
+    // Offline pending records
     const offS = (await posDbGetAll('sales')).filter(s=>!s.synced&&s.user_id===uid);
     const offE = (await posDbGetAll('expenses')).filter(e=>!e.synced&&e.user_id===uid);
 
     const allSales = [...offS.map(s=>({...s,_off:true})), ...onlineSales];
     const allExps  = [...offE.map(e=>({...e,_off:true})), ...onlineExps];
 
+    // Summary stats
     const todayRev    = allSales.reduce((s,r) => s+(r.revenue||r.selling_price*r.qty||0), 0);
     const todayProfit = allSales.reduce((s,r) => s+(r.profit||(r.selling_price-r.buying_price)*r.qty||0), 0);
     const todayExp    = allExps.reduce((s,e)  => s+(e.amount||0), 0);
@@ -1973,6 +1783,7 @@ window.App = {
     view.innerHTML = `
       ${!S.isOnline ? `<div class="offline-banner">⚡ ${S.lang==='sw'?'Nje ya mtandao — data inashikiliwa hapa':'Offline — data saved locally, will sync when online'}</div>` : ''}
 
+      <!-- POS Summary Stats -->
       <div class="sr" style="margin-bottom:1.1rem">
         <div class="sc g"><div class="sic">${svgIcon('revenue')}</div><div class="sl">${S.lang==='sw'?'Mapato Leo':'Revenue'}</div><div class="sv" id="pos-rev">TZS 0</div></div>
         <div class="sc g"><div class="sic">${svgIcon('profit')}</div><div class="sl">${S.lang==='sw'?'Faida':'Profit'}</div><div class="sv" id="pos-profit">TZS 0</div></div>
@@ -1980,6 +1791,7 @@ window.App = {
         <div class="sc ${netProfit>=0?'g':'r'}"><div class="sic">${svgIcon('chart')}</div><div class="sl">${S.lang==='sw'?'Faida Halisi':'Net'}</div><div class="sv" id="pos-net">TZS 0</div></div>
       </div>
 
+      <!-- Margin pill -->
       <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1.1rem;flex-wrap:wrap">
         <span style="background:${margin>=20?'var(--g100)':margin>=10?'var(--ambl)':'var(--redl)'};color:${margin>=20?'var(--g900)':margin>=10?'var(--amber)':'var(--red)'};padding:6px 16px;border-radius:20px;font-size:.82rem;font-weight:800">
           📊 Margin: ${margin}%
@@ -1988,6 +1800,7 @@ window.App = {
         ${offS.length+offE.length>0?`<span style="background:var(--ambl);color:var(--amber);padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:700;cursor:pointer" onclick="syncOfflineData()">⚡ ${offS.length+offE.length} ${S.lang==='sw'?'offline — sync':'offline — tap to sync'}</span>`:''}
       </div>
 
+      <!-- Tabs -->
       <div class="ptabs" id="pos-tabs">
         <button class="ptab on" onclick="App.posTab('sales',this)">
           ${svgIcon('pos')} <span>${S.lang==='sw'?'Mauzo':'Sales'}</span>
@@ -2000,6 +1813,7 @@ window.App = {
         </button>
       </div>
 
+      <!-- TAB 1: SALES FORM -->
       <div id="pos-sales">
         <div class="pform">
           <div class="pftitle">🛒 ${S.lang==='sw'?'Rekodi Mauzo':'Record Sale'}</div>
@@ -2028,6 +1842,7 @@ window.App = {
                 <input class="fi pos-big-input" id="s-sell" type="number" min="0" placeholder="0" style="border-color:var(--g400)!important" oninput="App.posCalc()"/>
               </div>
             </div>
+            <!-- Live Calculator -->
             <div id="pos-calc" class="pos-calc-card" style="display:none">
               <div style="font-size:.72rem;font-weight:800;color:var(--g700);text-transform:uppercase;letter-spacing:1px;margin-bottom:.65rem">📊 ${S.lang==='sw'?'Hesabu ya Haraka':'Quick Calc'}</div>
               <div class="pos-calc-row"><span>${S.lang==='sw'?'Mapato':'Revenue'}</span><strong id="calc-rev" style="color:var(--g700)">TZS 0</strong></div>
@@ -2041,6 +1856,7 @@ window.App = {
         </div>
       </div>
 
+      <!-- TAB 2: EXPENSES FORM -->
       <div id="pos-expenses" style="display:none">
         <div class="pform" style="border-color:var(--redl)">
           <div class="pftitle">💸 ${S.lang==='sw'?'Rekodi Matumizi':'Record Expense'}</div>
@@ -2071,6 +1887,7 @@ window.App = {
         </div>
       </div>
 
+      <!-- TAB 3: HISTORY -->
       <div id="pos-history" style="display:none">
         <div class="card" style="margin-bottom:1rem"><div class="cp">
           <div class="sh">
@@ -2089,13 +1906,13 @@ window.App = {
               ${allSales.map((s,i) => `
                 <tr class="dt-row${s._off?' offline-tr':''}">
                   <td><strong>${s.product_name}</strong>${s._off?` <span style="font-size:.65rem;background:var(--ambl);color:var(--amber);padding:1px 6px;border-radius:8px">⚡</span>`:''}</td>
-                  <td style="font-size:1.05rem;font-weight:800;text-align:center">${s.qty}</td>
+                  <td style="font-size:1.05rem;font-weight:800;text-align:center">${s.qty}</span></td>
                   <td style="color:var(--g700);font-weight:800">${fmt(s.revenue||s.selling_price*s.qty||0)}</span></td>
                   <td style="color:${(s.profit||(s.selling_price-s.buying_price)*s.qty||0)<0?'var(--red)':'var(--g600)'};font-weight:700">
                     ${(s.profit||(s.selling_price-s.buying_price)*s.qty||0)<0?'❌ ':''} ${fmt(Math.abs(s.profit||(s.selling_price-s.buying_price)*s.qty||0))}
-                  </td>
-                  <td style="color:var(--s500);font-size:.78rem">${s.created_at?.slice(11,16)||'—'}</td>
-                </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic">💰</div><div class="empty-s">${S.lang==='sw'?'Hakuna mauzo leo':'No sales today'}</div></div></td></tr>`}
+                   </span></td>
+                  <td style="color:var(--s500);font-size:.78rem">${s.created_at?.slice(11,16)||'—'}</span></td>
+                </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic">💰</div><div class="empty-s">${S.lang==='sw'?'Hakuna mauzo leo':'No sales today'}</div></div></span></td>`}
             </tbody>
           </table></div>
         </div></div>
@@ -2114,19 +1931,20 @@ window.App = {
               ${allExps.map(e => `
                 <tr class="dt-row${e._off?' offline-tr':''}">
                   <td><span class="pill p-pen">${e.category}</span></td>
-                  <td>${e.description}</td>
+                  <td>${e.description}</span></td>
                   <td style="color:var(--red);font-weight:800">${fmt(e.amount)}</span></td>
-                </tr>`).join('') || `<tr><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></td></tr>`}
+                </tr>`).join('') || `<tr><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></span></tr>`}
             </tbody>
           </table></div>
         </div></div>
       </div>`;
 
+    // Animate stat counts after render
     setTimeout(() => {
-      animateCount($('pos-rev'), todayRev, 'TZS ');
+      animateCount($('pos-rev'),    todayRev,    'TZS ');
       animateCount($('pos-profit'), todayProfit, 'TZS ');
-      animateCount($('pos-exp'), todayExp, 'TZS ');
-      animateCount($('pos-net'), netProfit, 'TZS ');
+      animateCount($('pos-exp'),    todayExp,    'TZS ');
+      animateCount($('pos-net'),    netProfit,   'TZS ');
     }, 300);
   },
 
@@ -2140,6 +1958,7 @@ window.App = {
     const active = $(`pos-${tab}`);
     if (active) {
       active.style.display = '';
+      // Animate tab content entry
       active.style.opacity = '0';
       active.style.transform = 'translateY(10px)';
       requestAnimationFrame(() => {
@@ -2161,7 +1980,7 @@ window.App = {
       const rev    = sell * qty;
       const profit = (sell - buy) * qty;
       const margin = sell > 0 ? Math.round((sell-buy)/sell*100) : 0;
-      setText('calc-rev', fmt(rev));
+      setText('calc-rev',    fmt(rev));
       setText('calc-profit', fmt(profit));
       setText('calc-margin', `${margin}%`);
       $('calc-margin').style.color = margin >= 20 ? 'var(--g700)' : margin >= 10 ? 'var(--amber)' : 'var(--red)';
@@ -2187,16 +2006,17 @@ window.App = {
     if (S.isOnline) {
       const {error} = await sb.from('sales').insert([data]);
       if (error) {
-        if(can('offline_pos')){ await posDbAdd('sales', data); toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w'); }
-        else toast(S.lang==='sw'?'Hitilafu ya kuhifadhi':'Save error','e');
+        await posDbAdd('sales', data);
+        toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w');
       } else {
         toast(S.lang==='sw' ? '✅ Mauzo yamerekodiwa!' : '✅ Sale recorded!', 's');
       }
     } else {
-      if(can('offline_pos')){ await posDbAdd('sales', data); toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w'); }
-      else { toast(S.lang==='sw'?'Unahitaji mtandao. Upgrade kwa Offline POS':'Need internet. Upgrade for Offline POS','w'); return; }
+      await posDbAdd('sales', data);
+      toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline — itasync baadaye' : '⚡ Saved offline', 'w');
     }
     setBusy('rec-sale-txt', false, `✓ ${S.lang==='sw' ? 'Rekodi Mauzo' : 'Record Sale'}`);
+    // Clear form
     if($('s-prod')) $('s-prod').value = '';
     if($('s-qty'))  $('s-qty').value  = '1';
     if($('s-buy'))  $('s-buy').value  = '';
@@ -2247,15 +2067,13 @@ window.App = {
   async loadReports(period, btn) {
     document.querySelectorAll('.pertab').forEach(b => b.classList.remove('on'));
     if (btn) btn.classList.add('on');
-    if(period==='week'&&!can('reports_week')){showUpgradeModal('reports_week');return;}
-    if(period==='month'&&!can('reports_month')){showUpgradeModal('reports_month');return;}
-    if(period==='year'&&!can('reports_year')){showUpgradeModal('reports_year');return;}
 
     const days = {today:0, week:7, month:30, year:365}[period] || 0;
     const startDate = days === 0 ? today() : new Date(Date.now()-days*864e5).toISOString().slice(0,10);
     const uid  = S.user.id;
     const sid  = S.store?.id;
 
+    // Build queries
     let sq = sb.from('sales').select('*').eq('user_id', uid).gte('sale_date', startDate);
     let eq = sb.from('expenses').select('*').eq('user_id', uid).gte('expense_date', startDate);
     if (sid) { sq = sq.eq('store_id', sid); eq = eq.eq('store_id', sid); }
@@ -2263,6 +2081,7 @@ window.App = {
     const [{data:sales},{data:exps}] = await Promise.all([sq, eq]);
     const allS = sales || [], allE = exps || [];
 
+    // Core metrics
     const rev     = allS.reduce((s,r) => s+(r.revenue||r.selling_price*r.qty||0), 0);
     const cost    = allS.reduce((s,r) => s+(r.buying_price*r.qty||0), 0);
     const profit  = allS.reduce((s,r) => s+(r.profit||(r.selling_price-r.buying_price)*r.qty||0), 0);
@@ -2272,6 +2091,7 @@ window.App = {
     const txCount = allS.length;
     const avgSale = txCount > 0 ? rev/txCount : 0;
 
+    // Category breakdown
     const byCat = {};
     allS.forEach(s => {
       const cat = s.category || 'other';
@@ -2282,6 +2102,7 @@ window.App = {
       byCat[cat].count  += 1;
     });
 
+    // Top products (by revenue)
     const byProd = {};
     allS.forEach(s => {
       if (!byProd[s.product_name]) byProd[s.product_name] = {rev:0, qty:0, profit:0};
@@ -2292,10 +2113,12 @@ window.App = {
     const topProds = Object.entries(byProd).sort((a,b)=>b[1].rev-a[1].rev).slice(0,5);
     const maxProdRev = Math.max(...topProds.map(([,v])=>v.rev), 1);
 
+    // Expense breakdown
     const byExp = {};
     allE.forEach(e => { byExp[e.category] = (byExp[e.category]||0) + e.amount; });
     const maxExpVal = Math.max(...Object.values(byExp), 1);
 
+    // Daily trend (last 7 days for week, last 30 for month)
     const trendDays = period === 'today' ? 1 : period === 'week' ? 7 : period === 'month' ? 30 : 12;
     const trend = {};
     allS.forEach(s => {
@@ -2303,6 +2126,7 @@ window.App = {
       if (d) trend[d] = (trend[d]||0) + (s.revenue||s.selling_price*s.qty||0);
     });
 
+    // Per-store breakdown (if multiple stores)
     const storeBreakdown = {};
     if (S.stores.length > 1) {
       allS.forEach(s => {
@@ -2315,6 +2139,7 @@ window.App = {
     const maxCatRev = Math.max(...Object.values(byCat).map(v=>v.rev), 1);
 
     $('rep-body').innerHTML = `
+      <!-- KPI Cards -->
       <div class="rep-kpis">
         <div class="rep-kpi green">
           <div class="rep-kpi-label">${S.lang==='sw'?'Jumla Mapato':'Total Revenue'}</div>
@@ -2338,6 +2163,7 @@ window.App = {
         </div>
       </div>
 
+      <!-- Financial Summary -->
       <div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">📊 ${S.lang==='sw'?'Muhtasari wa Fedha':'Financial Summary'}</div>
         <div class="rrow"><span class="rl">${S.lang==='sw'?'Jumla Mauzo (TX)':'Total Transactions'}</span><span class="rv">${txCount}</span></div>
@@ -2351,9 +2177,11 @@ window.App = {
         </div>
       </div>
 
+      <!-- Top Products Bar Chart -->
       <div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">🏆 ${S.lang==='sw'?'Bidhaa Zinazoongoza':'Top Products'}</div>
         ${topProds.length ? topProds.map(([name,v], i) => {
+          // Red if cost >= revenue (selling at loss)
           const isLoss = v.profit < 0;
           const pct = Math.round(v.rev/maxProdRev*100);
           return `<div class="top-prod-row">
@@ -2373,6 +2201,7 @@ window.App = {
         }).join('') : `<div style="color:var(--s500);text-align:center;padding:1rem">${S.lang==='sw'?'Hakuna data':'No data'}</div>`}
       </div>
 
+      <!-- Category Breakdown -->
       <div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">📦 ${S.lang==='sw'?'Mauzo kwa Aina':'Sales by Category'}</div>
         ${Object.entries(byCat).sort((a,b)=>b[1].rev-a[1].rev).map(([cat,v]) => {
@@ -2395,6 +2224,7 @@ window.App = {
         }).join('') || `<div style="color:var(--s500);text-align:center;padding:1rem">${S.lang==='sw'?'Hakuna data':'No data'}</div>`}
       </div>
 
+      <!-- Expense Breakdown -->
       ${expT > 0 ? `<div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">💸 ${S.lang==='sw'?'Matumizi kwa Aina':'Expenses by Category'}</div>
         ${Object.entries(byExp).sort((a,b)=>b[1]-a[1]).map(([cat,val]) => `
@@ -2409,6 +2239,7 @@ window.App = {
           </div>`).join('')}
       </div>` : ''}
 
+      <!-- Multi-Store Breakdown -->
       ${S.stores.length > 1 && Object.keys(storeBreakdown).length > 0 ? `
       <div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">🏪 ${S.lang==='sw'?'Ufanisi kwa Duka':'Performance by Store'}</div>
@@ -2424,6 +2255,7 @@ window.App = {
         }).join('')}
       </div>` : ''}
 
+      <!-- Daily trend for week/month -->
       ${period !== 'today' && Object.keys(trend).length > 0 ? `
       <div class="rsec">
         <div class="rsec-t">📈 ${S.lang==='sw'?'Mwelekeo wa Mauzo':'Sales Trend'}</div>
@@ -2442,76 +2274,6 @@ window.App = {
   },
 
   // ── DEBTS ─────────────────────────────────────────────
-  // ── SUBSCRIPTION PAGE ────────────────────────────────
-  async pageSubscription() {
-    const plan = getPlan(), role = S.user?.role || 'retailer';
-    const roleKey = role === 'admin' ? 'retailer' : role;
-    const plans = PLANS[roleKey];
-    const trial = isTrial(), daysLeft = trialDaysLeft();
-    const curLabel = trial ? 'Pro Trial' : {free:'Free',premium:'Premium',pro:'Pro'}[plan] || 'Free';
-    const curPrice = trial
-      ? (S.lang==='sw' ? 'Siku '+daysLeft+' zimebaki' : daysLeft+' days remaining')
-      : plan==='free' ? (S.lang==='sw'?'Bila malipo':'Free forever')
-      : fmt(plans[plan]?.price) + '/' + (S.lang==='sw'?'mwezi':'month');
-
-    let html = (trial
-      ? '<div class="trial-banner big">'+ic('crown')+' <strong>Pro Trial</strong> — '+(S.lang==='sw'?'Siku '+daysLeft+' zimebaki. Furahia features zote za Pro.':daysLeft+' days remaining. Enjoy all Pro features.')+'</div>'
-      : '')
-      + '<div class="sub-current">'
-      + '<div class="sub-cur-label">'+(S.lang==='sw'?'Mpango Wako wa Sasa':'Your Current Plan')+'</div>'
-      + '<div class="sub-cur-plan">'+curLabel+'</div>'
-      + '<div class="sub-cur-price">'+curPrice+'</div>'
-      + '</div><div class="sub-plans">';
-
-    for (const [key, p] of Object.entries(plans)) {
-      const isCur = plan===key || (trial&&key==='pro');
-      html += '<div class="sub-plan-card'+(isCur?' current':'')+(key==='pro'?' popular':'')+ '">'
-        + (key==='pro' ? '<div class="sub-popular-badge">'+ic('crown')+' '+(S.lang==='sw'?'Maarufu':'Popular')+'</div>' : '')
-        + '<div class="sub-plan-name">'+p.label+'</div>'
-        + '<div class="sub-plan-price">'+(p.price===0?(S.lang==='sw'?'Bila malipo':'Free'):fmt(p.price))+'<span>'+(p.price>0?'/'+(S.lang==='sw'?'mwezi':'month'):'')+'</span></div>'
-        + '<div class="sub-plan-features">'
-        + getFeatureList(key, role).map(f =>
-            '<div class="sub-feat"><span class="sub-feat-icon '+(f.available?'yes':'no')+'">'+(f.available?ic('check'):ic('x'))+'</span>'+f.name+'</div>'
-          ).join('')
-        + '</div>'
-        + '<button class="sub-plan-btn'+(isCur?' current-btn':key==='pro'?' pro-btn':'')+'" '
-        + 'onclick="'+(isCur?'':key==='free'?'App.downgradePlan()':'App.requestUpgrade(\''+key+'\')')+'">'
-        + (isCur?(S.lang==='sw'?'Mpango Wako':'Current Plan'):key==='free'?(S.lang==='sw'?'Shuka':'Downgrade'):(S.lang==='sw'?'Panda '+p.label:'Upgrade to '+p.label))
-        + '</button></div>';
-    }
-
-    html += '</div><div class="sub-coming-soon">'+ic('info')
-      + ' <strong>'+(S.lang==='sw'?'Malipo yanakuja hivi karibuni':'Payments coming soon')+'</strong> — '
-      + (S.lang==='sw'?'Kwa sasa mipango yote iko wazi bila malipo. Utaarifiwa ukifika wakati wa malipo.':'All plans are accessible for free. You will be notified when billing begins.')
-      + '</div>';
-
-    $('av').innerHTML = html;
-    staggerCards('.sub-plan-card', 100);
-  },
-
-  async requestUpgrade(plan) {
-    await sb.from('subscriptions').upsert([{
-      user_id: S.user.id,
-      plan,
-      status: 'active',
-      current_period_start: new Date().toISOString(),
-      current_period_end: new Date(Date.now()+30*864e5).toISOString(),
-    }], {onConflict:'user_id'});
-    S.subscription = {...S.subscription, plan, status:'active'};
-    toast(S.lang==='sw'?'Umepanda hadi '+plan.toUpperCase()+'! Hongera!':'Upgraded to '+plan.toUpperCase()+'!', 's');
-    App.renderApp();
-    App.pageSubscription();
-  },
-
-  async downgradePlan() {
-    if (!confirm(S.lang==='sw'?'Una uhakika wa kushuka hadi Free?':'Downgrade to Free?')) return;
-    await sb.from('subscriptions').update({plan:'free',status:'active'}).eq('user_id',S.user.id);
-    S.subscription = {...S.subscription, plan:'free', status:'active'};
-    toast(S.lang==='sw'?'Umeshuka hadi Free':'Downgraded to Free','i');
-    App.renderApp();
-    App.pageSubscription();
-  },
-
   async pageDebts() {
     const {data:debts}=await sb.from('debts').select('*').eq('user_id',S.user.id)
       .order('created_at',{ascending:false});
@@ -2656,182 +2418,11 @@ window.App = {
       </div></div>`;
   },
 
-
-
-  quickReorder(id, name) {
-    toast(`${S.lang==='sw'?'Unakwenda Marketplace kuagiza':'Going to Marketplace to order'} ${name}`, 'i');
-    setTimeout(() => App.navTo('marketplace'), 800);
-  },
-
-  startTypewriter() {
-    const el = document.getElementById('tw-text');
-    if (!el) return;
-    const texts = S.lang==='sw'
-      ? [`Habari, ${S.user.store_name||''}!`, 'Biashara yako leo?', 'BomaWave iko nawe.']
-      : [`Welcome, ${S.user.store_name||''}!`, 'How is business today?', 'BomaWave has you covered.'];
-    let idx = 0, charIdx = 0, deleting = false;
-    clearInterval(S._twTimer);
-    S._twTimer = setInterval(() => {
-      const text = texts[idx];
-      if (!deleting) {
-        el.textContent = text.slice(0, ++charIdx);
-        if (charIdx === text.length) { deleting = true; setTimeout(() => {}, 2000); }
-      } else {
-        el.textContent = text.slice(0, --charIdx);
-        if (charIdx === 0) { deleting = false; idx = (idx+1) % texts.length; }
-      }
-    }, deleting ? 40 : 80);
-  },
-
-  // ── PLANS PAGE ───────────────────────────────────────────
-  async pagePlans() {
-    const plan = getPlan();
-    const isRetailer = S.user.role !== 'distributor';
-    const prices = isRetailer
-      ? {premium:12000, pro:20000}
-      : {premium:20000, pro:35000};
-
-    const features = {
-      free: [
-        {f:'Dashboard (Basic)',yes:true},
-        {f:'POS (Online)',yes:true},
-        {f:'Marketplace',yes:true},
-        {f:S.lang==='sw'?'Ripoti — Leo tu':'Reports — Today Only',yes:true},
-        {f:'Top Selling Products',yes:false},
-        {f:'Debt Management',yes:false},
-        {f:'Invoices & Receipts',yes:false},
-        {f:'Offline POS',yes:false},
-        {f:'Multi-Store',yes:false},
-        {f:'Supervisor/Boss',yes:false},
-        {f:'Stock Alerts',yes:false},
-        {f:'Advanced Analytics',yes:false},
-      ],
-      premium: [
-        {f:'Dashboard (Full)',yes:true},
-        {f:'POS (Online + Offline)',yes:true},
-        {f:'Marketplace',yes:true},
-        {f:S.lang==='sw'?'Ripoti — Wiki + Mwezi + Charts':'Reports — Week + Month + Charts',yes:true},
-        {f:'Top Selling Products',yes:true},
-        {f:`Debt Management (15 ${S.lang==='sw'?'limit':'limit'})`,yes:true},
-        {f:'Invoices & Receipts',yes:true},
-        {f:'Offline POS',yes:true},
-        {f:'Multi-Store (3)',yes:true},
-        {f:'Supervisor (1)',yes:true},
-        {f:'Stock Alerts',yes:false},
-        {f:'Advanced Analytics',yes:false},
-      ],
-      pro: [
-        {f:'Dashboard (Full)',yes:true},
-        {f:'POS (Online + Offline)',yes:true},
-        {f:'Marketplace',yes:true},
-        {f:S.lang==='sw'?'Ripoti — Yote + Mwaka':'Reports — All + Annual',yes:true},
-        {f:'Top Selling Products',yes:true},
-        {f:'Debt Management (Unlimited)',yes:true},
-        {f:'Invoices & Receipts',yes:true},
-        {f:'Offline POS',yes:true},
-        {f:'Multi-Store (Unlimited)',yes:true},
-        {f:'Supervisors (Unlimited)',yes:true},
-        {f:'Stock Alerts + Reorder',yes:true},
-        {f:'Advanced Analytics + Trends',yes:true},
-      ],
-    };
-
-    const fIcon = (yes) => yes
-      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--g700)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
-      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-
-    const expires = S.user.plan_expires_at ? new Date(S.user.plan_expires_at) : null;
-    const daysLeft = expires ? Math.max(0, Math.ceil((expires-new Date())/864e5)) : 0;
-
-    $('av').innerHTML = `
-      ${plan==='trial'?`<div class="upgrade-banner" style="margin-bottom:1.25rem">
-        <div style="width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">${svgIcon('star')}</div>
-        <div class="upgrade-banner-text">
-          <div class="upgrade-banner-title">${S.lang==='sw'?`Majaribio ya Pro — Siku ${daysLeft} zimebaki`:`Pro Trial — ${daysLeft} days remaining`}</div>
-          <div class="upgrade-banner-sub">${S.lang==='sw'?'Unafurahia Pro zote. Chagua plan baada ya majaribio.':'Enjoying all Pro features. Choose a plan after trial.'}</div>
-        </div>
-      </div>`:''}
-
-      <div style="margin-bottom:1.25rem">
-        <div class="page-title">${S.lang==='sw'?'Chagua Plan':'Choose Your Plan'}</div>
-        <div style="font-size:.88rem;color:var(--s500);margin-top:.25rem">${S.lang==='sw'?'Lipa kupitia USSD — Selcom/M-Pesa itawashwa hivi karibuni':'Pay via USSD — Selcom/M-Pesa coming soon'}</div>
-      </div>
-
-      <div class="plan-cards-wrap">
-        <div class="plan-card${plan==='free'?' active':''}">
-          ${plan==='free'?`<div style="position:absolute;top:1rem;left:1rem;background:var(--g100);color:var(--g700);font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px">PLANI YAKO</div>`:''}
-          <div style="padding-top:${plan==='free'?'1.5rem':'0'}">
-            <div class="plan-name-h">Free</div>
-            <div class="plan-price-h">TZS 0 <span>/ mwezi</span></div>
-          </div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:.1rem;margin:.75rem 0">
-            ${features.free.map(f=>`<div class="plan-feat ${f.yes?'yes':'no'}">${fIcon(f.yes)} ${f.f}</div>`).join('')}
-          </div>
-          <button class="plan-cta-btn free" onclick="App.navTo('dashboard')">${plan==='free'?S.lang==='sw'?'Plani ya Sasa':'Current Plan':S.lang==='sw'?'Chagua Bure':'Use Free'}</button>
-        </div>
-
-        <div class="plan-card popular${plan==='premium'?' active':''}">
-          ${plan==='premium'?`<div style="position:absolute;top:1rem;left:1rem;background:var(--g100);color:var(--g700);font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px">PLANI YAKO</div>`:''}
-          <div style="padding-top:${plan==='premium'?'1.5rem':'0'}">
-            <div class="plan-name-h">Premium</div>
-            <div class="plan-price-h">${fmt(prices.premium)} <span>/ mwezi</span></div>
-          </div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:.1rem;margin:.75rem 0">
-            ${features.premium.map(f=>`<div class="plan-feat ${f.yes?'yes':'no'}">${fIcon(f.yes)} ${f.f}</div>`).join('')}
-          </div>
-          <button class="plan-cta-btn premium" onclick="App.showPaymentModal('premium',${prices.premium})">${plan==='premium'?S.lang==='sw'?'Plani ya Sasa':'Current Plan':S.lang==='sw'?'Panda Premium':'Get Premium'}</button>
-        </div>
-
-        <div class="plan-card${plan==='pro'?' active':''}">
-          ${plan==='pro'?`<div style="position:absolute;top:1rem;left:1rem;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px">PLANI YAKO</div>`:''}
-          <div style="padding-top:${plan==='pro'?'1.5rem':'0'}">
-            <div class="plan-name-h">Pro</div>
-            <div class="plan-price-h" style="color:#4f46e5">${fmt(prices.pro)} <span>/ mwezi</span></div>
-          </div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:.1rem;margin:.75rem 0">
-            ${features.pro.map(f=>`<div class="plan-feat ${f.yes?'yes':'no'}">${fIcon(f.yes)} ${f.f}</div>`).join('')}
-          </div>
-          <button class="plan-cta-btn pro" onclick="App.showPaymentModal('pro',${prices.pro})">${plan==='pro'?S.lang==='sw'?'Plani ya Sasa':'Current Plan':S.lang==='sw'?'Panda Pro':'Get Pro'}</button>
-        </div>
-      </div>
-
-      <div class="alert al-i" style="margin-top:1rem">
-        ${svgIcon('upgrade')} ${S.lang==='sw'?'Malipo ya subscription yatawashwa hivi karibuni kupitia Selcom USSD na M-Pesa. Kwa sasa, wasiliana nasi kupitia WhatsApp.':'Subscription payments coming soon via Selcom USSD and M-Pesa. For now, contact us via WhatsApp.'}
-      </div>
-    `;
-  },
-
-  showPaymentModal(planId, amount) {
-    const modal = document.createElement('div');
-    modal.id = 'pay-modal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)';
-    modal.innerHTML = `
-      <div style="background:#fff;border-radius:1rem;padding:1.75rem;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:popIn .3s cubic-bezier(.34,1.4,.64,1)">
-        <div style="font-size:1.1rem;font-weight:800;margin-bottom:.25rem">${S.lang==='sw'?'Lipa Subscription':'Pay Subscription'}</div>
-        <div style="font-size:.85rem;color:var(--s500);margin-bottom:1.25rem">${S.lang==='sw'?'Malipo ya USSD — Hivi karibuni':'USSD Payment — Coming Soon'}</div>
-        <div style="background:var(--g50);border:1.5px solid var(--g100);border-radius:.75rem;padding:1rem;margin-bottom:1rem">
-          <div style="font-size:.75rem;color:var(--s500);margin-bottom:.25rem">Kiasi cha Kulipa</div>
-          <div style="font-size:1.6rem;font-weight:900;color:var(--g700)">${fmt(amount)}</div>
-          <div style="font-size:.75rem;color:var(--s500);margin-top:.25rem">kwa mwezi mmoja</div>
-        </div>
-        <div class="alert al-w" style="margin-bottom:1rem">
-          ${svgIcon('upgrade')} ${S.lang==='sw'?'Mfumo wa malipo utawashwa hivi karibuni. Wasiliana nasi sasa:':'Payment system coming soon. Contact us now:'}
-          <br><strong>+255696230657 (WhatsApp)</strong>
-        </div>
-        <div style="display:flex;gap:.75rem">
-          <button onclick="document.getElementById('pay-modal').remove()" style="flex:1;padding:.875rem;border-radius:.65rem;border:1.5px solid var(--s200);background:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700">Rudi</button>
-          <button onclick="window.open('https://wa.me/255696230657?text=Nataka+kulipia+plan+ya+${planId}+TZS+${amount}+kwa+akaunti+yangu+BomaWave','_blank');document.getElementById('pay-modal').remove()" style="flex:1;padding:.875rem;border-radius:.65rem;border:none;background:#25d366;color:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700">WhatsApp</button>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-    modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
-  },
-
   // ══════════════════════════════════════════════════════════
   //  SUPERVISOR / BOSS FEATURE
   // ══════════════════════════════════════════════════════════
   async pageSupervisor() {
-    if(!can('supervisor'))return;
+    // Load existing supervisors for this business
     const {data:sups} = await sb.from('supervisors')
       .select('*').eq('business_id', S.user.id).eq('is_active', true);
 
@@ -2844,6 +2435,7 @@ window.App = {
         </div>
       </div>
 
+      <!-- Add new supervisor -->
       <div class="card anim-card" style="margin-bottom:1rem"><div class="cp">
         <div class="page-title">➕ ${S.lang==='sw'?'Ongeza Msimamizi':'Add Supervisor'}</div>
         <div style="display:flex;flex-direction:column;gap:.875rem;margin-top:.875rem">
@@ -2875,6 +2467,7 @@ window.App = {
         </div>
       </div></div>
 
+      <!-- Existing supervisors -->
       <div class="page-title" style="margin-bottom:.875rem">
         ${S.lang==='sw'?'Wasimamizi Waliopo':'Current Supervisors'} (${(sups||[]).length})
       </div>
@@ -2912,6 +2505,7 @@ window.App = {
 
     setBusy('add-sup-txt', true);
 
+    // Check if phone already registered — link to their profile
     const {data:existing} = await sb.from('profiles').select('id,store_name')
       .eq('phone_number', phone).maybeSingle();
 
@@ -2927,6 +2521,7 @@ window.App = {
     setBusy('add-sup-txt', false, `+ ${S.lang==='sw'?'Ongeza Msimamizi':'Add Supervisor'}`);
     if (error) return toast(S.lang==='sw'?'Hitilafu ya kuongeza':'Error adding supervisor','e');
 
+    // Send SMS notification to supervisor
     if (S.isOnline) {
       try {
         const msg = S.lang==='sw'
@@ -2951,7 +2546,9 @@ window.App = {
     App.pageSupervisor();
   },
 
+  // Supervisor Dashboard — what the boss sees
   async pageSupervisorDash() {
+    // Find which business this supervisor monitors
     const {data:supRecord} = await sb.from('supervisors')
       .select('*,profiles!business_id(id,store_name,role,region,district)')
       .eq('phone_number', S.user.phone_number)
@@ -2983,6 +2580,7 @@ window.App = {
     const totDebt  = (debts||[]).filter(d=>d.status!=='paid').reduce((s,d)=>s+(d.amount-d.amount_paid||0),0);
     const margin   = rev30 > 0 ? (profit30/rev30*100).toFixed(1) : 0;
 
+    // Top 5 products
     const byProd = {};
     (sales||[]).forEach(s=>{
       byProd[s.product_name] = (byProd[s.product_name]||0)+(s.revenue||0);
@@ -3008,6 +2606,7 @@ window.App = {
         <div class="sc ${net30>=0?'g':'r'} anim-card"><div class="sic">${svgIcon('chart')}</div><div class="sl">Net</div><div class="sv" id="sdnet">TZS 0</div></div>
       </div>
 
+      <!-- Key metrics -->
       <div class="rsec anim-card" style="margin-bottom:1rem">
         <div class="rsec-t">📊 ${S.lang==='sw'?'Viashiria Muhimu':'Key Metrics'} (${period} days)</div>
         <div class="rrow"><span class="rl">Profit Margin</span><span class="rv ${margin>=15?'g':margin>=5?'a':'r'}">${margin}%</span></div>
@@ -3019,6 +2618,7 @@ window.App = {
         </div>
       </div>
 
+      <!-- Top products -->
       <div class="rsec anim-card">
         <div class="rsec-t">🏆 ${S.lang==='sw'?'Bidhaa Zinazoongoza':'Top Products'}</div>
         ${topP.length ? topP.map(([name,rev],i) => `
@@ -3037,6 +2637,7 @@ window.App = {
       animateCount($('sdnet'), net30, 'TZS ');
     }, 300);
   },
+
 
 }; // end App
 
@@ -3059,9 +2660,6 @@ function svgIcon(name) {
     expense:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
     print:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`,
     sms:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-    lock:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
-    star:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
-    upgrade:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/></svg>`,
   };
   return icons[name]||'';
 }
@@ -3114,19 +2712,6 @@ function staggerCards(selector, delayMs = 80) {
   });
 }
 
-function ic(name) {
-  const map = {
-    check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>',
-    x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
-    lock: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
-    'arrow-right': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>',
-    crown: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>',
-    info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
-    refresh: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
-  };
-  return map[name] || '';
-}
-
 // ── Inject styles ─────────────────────────────────────────────
 const _extraCSS=document.createElement('style');_extraCSS.textContent=`
 /* ════════════════════════════════════════════
@@ -3135,7 +2720,6 @@ const _extraCSS=document.createElement('style');_extraCSS.textContent=`
 
 /* ── Page entry animations ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideRight{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes slideLeft{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
@@ -3466,47 +3050,6 @@ const _extraCSS=document.createElement('style');_extraCSS.textContent=`
 @media(max-width:640px){.pos-3grid{grid-template-columns:1fr 1fr}}
 @media(max-width:420px){.pos-3grid{grid-template-columns:1fr}}
 
-
-/* ── Subscription + Trial + Locked ── */
-@keyframes confetti-pop{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
-#dev-otp-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1d4ed8,#2563eb);transform:translateY(-100%);transition:transform .4s cubic-bezier(.34,1.4,.64,1);box-shadow:0 4px 20px rgba(0,0,0,.3)}
-#dev-otp-banner.show{transform:translateY(0)}
-.dev-otp-inner{display:flex;align-items:center;justify-content:space-between;padding:.875rem 1.25rem;gap:1rem;flex-wrap:wrap}
-.dev-otp-label{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.8);margin-bottom:.2rem}
-.dev-otp-code{font-size:1.8rem;font-weight:900;letter-spacing:6px;font-family:monospace;color:#fff}
-.dev-otp-actions{display:flex;gap:.4rem}
-.dev-otp-btn{background:rgba(255,255,255,.9);border:none;color:#1d4ed8;padding:.5rem 1rem;border-radius:.5rem;font-size:.82rem;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif}
-.dev-otp-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:.4rem;cursor:pointer}
-.sub-current{background:linear-gradient(135deg,var(--g700),var(--g600));border-radius:var(--rl);padding:1.25rem 1.5rem;margin-bottom:1.5rem;color:#fff;text-align:center}
-.sub-cur-label{font-size:.68rem;font-weight:700;opacity:.8;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem}
-.sub-cur-plan{font-size:1.6rem;font-weight:900;margin-bottom:.2rem}
-.sub-cur-price{font-size:.88rem;opacity:.85}
-.sub-plans{display:flex;flex-direction:column;gap:.875rem;margin-bottom:1.5rem}
-.sub-plan-card{background:#fff;border:2px solid var(--s200);border-radius:var(--rl);padding:1.25rem;position:relative;transition:all .2s;animation:fadeUp .3s ease forwards;opacity:0}
-.sub-plan-card.current{border-color:var(--g600);box-shadow:0 4px 20px rgba(34,197,94,.15)}
-.sub-plan-card.popular{border-color:var(--amber)}
-.sub-popular-badge{display:inline-flex;align-items:center;gap:.3rem;background:var(--amber);color:#fff;font-size:.65rem;font-weight:800;padding:3px 12px;border-radius:20px;margin-bottom:.65rem}
-.sub-plan-name{font-size:.78rem;font-weight:800;color:var(--s500);text-transform:uppercase;letter-spacing:.75px;margin-bottom:.3rem}
-.sub-plan-price{font-size:1.45rem;font-weight:900;color:var(--s900);margin-bottom:.875rem;line-height:1}
-.sub-plan-price span{font-size:.72rem;color:var(--s500);font-weight:600}
-.sub-plan-features{margin-bottom:.875rem}
-.sub-feat{display:flex;align-items:flex-start;gap:.4rem;font-size:.75rem;color:var(--s700);margin-bottom:.3rem;line-height:1.4}
-.sub-feat-icon{flex-shrink:0}.sub-feat-icon.yes{color:var(--g700)}.sub-feat-icon.no{color:var(--s300)}
-.sub-plan-btn{width:100%;padding:.75rem;border-radius:.65rem;border:2px solid var(--s300);background:#fff;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:800;cursor:pointer;transition:all .2s;color:var(--s700)}
-.sub-plan-btn:hover:not(.current-btn){border-color:var(--g600);color:var(--g700)}
-.sub-plan-btn.current-btn{background:var(--g50);border-color:var(--g600);color:var(--g700);cursor:default}
-.sub-plan-btn.pro-btn{background:linear-gradient(135deg,#16a34a,#22c55e);border:none;color:#fff;box-shadow:0 4px 14px rgba(34,197,94,.3)}
-.sub-coming-soon{background:var(--b50);border:1px solid var(--b100);border-radius:var(--rl);padding:1rem 1.25rem;font-size:.85rem;color:var(--b900);line-height:1.6;display:flex;gap:.5rem}
-.trial-banner{background:linear-gradient(135deg,#d97706,#f59e0b);border-radius:var(--rl);padding:.875rem 1.25rem;margin-bottom:1rem;color:#fff;display:flex;align-items:center;justify-content:space-between;font-size:.9rem;font-weight:700}
-.trial-banner.big{padding:1.1rem 1.5rem;margin-bottom:1.25rem}
-.locked-page{text-align:center;padding:4rem 1.5rem;display:flex;flex-direction:column;align-items:center;gap:.875rem}
-.locked-page-icon{color:var(--amber)}
-.locked-page-title{font-size:1.2rem;font-weight:800}
-.locked-page-sub{font-size:.9rem;color:var(--s500);max-width:280px;line-height:1.6}
-.locked-page-price{font-size:1.4rem;font-weight:900;color:var(--g700)}
-.ni-lock{margin-left:auto;opacity:.5;display:flex;align-items:center}
-.limit-badge{background:var(--ambl);color:var(--amber);font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:20px;margin-left:.4rem}
-
 `;document.head.appendChild(_extraCSS);
 const _style=document.createElement('style');
 _style.textContent=`
@@ -3534,6 +3077,7 @@ async function boot() {
   buildCatGrid();
   goStep(1);
 
+  // Add store-switcher div to sidebar
   const sbnav=document.getElementById('sbnav');
   if(sbnav && !document.getElementById('store-switcher')) {
     const div=document.createElement('div');
@@ -3541,6 +3085,7 @@ async function boot() {
     sbnav.parentNode.insertBefore(div,sbnav);
   }
 
+  // Add sync badge to topbar
   const tbr=document.querySelector('.tbr');
   if(tbr && !document.getElementById('sync-badge')) {
     const span=document.createElement('span');
