@@ -638,6 +638,31 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
   .otp-row{gap:.25rem;}
   .ob{width:38px;height:46px;font-size:1.2rem;}
 }
+
+/* ── Onboarding Hero Image ── */
+.ob-hero-wrap{position:relative;width:100%;height:200px;overflow:hidden;flex-shrink:0;}
+.ob-hero-img{position:absolute;inset:0;background-size:cover;background-position:center 30%;filter:brightness(.55) saturate(1.15);}
+.ob-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,76,31,.3) 0%,rgba(15,23,42,.15) 40%,rgba(15,23,42,.75) 85%,rgba(15,23,42,.95) 100%);}
+.ob-hero-content{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:.875rem 1.1rem 1rem;}
+.ob-hero-brand{display:flex;align-items:center;gap:.5rem;}
+.ob-hero-logo{width:28px;height:28px;border-radius:7px;object-fit:contain;background:rgba(255,255,255,.12);padding:2px;}
+.ob-hero-logo-name{font-family:'Sora',sans-serif;font-size:.88rem;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:.3px;}
+.ob-hero-center{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.35rem;padding:.25rem 0;text-align:center;}
+.ob-tw-line{font-family:'Sora',sans-serif;font-size:1.45rem;font-weight:900;color:#ffffff;line-height:1.15;text-shadow:0 2px 20px rgba(0,0,0,.7);overflow:hidden;white-space:nowrap;border-right:2px solid rgba(255,255,255,.0);min-height:1.75rem;text-align:center;}
+.ob-tw-line2{color:#0f172a;font-size:1.1rem;font-weight:800;background:rgba(255,255,255,.88);padding:4px 14px;border-radius:20px;backdrop-filter:blur(4px);border-right:2px solid rgba(15,23,42,.0);text-align:center;}
+.ob-tw-line.typing{border-right-color:rgba(255,255,255,.75);animation:blink-cursor .7s step-end infinite;}
+.ob-tw-line2.typing{border-right-color:rgba(74,222,128,.85);}
+@keyframes blink-cursor{0%,100%{border-right-color:rgba(255,255,255,.75)}50%{border-right-color:transparent}}
+.ob-tw-line2.typing{animation:blink-cursor2 .7s step-end infinite;}
+@keyframes blink-cursor2{0%,100%{border-right-color:rgba(15,23,42,.85)}50%{border-right-color:transparent}}
+.ob-hero-pills{display:flex;gap:.4rem;flex-wrap:wrap;}
+.ob-hero-pill{padding:3px 10px;border-radius:20px;font-size:.62rem;font-weight:700;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(6px);}
+@media(min-width:500px){
+  .ob-hero-wrap{height:220px;}
+  .ob-tw-line{font-size:1.6rem;}
+  .ob-tw-line2{font-size:1.35rem;}
+}
+
 @media print{
   #app-main>aside,.topbar,.bn,.cfab,.no-print,#twrap,#dev-otp-banner{display:none!important;}
   .main-content{margin-left:0;}
@@ -682,11 +707,30 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
   <div class="ob-right">
     <div class="ob-card">
       <!-- Card header -->
-      <div class="ob-head">
-        <img src="logo.jpg" class="ob-head-logo" alt="logo" onerror="this.style.display='none'"/>
-        <div>
-          <div class="text-sm font-black text-white" style="font-family:'Sora',sans-serif">BomaWave</div>
-          <div class="text-[.68rem] text-white/60 mt-0.5">FMCG Ordering Platform · Tanzania</div>
+      <!-- Hero section — home.jpg full bleed with typewriter overlay -->
+      <div class="ob-hero-wrap" id="ob-hero-wrap">
+        <!-- Full bleed image -->
+        <div class="ob-hero-img" style="background-image:url('home.jpg')"></div>
+        <!-- Gradient overlay -->
+        <div class="ob-hero-overlay"></div>
+        <!-- Content -->
+        <div class="ob-hero-content">
+          <!-- Logo + name small top-left -->
+          <div class="ob-hero-brand">
+            <img src="logo.jpg" class="ob-hero-logo" alt="BomaWave" onerror="this.style.display='none'"/>
+            <span class="ob-hero-logo-name">BomaWave</span>
+          </div>
+          <!-- BIG typewriter text center -->
+          <div class="ob-hero-center">
+            <div class="ob-tw-line" id="tw-line1"></div>
+            <div class="ob-tw-line ob-tw-line2" id="tw-line2"></div>
+          </div>
+          <!-- Bottom trust pills -->
+          <div class="ob-hero-pills">
+            <span class="ob-hero-pill">⚡ Real-time</span>
+            <span class="ob-hero-pill">🇹🇿 Tanzania</span>
+            <span class="ob-hero-pill">📱 Mobile First</span>
+          </div>
         </div>
       </div>
       <!-- Card body -->
@@ -1178,6 +1222,54 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
 <!-- Toast container -->
 <div id="twrap"></div>
 
+<script>
+// ── Typewriter — runs immediately on page load ────────────────
+(function() {
+  const LINE1 = 'BomaWave';
+  const LINE2 = 'FMCG Ordering Platform · Tanzania';
+  const SPEED1 = 80;   // ms per character — line 1
+  const SPEED2 = 38;   // ms per character — line 2 (faster)
+  const PAUSE  = 320;  // pause between lines
+
+  function typeInto(el, text, speed, onDone) {
+    if (!el) { if (onDone) onDone(); return; }
+    el.textContent = '';
+    el.classList.add('typing');
+    let i = 0;
+    const tick = () => {
+      if (i <= text.length) {
+        el.textContent = text.slice(0, i);
+        i++;
+        setTimeout(tick, speed + (Math.random() * speed * 0.3));
+      } else {
+        el.classList.remove('typing');
+        if (onDone) setTimeout(onDone, 80);
+      }
+    };
+    tick();
+  }
+
+  function startTypewriter() {
+    const l1 = document.getElementById('tw-line1');
+    const l2 = document.getElementById('tw-line2');
+    // Start with short delay for drama
+    setTimeout(() => {
+      typeInto(l1, LINE1, SPEED1, () => {
+        setTimeout(() => {
+          typeInto(l2, LINE2, SPEED2, null);
+        }, PAUSE);
+      });
+    }, 400);
+  }
+
+  // Run when DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startTypewriter);
+  } else {
+    startTypewriter();
+  }
+})();
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
