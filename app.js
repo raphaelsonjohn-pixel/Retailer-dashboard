@@ -111,87 +111,6 @@ function showSaleSuccess(amount) {
 }
 
 // Feature gates per plan
-const GATES = {
-  // FREE: dashboard, pos_online, marketplace, reports_today
-  reports_week:    ['premium','pro','trial'],
-  reports_month:   ['premium','pro','trial'],
-  reports_year:    ['pro','trial'],
-  reports_charts:  ['premium','pro','trial'],
-  reports_advanced:['pro','trial'],
-  invoices:        ['premium','pro','trial'],
-  receipts:        ['premium','pro','trial'],
-  whatsapp_share:  ['premium','pro','trial'],
-  offline_pos:     ['premium','pro','trial'],
-  multi_store:     ['premium','pro','trial'],
-  multi_store_unlimited: ['pro','trial'],
-  supervisor:      ['premium','pro','trial'],
-  supervisor_unlimited:  ['pro','trial'],
-  stock_alerts:    ['pro','trial'],
-  top_selling:     ['premium','pro','trial'],
-  debts:           ['premium','pro','trial'],
-  dist_products_unlimited: ['premium','pro','trial'],
-  trend_charts:    ['pro','trial'],
-};
-
-function getPlan() {
-  const u = S.user;
-  if (!u) return 'free';
-  const plan = u.plan || 'free';
-  const expires = u.plan_expires_at ? new Date(u.plan_expires_at) : null;
-  if (plan === 'trial' && expires && expires < new Date()) return 'free';
-  return plan;
-}
-
-function canAccess(feature) {
-  const plan = getPlan();
-  const allowed = GATES[feature];
-  if (!allowed) return true; // not gated
-  return allowed.includes(plan);
-}
-
-function requirePlan(feature, callback) {
-  if (canAccess(feature)) { callback(); return true; }
-  showUpgradeModal(feature);
-  return false;
-}
-
-function showUpgradeModal(feature) {
-  const featureNames = {
-    reports_week: 'Ripoti za Wiki',
-    reports_month: 'Ripoti za Mwezi',
-    reports_year: 'Ripoti za Mwaka',
-    invoices: 'Ankara (Invoices)',
-    receipts: 'Risiti (Receipts)',
-    whatsapp_share: 'Shiriki WhatsApp',
-    offline_pos: 'POS Bila Mtandao',
-    multi_store: 'Maduka Mengi',
-    supervisor: 'Msimamizi',
-    stock_alerts: 'Tahadhari za Stok',
-    top_selling: 'Bidhaa Zinazoongoza',
-    debts: 'Usimamizi wa Madeni',
-    trend_charts: 'Mwelekeo wa Charts',
-  };
-  const fname = featureNames[feature] || feature;
-  const modal = document.createElement('div');
-  modal.id = 'upgrade-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);animation:fadeIn .2s ease';
-  modal.innerHTML = `
-    <div style="background:#fff;border-radius:1rem;padding:2rem;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:popIn .3s cubic-bezier(.34,1.4,.64,1)">
-      <div style="text-align:center;margin-bottom:1.25rem">
-        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;margin:0 auto .875rem;color:#fff">
-          ${svgIcon('lock')}
-        </div>
-        <div style="font-size:1.1rem;font-weight:800;margin-bottom:.35rem">Feature ya Premium</div>
-        <div style="font-size:.88rem;color:var(--s500);line-height:1.6"><strong style="color:var(--s900)">${fname}</strong> inahitaji plan ya Premium au zaidi</div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-        <button onclick="document.getElementById('upgrade-modal').remove()" style="padding:.875rem;border-radius:.65rem;border:1.5px solid var(--s200);background:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700;color:var(--s700)">Endelea Bure</button>
-        <button onclick="document.getElementById('upgrade-modal').remove();App.navTo('plans')" style="padding:.875rem;border-radius:.65rem;border:none;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700">Panda Plan</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
-}
 
 // ── State ─────────────────────────────────────────────────────
 let S = {
@@ -433,13 +352,20 @@ const STEP_MAX = { 1:10,2:20,3:50,4:50,5:75,7:90,8:30,9:60,10:30,11:60,12:85 };
 
 function goStep(n) {
   document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-  const el = $(`s${n}`);
-  if (el) el.classList.add('active');
+  const el = $('s'+n);
+  if (el) {
+    el.classList.add('active');
+    // Animate step entrance
+    el.style.opacity='0'; el.style.transform='translateY(12px)';
+    requestAnimationFrame(()=>{
+      el.style.transition='opacity .3s ease,transform .3s cubic-bezier(.34,1.4,.64,1)';
+      el.style.opacity='1'; el.style.transform='translateY(0)';
+    });
+  }
   const pct = STEP_MAX[n] || 10;
-  const name = STEP_NAMES[S.lang]?.[n] || `Hatua ${n}`;
-  setText('plbl', name);
-  setText('ppct', pct+'%');
-  $('pfill').style.width = pct+'%';
+  const pf = $('pfill'); if(pf) pf.style.width = pct+'%';
+  const pp = $('ppct'); if(pp) pp.textContent = pct+'%';
+  const pl = $('plbl'); if(pl) { const name = STEP_NAMES[S.lang]?.[n]||'Hatua '+n; pl.textContent=name; }
 }
 
 // ── Init location dropdowns ──────────────────────────────────
@@ -607,6 +533,8 @@ function renderStoreSwitcher() {
 }
 
 window.App = {
+  goStep(n) { goStep(n); },
+
 
   // ── Language ─────────────────────────────────────────────
   setLang(lang) {
@@ -629,7 +557,20 @@ window.App = {
     S.role = role;
     $('rb-ret').classList.toggle('sel', role==='retailer');
     $('rb-dist').classList.toggle('sel', role==='distributor');
+    // Show checkmarks with animation
+    const ckRet = $('ck-ret'), ckDist = $('ck-dist');
+    if (ckRet) ckRet.classList.toggle('show', role==='retailer');
+    if (ckDist) ckDist.classList.toggle('show', role==='distributor');
     $('rnext').style.display = 'flex';
+    // Animate button entrance
+    const btn = $('rnext');
+    if (btn) {
+      btn.style.opacity = '0'; btn.style.transform = 'translateY(8px)';
+      requestAnimationFrame(() => {
+        btn.style.transition = 'opacity .3s ease, transform .3s cubic-bezier(.34,1.4,.64,1)';
+        btn.style.opacity = '1'; btn.style.transform = 'translateY(0)';
+      });
+    }
   },
 
   proceedFromRole() {
@@ -821,7 +762,7 @@ window.App = {
     const phone = normPhone(raw);
     if (!phone) return toast('Namba ya simu si sahihi','e');
     S.pendingPhone = phone;
-    setBusy('lotp-txt', false);
+    setBusy('lotp-btn', false);
     const r = await callOTP({ action:'send_otp', phone });
     if (!r.success) return toast(r.message||'Hitilafu','e');
     toast('OTP imetumwa! ✅','s');
