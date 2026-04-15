@@ -1,8 +1,197 @@
-// BomaWave v3.1 — Multi-Store + POS Offline
+// BomaWave v5.0 — Subscription + Full Features
 import { supabase as sb } from './supabase.js';
 
 const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/smooth-function';
 const SB_KEY  = 'sb_publishable_yJni7Xxl78x24V1mJvLjVg_RAWAsGOt';
+
+// ── Subscription Feature Gates ────────────────────────────────
+const PLANS = {
+  retailer: {
+    free:    { label:'Free',    price:0,     features:['dashboard','pos','marketplace','reports_today','orders'] },
+    premium: { label:'Premium', price:12000, features:['dashboard','pos','marketplace','reports_today','reports_week','reports_month','receipts','invoices','whatsapp','offline_pos','multi_store','supervisor','debts','top_selling','orders'] },
+    pro:     { label:'Pro',     price:20000, features:['dashboard','pos','marketplace','reports_today','reports_week','reports_month','reports_year','receipts','invoices','whatsapp','offline_pos','multi_store','multi_store_unlimited','supervisor','supervisors_unlimited','debts','debts_unlimited','top_selling','stock_alerts','advanced_analytics','trend_charts','orders'] },
+  },
+  distributor: {
+    free:    { label:'Free',    price:0,     features:['dashboard','pos','marketplace','reports_today','orders'] },
+    premium: { label:'Premium', price:20000, features:['dashboard','pos','marketplace','reports_today','reports_week','reports_month','orders','receipts','invoices','whatsapp','offline_pos','multi_store','supervisor','debts','top_selling'] },
+    pro:     { label:'Pro',     price:35000, features:['dashboard','pos','marketplace','reports_today','reports_week','reports_month','reports_year','orders','receipts','invoices','whatsapp','offline_pos','multi_store','multi_store_unlimited','supervisor','supervisors_unlimited','debts','debts_unlimited','top_selling','stock_alerts','advanced_analytics','trend_charts'] },
+  },
+};
+const DEBT_LIMITS = { free: 0, premium: 15, pro: Infinity };
+
+function getPlan() {
+  const sub = S.subscription;
+  if (!sub) return 'free';
+  if (sub.status === 'trial') return 'pro';
+  return sub.plan || 'free';
+}
+
+function can(feature) {
+  const role = S.user?.role || 'retailer';
+  const plan = getPlan();
+  const roleKey = role === 'admin' ? 'retailer' : role;
+  return (PLANS[roleKey]?.[plan]?.features || []).includes(feature);
+}
+
+function isTrial() { return S.subscription?.status === 'trial'; }
+
+function trialDaysLeft() {
+  if (!S.subscription?.trial_ends_at) return 0;
+  return Math.max(0, Math.ceil((new Date(S.subscription.trial_ends_at) - new Date()) / 864e5));
+}
+
+async function loadSubscription() {
+  if (!S.user) return;
+  const {data} = await sb.from('subscriptions').select('*').eq('user_id', S.user.id).maybeSingle();
+  if (!data) {
+    const {data:ns} = await sb.from('subscriptions').insert([{
+      user_id:S.user.id, plan:'free', status:'trial',
+      trial_ends_at: new Date(Date.now()+14*864e5).toISOString(),
+      current_period_end: new Date(Date.now()+14*864e5).toISOString(),
+    }]).select().single();
+    S.subscription = ns;
+  } else {
+    if (data.status==='trial' && new Date(data.trial_ends_at) < new Date()) {
+      await sb.from('subscriptions').update({status:'active',plan:'free'}).eq('id',data.id);
+      S.subscription = {...data, status:'active', plan:'free'};
+    } else {
+      S.subscription = data;
+    }
+  }
+}
+
+function planBadgeHtml() {
+  const plan=getPlan(), trial=isTrial();
+  const lbl={free:'Free',premium:'Premium',pro:'Pro'};
+  const c=trial?'var(--amber)':'rgba(255,255,255,.65)';
+  return '<span style="font-size:.62rem;font-weight:800;color:'+c+';background:rgba(255,255,255,.1);padding:2px 8px;border-radius:20px">'+(trial?'Pro Trial':lbl[plan]||'Free')+'</span>';
+}
+
+function lockedPageHTML(feature) {
+  const plan=getPlan(), role=S.user?.role||'retailer';
+  const np=plan==='free'?'Premium':'Pro';
+  const price=(role==='distributor')?(plan==='free'?'TZS 20,000':'TZS 35,000'):(plan==='free'?'TZS 12,000':'TZS 20,000');
+  return '<div class="locked-page"><div class="locked-page-icon">'+ic('lock')+'</div><div class="locked-page-title">'+(S.lang==='sw'?'Inahitaji '+np:'Requires '+np)+'</div><div class="locked-page-sub">'+(S.lang==='sw'?'Panda hadi '+np+' ili ufikia feature hii':'Upgrade to '+np+' to access this feature')+'</div><div class="locked-page-price">'+price+' / '+(S.lang==='sw'?'mwezi':'month')+'</div><button class="btn btn-p" style="max-width:220px;margin:0 auto" onclick="App.navTo('subscription')">'+(S.lang==='sw'?'Panda Plan':'Upgrade')+' '+ic('arrow-right')+'</button><button class="btn btn-s" style="max-width:220px;margin:.5rem auto" onclick="App.navTo('dashboard')">'+(S.lang==='sw'?'Rudi':'Go Home')+'</button></div>';
+}
+
+function getFeatureList(planKey, role) {
+  const roleKey=role==='admin'?'retailer':role;
+  const feats=PLANS[roleKey]?.[planKey]?.features||[];
+  const all=[
+    {id:'dashboard',name:S.lang==='sw'?'Dashibodi':'Dashboard'},
+    {id:'pos',name:'POS (Online)'},
+    {id:'marketplace',name:'Marketplace'},
+    {id:'reports_today',name:S.lang==='sw'?'Ripoti za Leo':'Today Reports'},
+    {id:'reports_week',name:S.lang==='sw'?'Ripoti Wiki/Mwezi':'Week/Month Reports'},
+    {id:'reports_year',name:S.lang==='sw'?'Ripoti Mwaka':'Year Reports'},
+    {id:'debts',name:'Madeni ('+(planKey==='premium'?'Limit 15':planKey==='pro'?'Unlimited':'Hakuna')+')'},
+    {id:'receipts',name:S.lang==='sw'?'Risiti / Ankara':'Receipts / Invoices'},
+    {id:'whatsapp',name:'WhatsApp Sharing'},
+    {id:'offline_pos',name:'Offline POS'},
+    {id:'multi_store',name:'Maduka ('+(planKey==='pro'?'Unlimited':'3 max')+')'},
+    {id:'supervisor',name:'Msimamizi ('+(planKey==='pro'?'Unlimited':'1')+')'},
+    {id:'top_selling',name:S.lang==='sw'?'Bidhaa Zinazoongoza':'Top Selling Products'},
+    {id:'stock_alerts',name:'Stock Alerts + Reorder (Pro)'},
+    {id:'advanced_analytics',name:S.lang==='sw'?'Takwimu za Kina (Pro)':'Advanced Analytics (Pro)'},
+  ];
+  return all.map(f=>({...f,available:feats.includes(f.id)||feats.includes(f.id+'_unlimited')||feats.some(ff=>ff.startsWith(f.id))}));
+}
+
+function showSaleSuccess(amount) {
+  const cols=['#16a34a','#22c55e','#4ade80','#86efac'];
+  for(let i=0;i<12;i++){
+    const el=document.createElement('div');
+    el.style.cssText='position:fixed;width:8px;height:8px;border-radius:50%;background:'+cols[i%4]+';top:50%;left:50%;z-index:9999;pointer-events:none;animation:confetti-pop .8s ease forwards';
+    const ang=(i/12)*360,dist=60+Math.random()*60;
+    el.style.setProperty('--dx',Math.cos(ang*Math.PI/180)*dist+'px');
+    el.style.setProperty('--dy',Math.sin(ang*Math.PI/180)*dist+'px');
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),900);
+  }
+}
+
+// Feature gates per plan
+const GATES = {
+  // FREE: dashboard, pos_online, marketplace, reports_today
+  reports_week:    ['premium','pro','trial'],
+  reports_month:   ['premium','pro','trial'],
+  reports_year:    ['pro','trial'],
+  reports_charts:  ['premium','pro','trial'],
+  reports_advanced:['pro','trial'],
+  invoices:        ['premium','pro','trial'],
+  receipts:        ['premium','pro','trial'],
+  whatsapp_share:  ['premium','pro','trial'],
+  offline_pos:     ['premium','pro','trial'],
+  multi_store:     ['premium','pro','trial'],
+  multi_store_unlimited: ['pro','trial'],
+  supervisor:      ['premium','pro','trial'],
+  supervisor_unlimited:  ['pro','trial'],
+  stock_alerts:    ['pro','trial'],
+  top_selling:     ['premium','pro','trial'],
+  debts:           ['premium','pro','trial'],
+  dist_products_unlimited: ['premium','pro','trial'],
+  trend_charts:    ['pro','trial'],
+};
+
+function getPlan() {
+  const u = S.user;
+  if (!u) return 'free';
+  const plan = u.plan || 'free';
+  const expires = u.plan_expires_at ? new Date(u.plan_expires_at) : null;
+  if (plan === 'trial' && expires && expires < new Date()) return 'free';
+  return plan;
+}
+
+function canAccess(feature) {
+  const plan = getPlan();
+  const allowed = GATES[feature];
+  if (!allowed) return true; // not gated
+  return allowed.includes(plan);
+}
+
+function requirePlan(feature, callback) {
+  if (canAccess(feature)) { callback(); return true; }
+  showUpgradeModal(feature);
+  return false;
+}
+
+function showUpgradeModal(feature) {
+  const featureNames = {
+    reports_week: 'Ripoti za Wiki',
+    reports_month: 'Ripoti za Mwezi',
+    reports_year: 'Ripoti za Mwaka',
+    invoices: 'Ankara (Invoices)',
+    receipts: 'Risiti (Receipts)',
+    whatsapp_share: 'Shiriki WhatsApp',
+    offline_pos: 'POS Bila Mtandao',
+    multi_store: 'Maduka Mengi',
+    supervisor: 'Msimamizi',
+    stock_alerts: 'Tahadhari za Stok',
+    top_selling: 'Bidhaa Zinazoongoza',
+    debts: 'Usimamizi wa Madeni',
+    trend_charts: 'Mwelekeo wa Charts',
+  };
+  const fname = featureNames[feature] || feature;
+  const modal = document.createElement('div');
+  modal.id = 'upgrade-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);animation:fadeIn .2s ease';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:1rem;padding:2rem;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:popIn .3s cubic-bezier(.34,1.4,.64,1)">
+      <div style="text-align:center;margin-bottom:1.25rem">
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;margin:0 auto .875rem;color:#fff">
+          ${svgIcon('lock')}
+        </div>
+        <div style="font-size:1.1rem;font-weight:800;margin-bottom:.35rem">Feature ya Premium</div>
+        <div style="font-size:.88rem;color:var(--s500);line-height:1.6"><strong style="color:var(--s900)">${fname}</strong> inahitaji plan ya Premium au zaidi</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <button onclick="document.getElementById('upgrade-modal').remove()" style="padding:.875rem;border-radius:.65rem;border:1.5px solid var(--s200);background:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700;color:var(--s700)">Endelea Bure</button>
+        <button onclick="document.getElementById('upgrade-modal').remove();App.navTo('plans')" style="padding:.875rem;border-radius:.65rem;border:none;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700">Panda Plan</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+}
 
 // ── State ─────────────────────────────────────────────────────
 let S = {
@@ -14,7 +203,9 @@ let S = {
   stores: [],    // all stores for this user
   realtimeCh: null,
   isOnline: navigator.onLine,
-  supervisorOf: null,  // set when logged in as supervisor
+  supervisorOf: null,
+  subscription: null,
+  quickProds: [],
 };
 
 
@@ -174,15 +365,48 @@ function loadSession() {
 }
 function clearSession() { localStorage.removeItem('bw_v4'); localStorage.removeItem('bw_v3'); }
 
-// ── OTP API call ─────────────────────────────────────────────
+// ── OTP API call + Dev Mode ──────────────────────────────────
+function showDevOTP(otp) {
+  document.getElementById('dev-otp-banner')?.remove();
+  const b = document.createElement('div');
+  b.id = 'dev-otp-banner';
+  b.innerHTML = '<div class="dev-otp-inner">'
+    + '<div><div class="dev-otp-label">' + (S.lang==='sw'?'SMS haikufika — OTP:':'SMS failed — OTP:') + '</div>'
+    + '<div class="dev-otp-code">' + otp + '</div></div>'
+    + '<div class="dev-otp-actions">'
+    + '<button class="dev-otp-btn" onclick="fillDevOTP('' + otp + '')">Jaza OTP</button>'
+    + '<button class="dev-otp-close" onclick="document.getElementById('dev-otp-banner').remove()">X</button>'
+    + '</div></div>';
+  document.body.appendChild(b);
+  setTimeout(() => b.classList.add('show'), 10);
+}
+
+function fillDevOTP(otp) {
+  for (const p of ['ob','lb','fb']) {
+    if ($(p+'0')) {
+      otp.split('').forEach((d, i) => {
+        const el = $(p+i); if (el) { el.value=d; el.classList.add('on'); }
+      });
+      setTimeout(() => {
+        if (p==='ob') App.verifyRegOTP();
+        else if (p==='lb') App.verifyLoginOTP();
+        else App.verifyForgotOTP();
+      }, 400);
+      document.getElementById('dev-otp-banner')?.remove();
+      break;
+    }
+  }
+}
+
 async function callOTP(payload) {
   const res = await fetch(OTP_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SB_KEY}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
     body: JSON.stringify(payload),
   });
-  return res.json();
+  const data = await res.json();
+  if (data.success && data.dev_otp && data.sms_failed) showDevOTP(data.dev_otp);
+  return data;
 }
 
 // ── Phone normalizer ─────────────────────────────────────────
@@ -405,8 +629,6 @@ window.App = {
     S.role = role;
     $('rb-ret').classList.toggle('sel', role==='retailer');
     $('rb-dist').classList.toggle('sel', role==='distributor');
-    $('ck-ret').style.display = role==='retailer'?'':'none';
-    $('ck-dist').style.display = role==='distributor'?'':'none';
     $('rnext').style.display = 'flex';
   },
 
@@ -916,7 +1138,21 @@ window.App = {
     const u=S.user;
     // Sidebar user info
     const av=u.store_name?.[0]?.toUpperCase()||'U';
-    setText('sbav',av); setText('sbn',u.store_name||'—');
+    setText('sbav',av);
+    const storeLine=S.store?S.store.store_name:u.store_name;
+    setText('sbn',storeLine||'—');
+    // Update plan badge
+    const plan=getPlan();
+    const planData=(u.role==='distributor'?DIST_PLANS:PLANS)[plan]||PLANS.free;
+    const pb=$('plan-badge');
+    const pnb=$('plan-name-badge');
+    const pul=$('plan-upgrade-link');
+    if(pb){
+      pb.style.background=plan==='free'?'rgba(255,255,255,.08)':plan==='trial'?'rgba(217,119,6,.15)':plan==='premium'?'rgba(34,197,94,.15)':'rgba(99,102,241,.15)';
+      pb.style.borderColor=plan==='free'?'rgba(255,255,255,.1)':plan==='trial'?'rgba(217,119,6,.3)':plan==='premium'?'rgba(34,197,94,.3)':'rgba(99,102,241,.3)';
+    }
+    if(pnb)pnb.textContent=planData.name+(plan==='trial'?' (Trial)':'');
+    if(pul)pul.style.display=plan==='pro'?'none':'';
     const badgeClass={retailer:'rb-ret',distributor:'rb-dist',admin:'rb-adm'}[u.role]||'rb-ret';
     const badgeTxt={retailer:'Duka',distributor:'Msambazaji',admin:'Admin'}[u.role]||u.role;
     const bb=$('sbb');
@@ -1096,6 +1332,8 @@ window.App = {
       analytics:()=>App.pageAnalytics(),
       supervisor:()=>App.pageSupervisor(),
       'supervisor-dash':()=>App.pageSupervisorDash(),
+      subscription:()=>App.pageSubscription(),
+      plans:()=>App.pagePlans(),
     };
     await (pages[page]||pages.dashboard)();
   },
@@ -1712,7 +1950,43 @@ window.App = {
   async updateStock(id) {
     const qty=parseInt($(`sq-${id}`)?.value||'0');
     await sb.from('products').update({stock_qty:qty}).eq('id',id);
+    if (qty<=10 && can('stock_alerts')) {
+      await sb.from('stock_alerts').upsert([{product_id:id,distributor_id:S.user.id,alert_type:qty===0?'out_of_stock':'low_stock',threshold:10,is_read:false}],{onConflict:'product_id'});
+    } else {
+      await sb.from('stock_alerts').delete().eq('product_id',id);
+    }
     toast(S.lang==='sw'?'Stok imehifadhiwa':'Stock updated','s');
+    App.pageProducts();
+  },
+
+  async reorderProduct(id, name) {
+    const modal = document.createElement('div');
+    modal.className = 'upgrade-overlay';
+    modal.innerHTML = '<div class="upgrade-modal">'
+      + '<div class="upgrade-title">' + ic('refresh') + ' ' + (S.lang==='sw'?'Ununua Tena':'Reorder') + '</div>'
+      + '<div class="upgrade-feature">' + name + '</div>'
+      + '<div class="fg" style="margin:1rem 0">'
+      + '<label class="fl">' + (S.lang==='sw'?'Idadi ya Kuongeza':'Quantity to Add') + '</label>'
+      + '<input class="fi" id="reorder-qty" type="number" min="1" value="50" style="font-size:1.2rem;text-align:center"/>'
+      + '</div>'
+      + '<div class="upgrade-actions">'
+      + '<button class="btn btn-s" onclick="this.closest('.upgrade-overlay').remove()">' + (S.lang==='sw'?'Funga':'Cancel') + '</button>'
+      + '<button class="btn btn-p" onclick="App.confirmReorder('' + id + '');this.closest('.upgrade-overlay').remove()">'
+      + ic('check') + ' ' + (S.lang==='sw'?'Ongeza Stok':'Add Stock') + '</button>'
+      + '</div></div>';
+    document.body.appendChild(modal);
+    requestAnimationFrame(() => modal.classList.add('show'));
+  },
+
+  async confirmReorder(id) {
+    const qty = parseInt(document.getElementById('reorder-qty')?.value || '0');
+    if (!qty) return toast(S.lang==='sw'?'Weka idadi':'Enter quantity', 'e');
+    const {data:p} = await sb.from('products').select('stock_qty').eq('id',id).single();
+    const newQty = (p?.stock_qty || 0) + qty;
+    await sb.from('products').update({stock_qty: newQty}).eq('id', id);
+    await sb.from('stock_alerts').delete().eq('product_id', id);
+    toast(S.lang==='sw'?'Stok imeongezwa! Mpya: '+newQty:'Stock updated! New qty: '+newQty, 's');
+    App.pageProducts();
   },
 
   async deleteProduct(id) {
@@ -1978,14 +2252,14 @@ window.App = {
     if (S.isOnline) {
       const {error} = await sb.from('sales').insert([data]);
       if (error) {
-        await posDbAdd('sales', data);
-        toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w');
+        if(canAccess('offline_pos')){ await posDbAdd('sales', data); toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w'); }
+        else toast(S.lang==='sw'?'Hitilafu ya kuhifadhi':'Save error','e');
       } else {
         toast(S.lang==='sw' ? '✅ Mauzo yamerekodiwa!' : '✅ Sale recorded!', 's');
       }
     } else {
-      await posDbAdd('sales', data);
-      toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline — itasync baadaye' : '⚡ Saved offline', 'w');
+      if(canAccess('offline_pos')){ await posDbAdd('sales', data); toast(S.lang==='sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w'); }
+      else { toast(S.lang==='sw'?'Unahitaji mtandao. Upgrade kwa Offline POS':'Need internet. Upgrade for Offline POS','w'); return; }
     }
     setBusy('rec-sale-txt', false, `✓ ${S.lang==='sw' ? 'Rekodi Mauzo' : 'Record Sale'}`);
     // Clear form
@@ -2039,6 +2313,10 @@ window.App = {
   async loadReports(period, btn) {
     document.querySelectorAll('.pertab').forEach(b => b.classList.remove('on'));
     if (btn) btn.classList.add('on');
+    // Gate check
+    if(period==='week'&&!canAccess('reports_week')){showUpgradeModal('reports_week');return;}
+    if(period==='month'&&!canAccess('reports_month')){showUpgradeModal('reports_month');return;}
+    if(period==='year'&&!canAccess('reports_year')){showUpgradeModal('reports_year');return;}
 
     const days = {today:0, week:7, month:30, year:365}[period] || 0;
     const startDate = days === 0 ? today() : new Date(Date.now()-days*864e5).toISOString().slice(0,10);
@@ -2149,7 +2427,7 @@ window.App = {
         </div>
       </div>
 
-      <!-- Top Products Bar Chart -->
+      <!-- Top Products Bar Chart (Premium+) -->
       <div class="rsec" style="margin-bottom:1rem">
         <div class="rsec-t">🏆 ${S.lang==='sw'?'Bidhaa Zinazoongoza':'Top Products'}</div>
         ${topProds.length ? topProds.map(([name,v], i) => {
@@ -2246,6 +2524,76 @@ window.App = {
   },
 
   // ── DEBTS ─────────────────────────────────────────────
+  // ── SUBSCRIPTION PAGE ────────────────────────────────
+  async pageSubscription() {
+    const plan = getPlan(), role = S.user?.role || 'retailer';
+    const roleKey = role === 'admin' ? 'retailer' : role;
+    const plans = PLANS[roleKey];
+    const trial = isTrial(), daysLeft = trialDaysLeft();
+    const curLabel = trial ? 'Pro Trial' : {free:'Free',premium:'Premium',pro:'Pro'}[plan] || 'Free';
+    const curPrice = trial
+      ? (S.lang==='sw' ? 'Siku '+daysLeft+' zimebaki' : daysLeft+' days remaining')
+      : plan==='free' ? (S.lang==='sw'?'Bila malipo':'Free forever')
+      : fmt(plans[plan]?.price) + '/' + (S.lang==='sw'?'mwezi':'month');
+
+    let html = (trial
+      ? '<div class="trial-banner big">'+ic('crown')+' <strong>Pro Trial</strong> — '+(S.lang==='sw'?'Siku '+daysLeft+' zimebaki. Furahia features zote za Pro.':daysLeft+' days remaining. Enjoy all Pro features.')+'</div>'
+      : '')
+      + '<div class="sub-current">'
+      + '<div class="sub-cur-label">'+(S.lang==='sw'?'Mpango Wako wa Sasa':'Your Current Plan')+'</div>'
+      + '<div class="sub-cur-plan">'+curLabel+'</div>'
+      + '<div class="sub-cur-price">'+curPrice+'</div>'
+      + '</div><div class="sub-plans">';
+
+    for (const [key, p] of Object.entries(plans)) {
+      const isCur = plan===key || (trial&&key==='pro');
+      html += '<div class="sub-plan-card'+(isCur?' current':'')+(key==='pro'?' popular':'')+ '">'
+        + (key==='pro' ? '<div class="sub-popular-badge">'+ic('crown')+' '+(S.lang==='sw'?'Maarufu':'Popular')+'</div>' : '')
+        + '<div class="sub-plan-name">'+p.label+'</div>'
+        + '<div class="sub-plan-price">'+(p.price===0?(S.lang==='sw'?'Bila malipo':'Free'):fmt(p.price))+'<span>'+(p.price>0?'/'+(S.lang==='sw'?'mwezi':'month'):'')+'</span></div>'
+        + '<div class="sub-plan-features">'
+        + getFeatureList(key, role).map(f =>
+            '<div class="sub-feat"><span class="sub-feat-icon '+(f.available?'yes':'no')+'">'+(f.available?ic('check'):ic('x'))+'</span>'+f.name+'</div>'
+          ).join('')
+        + '</div>'
+        + '<button class="sub-plan-btn'+(isCur?' current-btn':key==='pro'?' pro-btn':'')+'" '
+        + 'onclick="'+(isCur?'':key==='free'?'App.downgradePlan()':'App.requestUpgrade(''+key+'')')+'">'
+        + (isCur?(S.lang==='sw'?'Mpango Wako':'Current Plan'):key==='free'?(S.lang==='sw'?'Shuka':'Downgrade'):(S.lang==='sw'?'Panda '+p.label:'Upgrade to '+p.label))
+        + '</button></div>';
+    }
+
+    html += '</div><div class="sub-coming-soon">'+ic('info')
+      + ' <strong>'+(S.lang==='sw'?'Malipo yanakuja hivi karibuni':'Payments coming soon')+'</strong> — '
+      + (S.lang==='sw'?'Kwa sasa mipango yote iko wazi bila malipo. Utaarifiwa ukifika wakati wa malipo.':'All plans are accessible for free. You will be notified when billing begins.')
+      + '</div>';
+
+    $('av').innerHTML = html;
+    staggerCards('.sub-plan-card', 100);
+  },
+
+  async requestUpgrade(plan) {
+    await sb.from('subscriptions').upsert([{
+      user_id: S.user.id,
+      plan,
+      status: 'active',
+      current_period_start: new Date().toISOString(),
+      current_period_end: new Date(Date.now()+30*864e5).toISOString(),
+    }], {onConflict:'user_id'});
+    S.subscription = {...S.subscription, plan, status:'active'};
+    toast(S.lang==='sw'?'Umepanda hadi '+plan.toUpperCase()+'! Hongera!':'Upgraded to '+plan.toUpperCase()+'!', 's');
+    App.renderApp();
+    App.pageSubscription();
+  },
+
+  async downgradePlan() {
+    if (!confirm(S.lang==='sw'?'Una uhakika wa kushuka hadi Free?':'Downgrade to Free?')) return;
+    await sb.from('subscriptions').update({plan:'free',status:'active'}).eq('user_id',S.user.id);
+    S.subscription = {...S.subscription, plan:'free', status:'active'};
+    toast(S.lang==='sw'?'Umeshuka hadi Free':'Downgraded to Free','i');
+    App.renderApp();
+    App.pageSubscription();
+  },
+
   async pageDebts() {
     const {data:debts}=await sb.from('debts').select('*').eq('user_id',S.user.id)
       .order('created_at',{ascending:false});
@@ -2390,10 +2738,186 @@ window.App = {
       </div></div>`;
   },
 
+
+
+  quickReorder(id, name) {
+    toast(`${S.lang==='sw'?'Unakwenda Marketplace kuagiza':'Going to Marketplace to order'} ${name}`, 'i');
+    setTimeout(() => App.navTo('marketplace'), 800);
+  },
+
+  startTypewriter() {
+    const el = document.getElementById('tw-text');
+    if (!el) return;
+    const texts = S.lang==='sw'
+      ? [`Habari, ${S.user.store_name||''}!`, 'Biashara yako leo?', 'BomaWave iko nawe.']
+      : [`Welcome, ${S.user.store_name||''}!`, 'How is business today?', 'BomaWave has you covered.'];
+    let idx = 0, charIdx = 0, deleting = false;
+    clearInterval(S._twTimer);
+    S._twTimer = setInterval(() => {
+      const text = texts[idx];
+      if (!deleting) {
+        el.textContent = text.slice(0, ++charIdx);
+        if (charIdx === text.length) { deleting = true; setTimeout(() => {}, 2000); }
+      } else {
+        el.textContent = text.slice(0, --charIdx);
+        if (charIdx === 0) { deleting = false; idx = (idx+1) % texts.length; }
+      }
+    }, deleting ? 40 : 80);
+  },
+
+  // ── PLANS PAGE ───────────────────────────────────────────
+  async pagePlans() {
+    const plan = getPlan();
+    const isRetailer = S.user.role !== 'distributor';
+    const prices = isRetailer
+      ? {premium:12000, pro:20000}
+      : {premium:20000, pro:35000};
+
+    const features = {
+      free: [
+        {f:'Dashboard (Basic)',yes:true},
+        {f:'POS (Online)',yes:true},
+        {f:'Marketplace',yes:true},
+        {f:S.lang==='sw'?'Ripoti — Leo tu':'Reports — Today Only',yes:true},
+        {f:'Top Selling Products',yes:false},
+        {f:'Debt Management',yes:false},
+        {f:'Invoices & Receipts',yes:false},
+        {f:'Offline POS',yes:false},
+        {f:'Multi-Store',yes:false},
+        {f:'Supervisor/Boss',yes:false},
+        {f:'Stock Alerts',yes:false},
+        {f:'Advanced Analytics',yes:false},
+      ],
+      premium: [
+        {f:'Dashboard (Full)',yes:true},
+        {f:'POS (Online + Offline)',yes:true},
+        {f:'Marketplace',yes:true},
+        {f:S.lang==='sw'?'Ripoti — Wiki + Mwezi + Charts':'Reports — Week + Month + Charts',yes:true},
+        {f:'Top Selling Products',yes:true},
+        {f:`Debt Management (15 ${S.lang==='sw'?'limit':'limit'})`,yes:true},
+        {f:'Invoices & Receipts',yes:true},
+        {f:'Offline POS',yes:true},
+        {f:'Multi-Store (3)',yes:true},
+        {f:'Supervisor (1)',yes:true},
+        {f:'Stock Alerts',yes:false},
+        {f:'Advanced Analytics',yes:false},
+      ],
+      pro: [
+        {f:'Dashboard (Full)',yes:true},
+        {f:'POS (Online + Offline)',yes:true},
+        {f:'Marketplace',yes:true},
+        {f:S.lang==='sw'?'Ripoti — Yote + Mwaka':'Reports — All + Annual',yes:true},
+        {f:'Top Selling Products',yes:true},
+        {f:'Debt Management (Unlimited)',yes:true},
+        {f:'Invoices & Receipts',yes:true},
+        {f:'Offline POS',yes:true},
+        {f:'Multi-Store (Unlimited)',yes:true},
+        {f:'Supervisors (Unlimited)',yes:true},
+        {f:'Stock Alerts + Reorder',yes:true},
+        {f:'Advanced Analytics + Trends',yes:true},
+      ],
+    };
+
+    const fIcon = (yes) => yes
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--g700)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
+      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+    // Trial days remaining
+    const expires = S.user.plan_expires_at ? new Date(S.user.plan_expires_at) : null;
+    const daysLeft = expires ? Math.max(0, Math.ceil((expires-new Date())/864e5)) : 0;
+
+    $('av').innerHTML = `
+      ${plan==='trial'?`<div class="upgrade-banner" style="margin-bottom:1.25rem">
+        <div style="width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">${svgIcon('star')}</div>
+        <div class="upgrade-banner-text">
+          <div class="upgrade-banner-title">${S.lang==='sw'?`Majaribio ya Pro — Siku ${daysLeft} zimebaki`:`Pro Trial — ${daysLeft} days remaining`}</div>
+          <div class="upgrade-banner-sub">${S.lang==='sw'?'Unafurahia Pro zote. Chagua plan baada ya majaribio.':'Enjoying all Pro features. Choose a plan after trial.'}</div>
+        </div>
+      </div>`:''}
+
+      <div style="margin-bottom:1.25rem">
+        <div class="page-title">${S.lang==='sw'?'Chagua Plan':'Choose Your Plan'}</div>
+        <div style="font-size:.88rem;color:var(--s500);margin-top:.25rem">${S.lang==='sw'?'Lipa kupitia USSD — Selcom/M-Pesa itawashwa hivi karibuni':'Pay via USSD — Selcom/M-Pesa coming soon'}</div>
+      </div>
+
+      <div class="plan-cards-wrap">
+        <!-- FREE -->
+        <div class="plan-card${plan==='free'?' active':''}">
+          ${plan==='free'?`<div style="position:absolute;top:1rem;left:1rem;background:var(--g100);color:var(--g700);font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px">PLANI YAKO</div>`:''}
+          <div style="padding-top:${plan==='free'?'1.5rem':'0'}">
+            <div class="plan-name-h">Free</div>
+            <div class="plan-price-h">TZS 0 <span>/ mwezi</span></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:.1rem;margin:.75rem 0">
+            ${features.free.map(f=>`<div class="plan-feat ${f.yes?'yes':'no'}">${fIcon(f.yes)} ${f.f}</div>`).join('')}
+          </div>
+          <button class="plan-cta-btn free" onclick="App.navTo('dashboard')">${plan==='free'?S.lang==='sw'?'Plani ya Sasa':'Current Plan':S.lang==='sw'?'Chagua Bure':'Use Free'}</button>
+        </div>
+
+        <!-- PREMIUM -->
+        <div class="plan-card popular${plan==='premium'?' active':''}">
+          ${plan==='premium'?`<div style="position:absolute;top:1rem;left:1rem;background:var(--g100);color:var(--g700);font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px">PLANI YAKO</div>`:''}
+          <div style="padding-top:${plan==='premium'?'1.5rem':'0'}">
+            <div class="plan-name-h">Premium</div>
+            <div class="plan-price-h">${fmt(prices.premium)} <span>/ mwezi</span></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:.1rem;margin:.75rem 0">
+            ${features.premium.map(f=>`<div class="plan-feat ${f.yes?'yes':'no'}">${fIcon(f.yes)} ${f.f}</div>`).join('')}
+          </div>
+          <button class="plan-cta-btn premium" onclick="App.showPaymentModal('premium',${prices.premium})">${plan==='premium'?S.lang==='sw'?'Plani ya Sasa':'Current Plan':S.lang==='sw'?'Panda Premium':'Get Premium'}</button>
+        </div>
+
+        <!-- PRO -->
+        <div class="plan-card${plan==='pro'?' active':''}">
+          ${plan==='pro'?`<div style="position:absolute;top:1rem;left:1rem;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px">PLANI YAKO</div>`:''}
+          <div style="padding-top:${plan==='pro'?'1.5rem':'0'}">
+            <div class="plan-name-h">Pro</div>
+            <div class="plan-price-h" style="color:#4f46e5">${fmt(prices.pro)} <span>/ mwezi</span></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:.1rem;margin:.75rem 0">
+            ${features.pro.map(f=>`<div class="plan-feat ${f.yes?'yes':'no'}">${fIcon(f.yes)} ${f.f}</div>`).join('')}
+          </div>
+          <button class="plan-cta-btn pro" onclick="App.showPaymentModal('pro',${prices.pro})">${plan==='pro'?S.lang==='sw'?'Plani ya Sasa':'Current Plan':S.lang==='sw'?'Panda Pro':'Get Pro'}</button>
+        </div>
+      </div>
+
+      <div class="alert al-i" style="margin-top:1rem">
+        ${svgIcon('upgrade')} ${S.lang==='sw'?'Malipo ya subscription yatawashwa hivi karibuni kupitia Selcom USSD na M-Pesa. Kwa sasa, wasiliana nasi kupitia WhatsApp.':'Subscription payments coming soon via Selcom USSD and M-Pesa. For now, contact us via WhatsApp.'}
+      </div>
+    `;
+  },
+
+  showPaymentModal(planId, amount) {
+    const modal = document.createElement('div');
+    modal.id = 'pay-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)';
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:1rem;padding:1.75rem;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:popIn .3s cubic-bezier(.34,1.4,.64,1)">
+        <div style="font-size:1.1rem;font-weight:800;margin-bottom:.25rem">${S.lang==='sw'?'Lipa Subscription':'Pay Subscription'}</div>
+        <div style="font-size:.85rem;color:var(--s500);margin-bottom:1.25rem">${S.lang==='sw'?'Malipo ya USSD — Hivi karibuni':'USSD Payment — Coming Soon'}</div>
+        <div style="background:var(--g50);border:1.5px solid var(--g100);border-radius:.75rem;padding:1rem;margin-bottom:1rem">
+          <div style="font-size:.75rem;color:var(--s500);margin-bottom:.25rem">Kiasi cha Kulipa</div>
+          <div style="font-size:1.6rem;font-weight:900;color:var(--g700)">${fmt(amount)}</div>
+          <div style="font-size:.75rem;color:var(--s500);margin-top:.25rem">kwa mwezi mmoja</div>
+        </div>
+        <div class="alert al-w" style="margin-bottom:1rem">
+          ${svgIcon('upgrade')} ${S.lang==='sw'?'Mfumo wa malipo utawashwa hivi karibuni. Wasiliana nasi sasa:':'Payment system coming soon. Contact us now:'}
+          <br><strong>+255696230657 (WhatsApp)</strong>
+        </div>
+        <div style="display:flex;gap:.75rem">
+          <button onclick="document.getElementById('pay-modal').remove()" style="flex:1;padding:.875rem;border-radius:.65rem;border:1.5px solid var(--s200);background:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700">Rudi</button>
+          <button onclick="window.open('https://wa.me/255696230657?text=Nataka+kulipia+plan+ya+${planId}+TZS+${amount}+kwa+akaunti+yangu+BomaWave','_blank');document.getElementById('pay-modal').remove()" style="flex:1;padding:.875rem;border-radius:.65rem;border:none;background:#25d366;color:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700">WhatsApp</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  },
+
   // ══════════════════════════════════════════════════════════
   //  SUPERVISOR / BOSS FEATURE
   // ══════════════════════════════════════════════════════════
   async pageSupervisor() {
+    if(!canAccess('supervisor'))return;
     // Load existing supervisors for this business
     const {data:sups} = await sb.from('supervisors')
       .select('*').eq('business_id', S.user.id).eq('is_active', true);
@@ -2632,6 +3156,9 @@ function svgIcon(name) {
     expense:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
     print:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`,
     sms:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+    lock:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+    star:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    upgrade:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/></svg>`,
   };
   return icons[name]||'';
 }
@@ -2662,6 +3189,7 @@ const _extraCSS=document.createElement('style');_extraCSS.textContent=`
 
 /* ── Page entry animations ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideRight{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes slideLeft{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
@@ -2991,6 +3519,47 @@ const _extraCSS=document.createElement('style');_extraCSS.textContent=`
 .offline-tr{background:#fffbeb!important}
 @media(max-width:640px){.pos-3grid{grid-template-columns:1fr 1fr}}
 @media(max-width:420px){.pos-3grid{grid-template-columns:1fr}}
+
+
+/* ── Subscription + Trial + Locked ── */
+@keyframes confetti-pop{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+#dev-otp-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1d4ed8,#2563eb);transform:translateY(-100%);transition:transform .4s cubic-bezier(.34,1.4,.64,1);box-shadow:0 4px 20px rgba(0,0,0,.3)}
+#dev-otp-banner.show{transform:translateY(0)}
+.dev-otp-inner{display:flex;align-items:center;justify-content:space-between;padding:.875rem 1.25rem;gap:1rem;flex-wrap:wrap}
+.dev-otp-label{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.8);margin-bottom:.2rem}
+.dev-otp-code{font-size:1.8rem;font-weight:900;letter-spacing:6px;font-family:monospace;color:#fff}
+.dev-otp-actions{display:flex;gap:.4rem}
+.dev-otp-btn{background:rgba(255,255,255,.9);border:none;color:#1d4ed8;padding:.5rem 1rem;border-radius:.5rem;font-size:.82rem;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif}
+.dev-otp-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:.4rem;cursor:pointer}
+.sub-current{background:linear-gradient(135deg,var(--g700),var(--g600));border-radius:var(--rl);padding:1.25rem 1.5rem;margin-bottom:1.5rem;color:#fff;text-align:center}
+.sub-cur-label{font-size:.68rem;font-weight:700;opacity:.8;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem}
+.sub-cur-plan{font-size:1.6rem;font-weight:900;margin-bottom:.2rem}
+.sub-cur-price{font-size:.88rem;opacity:.85}
+.sub-plans{display:flex;flex-direction:column;gap:.875rem;margin-bottom:1.5rem}
+.sub-plan-card{background:#fff;border:2px solid var(--s200);border-radius:var(--rl);padding:1.25rem;position:relative;transition:all .2s;animation:fadeUp .3s ease forwards;opacity:0}
+.sub-plan-card.current{border-color:var(--g600);box-shadow:0 4px 20px rgba(34,197,94,.15)}
+.sub-plan-card.popular{border-color:var(--amber)}
+.sub-popular-badge{display:inline-flex;align-items:center;gap:.3rem;background:var(--amber);color:#fff;font-size:.65rem;font-weight:800;padding:3px 12px;border-radius:20px;margin-bottom:.65rem}
+.sub-plan-name{font-size:.78rem;font-weight:800;color:var(--s500);text-transform:uppercase;letter-spacing:.75px;margin-bottom:.3rem}
+.sub-plan-price{font-size:1.45rem;font-weight:900;color:var(--s900);margin-bottom:.875rem;line-height:1}
+.sub-plan-price span{font-size:.72rem;color:var(--s500);font-weight:600}
+.sub-plan-features{margin-bottom:.875rem}
+.sub-feat{display:flex;align-items:flex-start;gap:.4rem;font-size:.75rem;color:var(--s700);margin-bottom:.3rem;line-height:1.4}
+.sub-feat-icon{flex-shrink:0}.sub-feat-icon.yes{color:var(--g700)}.sub-feat-icon.no{color:var(--s300)}
+.sub-plan-btn{width:100%;padding:.75rem;border-radius:.65rem;border:2px solid var(--s300);background:#fff;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:800;cursor:pointer;transition:all .2s;color:var(--s700)}
+.sub-plan-btn:hover:not(.current-btn){border-color:var(--g600);color:var(--g700)}
+.sub-plan-btn.current-btn{background:var(--g50);border-color:var(--g600);color:var(--g700);cursor:default}
+.sub-plan-btn.pro-btn{background:linear-gradient(135deg,#16a34a,#22c55e);border:none;color:#fff;box-shadow:0 4px 14px rgba(34,197,94,.3)}
+.sub-coming-soon{background:var(--b50);border:1px solid var(--b100);border-radius:var(--rl);padding:1rem 1.25rem;font-size:.85rem;color:var(--b900);line-height:1.6;display:flex;gap:.5rem}
+.trial-banner{background:linear-gradient(135deg,#d97706,#f59e0b);border-radius:var(--rl);padding:.875rem 1.25rem;margin-bottom:1rem;color:#fff;display:flex;align-items:center;justify-content:space-between;font-size:.9rem;font-weight:700}
+.trial-banner.big{padding:1.1rem 1.5rem;margin-bottom:1.25rem}
+.locked-page{text-align:center;padding:4rem 1.5rem;display:flex;flex-direction:column;align-items:center;gap:.875rem}
+.locked-page-icon{color:var(--amber)}
+.locked-page-title{font-size:1.2rem;font-weight:800}
+.locked-page-sub{font-size:.9rem;color:var(--s500);max-width:280px;line-height:1.6}
+.locked-page-price{font-size:1.4rem;font-weight:900;color:var(--g700)}
+.ni-lock{margin-left:auto;opacity:.5;display:flex;align-items:center}
+.limit-badge{background:var(--ambl);color:var(--amber);font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:20px;margin-left:.4rem}
 
 `;document.head.appendChild(_extraCSS);
 const _style=document.createElement('style');
