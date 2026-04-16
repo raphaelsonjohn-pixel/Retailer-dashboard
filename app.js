@@ -5,7 +5,7 @@ const OTP_URL = 'https://sutrnnlbmuxggbvfwrpk.supabase.co/functions/v1/smooth-fu
 const SB_KEY  = 'sb_publishable_yJni7Xxl78x24V1mJvLjVg_RAWAsGOt';
 
 // ══════════════════════════════════════════════════════════════
-// FIX: ADD DIST_PLANS AND RETAILER_PLANS (ZILIZOKOSA)
+// FIX: ADD DIST_PLANS AND RETAILER_PLANS
 // ══════════════════════════════════════════════════════════════
 const DIST_PLANS = {
   free:    { name: 'Free', price: 0 },
@@ -31,10 +31,10 @@ let S = {
   realtimeCh: null,
   isOnline: navigator.onLine,
   supervisorOf: null,  // set when logged in as supervisor
-  _savedStoreId: null,  // FIX: Added missing property
-  resendTimer: null,    // FIX: Added missing property
-  loginResendTimer: null,  // FIX: Added missing property
-  forgotResendTimer: null   // FIX: Added missing property
+  _savedStoreId: null,
+  resendTimer: null,
+  loginResendTimer: null,
+  forgotResendTimer: null
 };
 
 
@@ -194,16 +194,146 @@ function loadSession() {
 }
 function clearSession() { localStorage.removeItem('bw_v4'); localStorage.removeItem('bw_v3'); }
 
-// ── OTP API call ─────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// ⭐⭐⭐ DEV OTP FUNCTIONS (ZILIZOONGEZWA) ⭐⭐⭐
+// ══════════════════════════════════════════════════════════════
+
+// ── OTP API call WITH DEV MODE ─────────────────────────────────────────────
 async function callOTP(payload) {
+  // ============================================================
+  // FORCE DEV MODE - ONYESHA OTP KWENYE APP (HATUMI SMS)
+  // Badilisha FORCE_DEV_MODE kuwa false ukitaka SMS halisi
+  // ============================================================
+  const FORCE_DEV_MODE = true;  // ← Weka true kwa Dev OTP, false kwa SMS halisi
+  
+  if (FORCE_DEV_MODE) {
+    console.log('[DEV MODE] Using virtual OTP for action:', payload.action);
+    const mockOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    if (payload.action === 'send_otp') {
+      // Onyesha banner ya kijani yenye OTP
+      showDevOTP(mockOTP);
+      return {
+        success: true,
+        dev_otp: mockOTP,
+        sms_failed: true,
+        message: 'DEV MODE: Tumia OTP iliyoonyeshwa kwenye banner'
+      };
+    }
+    
+    if (payload.action === 'verify_otp') {
+      // Thibitisha OTP (inakubali OTP yoyote ya tarakimu 6)
+      const isValid = payload.otp_code === mockOTP || payload.otp_code === '123456' || payload.otp_code.length === 6;
+      return {
+        success: isValid,
+        user_exists: isValid,
+        user: isValid ? { 
+          id: 'dev-user-' + Date.now(), 
+          store_name: payload.store_name || 'Duka la Majaribio', 
+          pin: payload.pin || '0000', 
+          role: payload.role || 'retailer',
+          phone_number: payload.phone
+        } : null,
+        message: isValid ? 'OTP imethibitishwa (DEV MODE)' : 'OTP si sahihi'
+      };
+    }
+    
+    if (payload.action === 'complete_registration') {
+      return {
+        success: true,
+        user: { 
+          id: 'dev-user-' + Date.now(), 
+          store_name: payload.store_name, 
+          pin: payload.pin, 
+          role: payload.role, 
+          phone_number: payload.phone 
+        }
+      };
+    }
+    
+    if (payload.action === 'reset_pin') {
+      return {
+        success: true,
+        user: { id: 'dev-user-' + Date.now(), store_name: 'Duka la Majaribio', pin: payload.pin }
+      };
+    }
+  }
+  // ============================================================
+  
+  // Ikiwa FORCE_DEV_MODE ni false, tumia SMS halisi kupitia Edge Function
   const res = await fetch(OTP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json',
       'Authorization': `Bearer ${SB_KEY}` },
     body: JSON.stringify(payload),
   });
-  return res.json();
+  const data = await res.json();
+  
+  // Onyesha dev OTP banner ikiwa inapatikana kutoka Edge Function
+  if (data.success && data.dev_otp && data.sms_failed) {
+    showDevOTP(data.dev_otp);
+  }
+  
+  return data;
 }
+
+// ── Show Dev OTP Banner ─────────────────────────────────────────
+function showDevOTP(otp) {
+  // Ondoa banner iliyopo
+  document.getElementById('dev-otp-banner')?.remove();
+  
+  const b = document.createElement('div');
+  b.id = 'dev-otp-banner';
+  b.innerHTML = `
+    <div class="dev-otp-inner">
+      <div>
+        <div class="dev-otp-label">${S.lang==='sw'?'📱 SMS haikufika — Tumia OTP hii:':'📱 SMS failed — Use this OTP:'}</div>
+        <div class="dev-otp-code">${otp}</div>
+      </div>
+      <div class="dev-otp-actions">
+        <button class="dev-otp-btn" onclick="fillDevOTP('${otp}')">
+          🔘 ${S.lang==='sw'?'Jaza OTP':'Fill OTP'}
+        </button>
+        <button class="dev-otp-close" onclick="document.getElementById('dev-otp-banner').remove()">
+          ✕
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(b);
+  setTimeout(() => b.classList.add('show'), 10);
+}
+
+// ── Fill Dev OTP Automatically ─────────────────────────────────────────
+window.fillDevOTP = function(otp) {
+  // Tafuta ni sanduku gani la OTP linaonekana (registration, login, au forgot)
+  const prefixes = ['ob', 'lb', 'fb'];
+  for (const p of prefixes) {
+    if ($(p+'0')) {
+      // Jaza OTP kwenye masanduku
+      otp.split('').forEach((d, i) => {
+        const el = $(p+i);
+        if (el) {
+          el.value = d;
+          el.classList.add('on');
+          // Ongeza animation kidogo
+          el.style.transform = 'scale(1.05)';
+          setTimeout(() => { if(el) el.style.transform = ''; }, 200);
+        }
+      });
+      // Thibitisha otomatiki baada ya sekunde 0.4
+      setTimeout(() => {
+        if (p === 'ob') App.verifyRegOTP();
+        else if (p === 'lb') App.verifyLoginOTP();
+        else App.verifyForgotOTP();
+      }, 400);
+      // Ondoa banner
+      document.getElementById('dev-otp-banner')?.remove();
+      break;
+    }
+  }
+};
+// ══════════════════════════════════════════════════════════════
 
 // ── Phone normalizer ─────────────────────────────────────────
 function normPhone(raw) {
@@ -1922,14 +2052,14 @@ window.App = {
               <th>${S.lang==='sw'?'AINA':'CATEGORY'}</th>
               <th>${S.lang==='sw'?'MAELEZO':'DESCRIPTION'}</th>
               <th>${S.lang==='sw'?'KIASI':'AMOUNT'}</th>
-            </tr></thead>
+            </table></thead>
             <tbody>
               ${allExps.map(e => `
                 <tr class="dt-row${e._off?' offline-tr':''}">
                   <td><span class="pill p-pen">${e.category}</span></td>
                   <td>${e.description}</span></td>
                   <td style="color:var(--red);font-weight:800">${fmt(e.amount)}</span></td>
-                </tr>`).join('') || `<td><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></span></td>`}
+                </tr>`).join('') || `<tr><td colspan="3"><div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang==='sw'?'Hakuna matumizi leo':'No expenses today'}</div></div></span></td>`}
             </tbody>
           </table></div>
         </div></div>
@@ -2680,7 +2810,6 @@ function statusBadge(role) {
 
 function animateCount(el, target, prefix='') {
   if (!el) return;
-  const start = 0;
   const duration = 800;
   const startTime = performance.now();
   const animate = (now) => {
@@ -2698,13 +2827,15 @@ function animateCount(el, target, prefix='') {
 function staggerCards(selector, delayMs = 80) {
   const cards = document.querySelectorAll(selector);
   cards.forEach((card, idx) => {
-    card.style.opacity = '0';
-    card.style.transform = 'translateY(12px)';
-    setTimeout(() => {
-      card.style.transition = 'opacity .3s cubic-bezier(.34,1.4,.64,1), transform .3s cubic-bezier(.34,1.4,.64,1)';
-      card.style.opacity = '1';
-      card.style.transform = 'translateY(0)';
-    }, idx * delayMs);
+    if(card) {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(12px)';
+      setTimeout(() => {
+        card.style.transition = 'opacity .3s cubic-bezier(.34,1.4,.64,1), transform .3s cubic-bezier(.34,1.4,.64,1)';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, idx * delayMs);
+    }
   });
 }
 
