@@ -1,1275 +1,1230 @@
 <!DOCTYPE html>
-<html lang="sw" class="h-full">
+<html lang="sw">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-<meta name="theme-color" content="#16a34a"/>
-<title>BomaWave</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover"/>
+<meta name="theme-color" content="#15803d"/>
+<meta name="description" content="BomaWave - Smart Business Management Platform for Retailers and Distributors in Tanzania"/>
+<meta name="keywords" content="POS, FMCG, Business Management, Tanzania, Retail, Distribution"/>
+<meta name="author" content="BomaWave"/>
+<title>BomaWave - Smart Business Platform</title>
+
+<!-- Tailwind CSS CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
+
+<!-- Tailwind Configuration -->
 <script>
-tailwind.config = {
-  theme: {
-    extend: {
-      fontFamily: { sans: ['DM Sans','sans-serif'], display: ['Sora','sans-serif'] },
-      colors: {
-        g: { 50:'#f0fdf4',100:'#dcfce7',200:'#bbf7d0',300:'#86efac',400:'#4ade80',500:'#22c55e',600:'#16a34a',700:'#15803d',800:'#166534',900:'#14532d' },
-        brand: '#16a34a',
-      },
-      animation: {
-        'fade-up':'fadeUp .4s cubic-bezier(.34,1.4,.64,1) forwards',
-        'fade-in':'fadeIn .3s ease forwards',
-        'pop-in':'popIn .3s cubic-bezier(.34,1.56,.64,1) forwards',
-        'slide-down':'slideDown .4s cubic-bezier(.34,1.4,.64,1) forwards',
-        'typewriter':'typewriter 2s steps(30) forwards',
-        'blink':' blink 1s step-end infinite',
-        'spin-slow':'spin 1s linear infinite',
-        'pulse-slow':'pulse 3s ease-in-out infinite',
-        'bounce-sm':'bounceSm .6s cubic-bezier(.34,1.56,.64,1)',
-      },
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: '#16a34a',
+          'primary-dark': '#15803d',
+          'primary-light': '#22c55e',
+          secondary: '#2563eb',
+          danger: '#dc2626',
+          warning: '#d97706',
+          dark: '#1f2937',
+          gray: '#6b7280',
+          light: '#f3f4f6',
+        },
+        fontFamily: {
+          'sans': ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        },
+        fontSize: {
+          'xs': ['12px', { lineHeight: '16px' }],
+          'sm': ['14px', { lineHeight: '20px' }],
+          'base': ['16px', { lineHeight: '24px' }],
+          'lg': ['18px', { lineHeight: '28px' }],
+          'xl': ['20px', { lineHeight: '28px' }],
+          '2xl': ['24px', { lineHeight: '32px' }],
+          '3xl': ['28px', { lineHeight: '36px' }],
+          '4xl': ['32px', { lineHeight: '40px' }],
+        },
+        spacing: {
+          '18': '4.5rem',
+          '22': '5.5rem',
+          '72': '18rem',
+          '84': '21rem',
+          '96': '24rem',
+        },
+        borderRadius: {
+          'xl': '1rem',
+          '2xl': '1.5rem',
+          '3xl': '2rem',
+        },
+        boxShadow: {
+          'soft': '0 2px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1)',
+          'medium': '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+          'large': '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+          'xl': '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+        },
+        animation: {
+          'fade-in': 'fadeIn 0.3s ease-out',
+          'slide-in': 'slideIn 0.3s ease-out',
+          'slide-up': 'slideUp 0.3s ease-out',
+          'bounce-slow': 'bounce 2s infinite',
+          'pulse-slow': 'pulse 3s infinite',
+          'spin-slow': 'spin 1s linear infinite',
+        },
+        keyframes: {
+          fadeIn: {
+            '0%': { opacity: '0', transform: 'translateY(10px)' },
+            '100%': { opacity: '1', transform: 'translateY(0)' },
+          },
+          slideIn: {
+            '0%': { transform: 'translateX(100%)', opacity: '0' },
+            '100%': { transform: 'translateX(0)', opacity: '1' },
+          },
+          slideUp: {
+            '0%': { transform: 'translateY(100%)', opacity: '0' },
+            '100%': { transform: 'translateY(0)', opacity: '1' },
+          },
+        },
+      }
     }
   }
-}
 </script>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet"/>
+
+<!-- Custom CSS -->
 <style>
-/* ── Reset ── */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;}
-::-webkit-scrollbar{width:3px;height:3px;}
-::-webkit-scrollbar-thumb{background:#86efac;border-radius:3px;}
-::-webkit-scrollbar-track{background:#f0fdf4;}
+  /* Reset & Base Styles */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-/* ── CSS Vars ── */
-:root{
-  --g50:#f0fdf4;--g100:#dcfce7;--g200:#bbf7d0;--g300:#86efac;
-  --g400:#4ade80;--g500:#22c55e;--g600:#16a34a;--g700:#15803d;--g800:#166534;--g900:#14532d;
-  --b50:#eff6ff;--b100:#dbeafe;--b400:#60a5fa;--b700:#2563eb;--b900:#1e3a8a;
-  --red:#dc2626;--redl:#fee2e2;--amber:#d97706;--ambl:#fef3c7;
-  --s50:#f8fafc;--s100:#f1f5f9;--s200:#e2e8f0;--s300:#cbd5e1;--s400:#94a3b8;--s500:#64748b;--s700:#334155;--s900:#0f172a;
-  --sidebar-w:260px;--nav-h:64px;
-}
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #f9fafb;
+    color: #1f2937;
+    font-size: 16px;
+    line-height: 1.5;
+  }
 
-/* ── Keyframes ── */
-@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
-@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
-@keyframes bounceSm{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
-@keyframes confetti-pop{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
-@keyframes rot{to{transform:rotate(360deg)}}
-@keyframes typewriter{from{width:0}to{width:100%}}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-@keyframes countUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
 
-/* ── Onboarding ── */
-#onboarding{position:fixed;inset:0;z-index:200;display:flex;background:#0f172a;overflow:hidden;}
-.ob-bg{position:absolute;inset:0;background-image:url('home.jpg');background-size:cover;background-position:center 20%;filter:brightness(.35) saturate(1.1);}
-.ob-overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(20,83,45,.8) 0%,rgba(15,23,42,.3) 40%,rgba(15,23,42,.6) 70%,rgba(20,83,45,.95) 100%);}
-.ob-right{flex:1;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:#f0fdf4;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.ob-card{width:100%;max-width:420px;background:#fff;border-radius:1.25rem;box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden;}
-.ob-head{background:linear-gradient(135deg,#14532d,#16a34a);padding:1.1rem 1.5rem;display:flex;align-items:center;gap:.75rem;}
-.ob-body{padding:1.75rem;background:#fff;}
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
 
-/* ── Progress ── */
-.prog-bar{height:4px;background:var(--g100);border-radius:2px;overflow:hidden;}
-.prog-fill{height:100%;background:linear-gradient(90deg,var(--g700),var(--g400));border-radius:2px;transition:width .5s cubic-bezier(.4,0,.2,1);}
+  ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+  }
 
-/* ── Steps ── */
-.step{display:none;flex-direction:column;gap:.875rem;padding-bottom:3rem;}
-.step.active{display:flex;}
-.step-h{font-family:'Sora',sans-serif;font-size:1.3rem;font-weight:800;color:var(--s900);line-height:1.25;}
-.step-sub{font-size:.82rem;color:var(--s500);}
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
 
-/* ── Language buttons ── */
-.lang-btn{width:100%;padding:1rem 1.25rem;border-radius:.875rem;border:2px solid var(--s200);background:var(--s50);cursor:pointer;display:flex;align-items:center;gap:1rem;font-family:'DM Sans',sans-serif;transition:all .25s cubic-bezier(.34,1.2,.64,1);text-align:left;position:relative;overflow:hidden;}
-.lang-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--g100),transparent);opacity:0;transition:opacity .2s;}
-.lang-btn:hover{border-color:var(--g600);transform:translateY(-2px);box-shadow:0 8px 24px rgba(22,163,74,.15);}
-.lang-btn:hover::before{opacity:1;}
-.lang-flag{font-size:2rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));}
-.lang-name{font-size:.95rem;font-weight:800;color:var(--s900);}
-.lang-sub{font-size:.72rem;color:var(--s500);margin-top:2px;}
+  /* OTP Input Styles */
+  .otp-input {
+    width: 52px;
+    height: 60px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: white;
+    transition: all 0.2s ease;
+  }
 
-/* ── Role cards ── */
-.rc{width:100%;padding:1.1rem 1.25rem;border-radius:.875rem;border:2.5px solid var(--s200);background:var(--s50);cursor:pointer;display:flex;align-items:center;gap:.875rem;font-family:'DM Sans',sans-serif;transition:all .25s cubic-bezier(.34,1.2,.64,1);text-align:left;position:relative;}
-.rc:active{transform:scale(.98);}
-.rci{width:48px;height:48px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;}
-.rc.retailer:hover,.rc.retailer.sel{border-color:var(--g600);background:linear-gradient(135deg,var(--g50),#f8fffe);box-shadow:0 8px 24px rgba(22,163,74,.15);}
-.rc.retailer .rci{background:var(--g100);color:var(--g700);}
-.rc.retailer.sel .rci{background:var(--g600);color:#fff;}
-.rc.distributor:hover,.rc.distributor.sel{border-color:var(--b700);background:linear-gradient(135deg,var(--b50),#f8fbff);box-shadow:0 8px 24px rgba(37,99,235,.12);}
-.rc.distributor .rci{background:var(--b100);color:var(--b700);}
-.rc.distributor.sel .rci{background:var(--b700);color:#fff;}
-.rc-name{font-size:.95rem;font-weight:800;color:var(--s900);}
-.rc-desc{font-size:.78rem;color:var(--s500);margin-top:2px;}
-.rc-check{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;transition:all .3s cubic-bezier(.34,1.56,.64,1);transform:scale(0);}
-.rc-check.show{transform:scale(1);}
-.retailer .rc-check{background:var(--g100);color:var(--g700);}
-.retailer.sel .rc-check{background:var(--g600);color:#fff;}
-.distributor .rc-check{background:var(--b100);color:var(--b700);}
-.distributor.sel .rc-check{background:var(--b700);color:#fff;}
+  .otp-input:focus {
+    outline: none;
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+    transform: scale(1.02);
+  }
 
-/* ── Form elements ── */
-.fg{display:flex;flex-direction:column;gap:.3rem;}
-.fl{font-size:.72rem;font-weight:700;color:var(--g700);text-transform:uppercase;letter-spacing:.75px;}
-.fl span{color:var(--red);}
-.iw{position:relative;}
-.fi{width:100%;padding:.8rem 1rem;border:1.5px solid var(--g100);border-radius:.65rem;font-family:'DM Sans',sans-serif;font-size:.97rem;color:var(--s900);background:#f8fff9;outline:none;transition:all .2s;-webkit-appearance:none;}
-.fi:focus{border-color:var(--g600);background:#fff;box-shadow:0 0 0 3px rgba(22,163,74,.12);}
-.fi::placeholder{color:var(--s300);}
-.fi.err{border-color:var(--red)!important;background:var(--redl)!important;animation:shake .3s ease;}
-@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
-select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2316a34a' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem;}
-.pfx{position:absolute;left:0;top:0;bottom:0;padding:0 .875rem;display:flex;align-items:center;gap:.4rem;pointer-events:none;z-index:1;border-right:1.5px solid var(--s200);}
-.pfx-flag{font-size:1rem;}
-.pfx-code{font-size:.82rem;font-weight:700;color:var(--s700);}
-.fi-phone{padding-left:5.8rem!important;}
-.eye{position:absolute;right:.875rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--s400);display:flex;padding:.2rem;}
-.fr{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
-.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;}
+  .otp-input.on {
+    border-color: #16a34a;
+    background: #f0fdf4;
+  }
 
-/* ── OTP boxes ── */
-.otp-row{display:flex;gap:.4rem;justify-content:center;}
-.ob{width:46px;height:52px;border:2px solid var(--g100);border-radius:.65rem;text-align:center;font-size:1.35rem;font-weight:800;font-family:'DM Sans',sans-serif;color:var(--s900);background:var(--g50);outline:none;transition:all .2s cubic-bezier(.34,1.56,.64,1);-webkit-appearance:none;}
-.ob:focus{border-color:var(--g600);background:#fff;box-shadow:0 0 0 3px rgba(22,163,74,.15);transform:scale(1.06);}
-.ob.on{border-color:var(--g600);background:var(--g50);transform:scale(1.04);}
-.ob.err{border-color:var(--red)!important;background:var(--redl)!important;animation:shake .3s ease;}
+  .otp-input.err {
+    border-color: #dc2626;
+    background: #fee2e2;
+    animation: shake 0.3s ease;
+  }
 
-/* ── PIN ── */
-.pin-dots{display:flex;gap:.875rem;justify-content:center;margin:.75rem 0;}
-.pd{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--s300);background:transparent;transition:all .2s cubic-bezier(.34,1.56,.64,1);}
-.pd.on{background:var(--g600);border-color:var(--g600);transform:scale(1.2);}
-.pd.err{border-color:var(--red)!important;background:var(--red)!important;}
-.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;max-width:240px;margin:0 auto;}
-.pk{padding:1rem;border:1.5px solid var(--s200);border-radius:.75rem;background:#fff;font-size:1.2rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--s900);transition:all .15s cubic-bezier(.34,1.56,.64,1);-webkit-tap-highlight-color:transparent;}
-.pk:active{transform:scale(.88);background:var(--g50);border-color:var(--g400);}
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
 
-/* ── Buttons ── */
-.btn{width:100%;padding:.9rem 1.25rem;border-radius:.75rem;border:none;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .2s cubic-bezier(.34,1.2,.64,1);min-height:52px;letter-spacing:.2px;}
-.btn-p{background:linear-gradient(135deg,var(--g700),var(--g500));color:#fff;box-shadow:0 4px 16px rgba(22,163,74,.3);}
-.btn-p:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 24px rgba(22,163,74,.4);}
-.btn-p:active{transform:scale(.97);}
-.btn-p:disabled{opacity:.6;cursor:not-allowed;transform:none;}
-.btn-s{background:var(--s100);color:var(--s700);border:1.5px solid var(--s200);}
-.btn-s:hover{background:var(--s200);}
-.btn-g{background:none;border:none;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;color:var(--s500);cursor:pointer;padding:.4rem .5rem;transition:color .15s;text-align:left;}
-.btn-g:hover{color:var(--g700);}
-.bsm{display:inline-flex;align-items:center;gap:.3rem;padding:.45rem .875rem;border-radius:.5rem;border:none;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;}
-.bsm.g{background:var(--g100);color:var(--g700);}
-.bsm.g:hover{background:var(--g700);color:#fff;}
-.bsm.b{background:var(--b100);color:var(--b700);}
-.bsm.b:hover{background:var(--b700);color:#fff;}
-.bsm.r{background:var(--redl);color:var(--red);}
-.bsm.r:hover{background:var(--red);color:#fff;}
-.bsm.a{background:var(--ambl);color:var(--amber);}
+  /* PIN Dot Styles */
+  .pin-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #e5e7eb;
+    background: transparent;
+    transition: all 0.2s ease;
+  }
 
-/* ── Alerts ── */
-.alert{padding:.65rem 1rem;border-radius:.65rem;font-size:.82rem;font-weight:600;display:flex;align-items:flex-start;gap:.5rem;line-height:1.5;}
-.al-i{background:var(--b50);border:1px solid var(--b100);color:var(--b900);}
-.al-w{background:var(--ambl);border:1px solid #fde68a;color:#92400e;}
-.al-e{background:var(--redl);border:1px solid #fecaca;color:var(--red);}
-.al-s{background:var(--g50);border:1px solid var(--g200);color:var(--g700);}
+  .pin-dot.on {
+    background: #16a34a;
+    border-color: #16a34a;
+    transform: scale(1.2);
+  }
 
-/* ── Pills ── */
-.pill{display:inline-flex;align-items:center;gap:.2rem;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700;white-space:nowrap;}
-.p-pen{background:var(--ambl);color:var(--amber);}
-.p-con{background:var(--b100);color:var(--b700);}
-.p-del{background:var(--g100);color:var(--g700);}
-.p-can{background:var(--redl);color:var(--red);}
-.p-unp{background:var(--redl);color:var(--red);}
-.p-par{background:var(--ambl);color:var(--amber);}
-.p-paid{background:var(--g100);color:var(--g700);}
+  .pin-dot.err {
+    background: #dc2626;
+    border-color: #dc2626;
+  }
 
-/* ── Role badges ── */
-.rbadge{display:inline-flex;padding:2px 9px;border-radius:12px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
-.rb-ret{background:var(--g100);color:var(--g700);}
-.rb-dist{background:var(--b100);color:var(--b700);}
-.rb-adm{background:#f3e8ff;color:#7c3aed;}
+  /* PIN Keypad Styles */
+  .pin-key {
+    width: 70px;
+    height: 70px;
+    border-radius: 16px;
+    border: 1.5px solid #e5e7eb;
+    background: white;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-/* ── Resend timer ── */
-.resend-wrap{display:flex;align-items:center;justify-content:center;gap:.5rem;}
-.rt{font-size:.8rem;color:var(--s500);}
-.rb{background:none;border:none;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:700;color:var(--g700);cursor:pointer;padding:.25rem;display:none;}
+  .pin-key:active {
+    transform: scale(0.95);
+    background: #f3f4f6;
+    border-color: #16a34a;
+  }
 
-/* ── Category chips ── */
-.cat-grid{display:flex;flex-wrap:wrap;gap:.4rem;}
-.cat-chip{display:flex;align-items:center;gap:.35rem;padding:.45rem .85rem;border-radius:20px;border:1.5px solid var(--s200);background:var(--s50);cursor:pointer;font-size:.8rem;font-weight:600;font-family:'DM Sans',sans-serif;transition:all .15s;}
-.cat-chip:hover{border-color:var(--g500);background:var(--g50);}
-.cat-chip.on{border-color:var(--g600);background:var(--g100);color:var(--g700);}
-.cat-chip input{display:none;}
+  /* Category Chip Styles */
+  .cat-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+  }
 
-/* ── App shell ── */
-#app-main{display:none;height:100vh;overflow:hidden;}
-.sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:linear-gradient(180deg,#0f4c1f 0%,#14652a 55%,#0d3d1a 100%);display:flex;flex-direction:column;z-index:100;transition:transform .3s cubic-bezier(.4,0,.2,1);}
-.sidebar.open{transform:translateX(0)!important;}
-.sb-brand{padding:1.25rem 1rem .875rem;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:.65rem;}
-.sb-li{width:34px;height:34px;border-radius:9px;object-fit:contain;background:rgba(255,255,255,.1);padding:3px;}
-.sb-ln{font-family:'Sora',sans-serif;font-size:1.05rem;font-weight:800;color:#fff;}
-.sb-user{padding:.875rem 1rem;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:.65rem;}
-.uav{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--g500),var(--g400));display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;color:var(--g900);flex-shrink:0;}
-.un{font-size:.88rem;font-weight:700;color:#fff;line-height:1.2;}
-.sb-nav{flex:1;overflow-y:auto;padding:.5rem .625rem;display:flex;flex-direction:column;gap:.15rem;}
-.sb-nav::-webkit-scrollbar{width:0;}
-.ni{display:flex;align-items:center;gap:.65rem;padding:.7rem .875rem;border-radius:.6rem;cursor:pointer;color:rgba(255,255,255,.65);font-size:.87rem;font-weight:600;transition:all .18s;border:none;background:none;width:100%;text-align:left;font-family:'DM Sans',sans-serif;}
-.ni:hover{color:#fff;background:rgba(255,255,255,.1);transform:translateX(2px);}
-.ni.on{color:#fff;background:rgba(74,222,128,.2);border-left:3px solid #4ade80;padding-left:calc(.875rem - 3px);}
-.ni.on svg{filter:drop-shadow(0 0 4px rgba(74,222,128,.5));}
-.nic{display:flex;align-items:center;width:18px;}
-.ni-lock{margin-left:auto;opacity:.4;display:flex;}
-.sb-foot{padding:.75rem .875rem 1rem;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;gap:.5rem;}
-.lsw{display:flex;background:rgba(255,255,255,.08);border-radius:.4rem;overflow:hidden;}
-.lsw-b{padding:.35rem .6rem;font-size:.72rem;font-weight:700;border:none;background:none;color:rgba(255,255,255,.5);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
-.lsw-b.on{background:rgba(255,255,255,.18);color:#fff;}
-.lo{display:flex;align-items:center;gap:.4rem;padding:.4rem .7rem;border:1px solid rgba(255,255,255,.12);border-radius:.45rem;background:none;color:rgba(255,255,255,.55);font-size:.75rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
-.lo:hover{background:rgba(220,38,38,.2);border-color:rgba(220,38,38,.4);color:#fca5a5;}
-.sovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;backdrop-filter:blur(2px);}
-.sovl.active{display:block;}
+  .cat-chip:hover {
+    border-color: #16a34a;
+    background: #f0fdf4;
+    transform: translateY(-1px);
+  }
 
-/* ── Main content ── */
-.main-content{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-.topbar{background:rgba(248,255,254,.97);backdrop-filter:blur(20px);border-bottom:1.5px solid var(--g100);padding:.7rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 12px rgba(22,163,74,.06);}
-.tbl{display:flex;align-items:center;gap:.65rem;}
-.hbg{display:none;padding:.45rem;border:none;background:var(--g50);border-radius:.5rem;cursor:pointer;color:var(--g700);transition:all .15s;}
-.hbg:hover{background:var(--g100);}
-.tbic{width:32px;height:32px;background:var(--g100);border-radius:.5rem;display:flex;align-items:center;justify-content:center;color:var(--g700);}
-.tbt{font-size:.95rem;font-weight:800;color:var(--s900);}
-.tbs{font-size:.72rem;color:var(--s500);margin-top:1px;}
-.tbr{display:flex;align-items:center;gap:.5rem;}
-.nb-btn{position:relative;padding:.45rem;border:none;background:var(--g50);border-radius:.5rem;cursor:pointer;color:var(--s500);transition:all .15s;display:flex;}
-.nb-btn:hover{background:var(--g100);color:var(--g700);}
-.ndot{position:absolute;top:-4px;right:-4px;width:17px;height:17px;background:var(--red);color:#fff;border-radius:50%;font-size:.55rem;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;}
-.ndd{display:none;position:absolute;top:calc(100% + .5rem);right:0;width:280px;background:#fff;border:1.5px solid var(--s200);border-radius:.875rem;box-shadow:0 12px 40px rgba(0,0,0,.12);z-index:500;overflow:hidden;}
-.ndd.open{display:block;animation:popIn .2s ease;}
-.ndh{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid var(--s100);font-weight:700;font-size:.88rem;}
-.ndc{background:none;border:none;font-size:.72rem;color:var(--s500);cursor:pointer;font-family:'DM Sans',sans-serif;}
-.ndi{padding:.625rem 1rem;border-bottom:1px solid var(--s100);font-size:.82rem;}
-.ndt{color:var(--s900);font-weight:600;}
-.ndtime{font-size:.7rem;color:var(--s500);margin-top:.15rem;}
-.nde{padding:1rem;text-align:center;font-size:.82rem;color:var(--s400);}
-.pc{flex:1;overflow-y:auto;padding:1.25rem;padding-bottom:calc(var(--nav-h) + 1.25rem);-webkit-overflow-scrolling:touch;}
-#av{animation:fadeUp .3s ease;}
+  .cat-chip.on {
+    border-color: #16a34a;
+    background: #dcfce7;
+    color: #16a34a;
+  }
 
-/* ── Bottom nav ── */
-.bn{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:#fff;border-top:2px solid var(--g100);z-index:100;align-items:stretch;}
-.bni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;color:var(--s400);transition:all .2s cubic-bezier(.34,1.4,.64,1);padding:.35rem .2rem;-webkit-tap-highlight-color:transparent;}
-.bni.on{color:var(--g600);}
-.bni.on svg{filter:drop-shadow(0 0 3px rgba(22,163,74,.35));}
-.bni:active{transform:scale(.88);}
-.bni-lbl{font-size:.62rem;font-weight:700;}
+  /* Toast Notification Styles */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+    animation: slideIn 0.3s ease-out;
+    border-left: 4px solid;
+    max-width: 350px;
+  }
 
-/* ── Cart ── */
-.cfab{display:none;position:fixed;bottom:calc(var(--nav-h) + 1rem);right:1rem;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--g700),var(--g500));border:none;cursor:pointer;box-shadow:0 6px 20px rgba(22,163,74,.4);align-items:center;justify-content:center;color:#fff;z-index:200;transition:all .2s;}
-.cfab:hover{transform:scale(1.08);}
-.cfb{position:absolute;top:-4px;right:-4px;width:20px;height:20px;background:var(--red);color:#fff;border-radius:50%;font-size:.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;}
-.cpanel{position:fixed;inset-y:0;right:-100%;width:320px;background:#fff;box-shadow:-8px 0 32px rgba(0,0,0,.12);z-index:300;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);}
-.cpanel.open{right:0;}
-.cphead{padding:1.1rem 1.25rem;border-bottom:1.5px solid var(--g100);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,var(--g700),var(--g600));color:#fff;}
-.cpt{font-size:1rem;font-weight:800;}
-.cps{font-size:.75rem;opacity:.8;margin-top:2px;}
-.cpclose{background:rgba(255,255,255,.2);border:none;width:30px;height:30px;border-radius:50%;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;}
-.cpitems{flex:1;overflow-y:auto;padding:.875rem;display:flex;flex-direction:column;gap:.5rem;}
-.cpi{display:flex;align-items:center;gap:.65rem;padding:.65rem;background:var(--g50);border:1px solid var(--g100);border-radius:.65rem;}
-.cpi-em{width:36px;height:36px;border-radius:10px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
-.cpi-name{font-size:.85rem;font-weight:700;color:var(--s900);}
-.cpi-price{font-size:.78rem;color:var(--g700);font-weight:700;}
-.cpi-moq{font-size:.68rem;color:var(--amber);font-weight:600;}
-.qc{display:flex;align-items:center;gap:.4rem;margin-left:auto;}
-.qb{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;cursor:pointer;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--g700);transition:all .15s;}
-.qb:hover{background:var(--g700);color:#fff;border-color:var(--g700);}
-.qn{font-size:.88rem;font-weight:800;min-width:20px;text-align:center;}
-.cpfoot{padding:.875rem;border-top:1.5px solid var(--g100);}
-.cptr{display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;}
-.cptl{font-size:.82rem;color:var(--s500);font-weight:600;}
-.cptv{font-size:1.15rem;font-weight:900;color:var(--g700);}
+  .toast.success {
+    border-left-color: #16a34a;
+  }
 
-/* ── Stat cards ── */
-.sr{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;margin-bottom:1.1rem;}
-.sc{background:#fff;border-radius:1rem;padding:.875rem 1rem;border:1.5px solid var(--g100);position:relative;overflow:hidden;display:flex;flex-direction:column;gap:.2rem;opacity:0;animation:fadeUp .4s cubic-bezier(.34,1.4,.64,1) forwards;}
-.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0;}
-.sc.g::before{background:linear-gradient(90deg,var(--g700),var(--g500));}
-.sc.b::before{background:linear-gradient(90deg,#2563eb,#60a5fa);}
-.sc.r::before{background:linear-gradient(90deg,#dc2626,#f87171);}
-.sc.a::before{background:linear-gradient(90deg,#d97706,#fbbf24);}
-.sc:nth-child(1){animation-delay:.04s}.sc:nth-child(2){animation-delay:.1s}.sc:nth-child(3){animation-delay:.16s}.sc:nth-child(4){animation-delay:.22s}
-.sc:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(34,197,94,.12);}
-.sc{transition:transform .2s,box-shadow .2s;}
-.sic{color:var(--s400);margin-bottom:.15rem;display:flex;}
-.sl{font-size:.68rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:.5px;}
-.sv{font-size:1.1rem;font-weight:900;color:var(--s900);letter-spacing:-.5px;animation:countUp .5s ease .3s both;}
+  .toast.error {
+    border-left-color: #dc2626;
+  }
 
-/* ── Cards ── */
-.card{background:#fff;border:1.5px solid var(--g100);border-radius:1rem;overflow:hidden;transition:transform .2s,box-shadow .2s;margin-bottom:1rem;}
-.card:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(34,197,94,.08);}
-.cp{padding:1rem 1.25rem;}
-.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;}
-.st{font-size:.9rem;font-weight:800;color:var(--s900);display:flex;align-items:center;gap:.35rem;}
-.sa{display:flex;align-items:center;gap:.2rem;font-size:.75rem;font-weight:700;color:var(--g700);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;padding:.25rem .5rem;border-radius:.4rem;transition:background .15s;}
-.sa:hover{background:var(--g50);}
-.page-title{font-size:1rem;font-weight:800;color:var(--s900);display:flex;align-items:center;gap:.4rem;margin-bottom:.875rem;}
-.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .toast.warning {
+    border-left-color: #d97706;
+  }
 
-/* ── Tables ── */
-.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.dt{width:100%;border-collapse:collapse;font-size:.85rem;}
-.dt th{padding:.55rem .75rem;text-align:left;font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.75px;color:var(--s500);border-bottom:1.5px solid var(--g100);white-space:nowrap;}
-.dt td{padding:.7rem .75rem;border-bottom:1px solid var(--g50);vertical-align:middle;}
-.dt tr:last-child td{border-bottom:none;}
-.dt tr{transition:background .12s;}
-.dt tr:hover td{background:var(--g50);}
-.dt-row{animation:fadeUp .28s ease forwards;opacity:0;}
-.dt-row:nth-child(1){animation-delay:.03s}.dt-row:nth-child(2){animation-delay:.06s}.dt-row:nth-child(3){animation-delay:.09s}.dt-row:nth-child(4){animation-delay:.12s}.dt-row:nth-child(5){animation-delay:.15s}.dt-row:nth-child(n+6){animation-delay:.18s}
+  .toast.info {
+    border-left-color: #2563eb;
+  }
 
-/* ── Empty state ── */
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:3rem 1rem;color:var(--s400);}
-.empty-ic{display:flex;opacity:.4;}
-.empty-t{font-size:.95rem;font-weight:700;color:var(--s500);}
-.empty-s{font-size:.82rem;color:var(--s400);text-align:center;}
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
 
-/* ── Reports ── */
-.rsec{background:#fff;border:1.5px solid var(--g100);border-radius:1rem;padding:1rem 1.25rem;margin-bottom:.875rem;}
-.rsec-t{font-size:.82rem;font-weight:800;color:var(--s900);margin-bottom:.875rem;display:flex;align-items:center;gap:.4rem;text-transform:uppercase;letter-spacing:.5px;}
-.rrow{display:flex;justify-content:space-between;align-items:center;padding:.55rem 0;border-bottom:1px solid var(--g50);font-size:.88rem;}
-.rrow:last-child{border-bottom:none;}
-.rrow.div{border-top:2px solid var(--g200);padding-top:.65rem;margin-top:.2rem;}
-.rl{color:var(--s600,var(--s700));}
-.rv{font-weight:700;}
-.rv.g{color:var(--g700);}
-.rv.r{color:var(--red);}
-.rv.a{color:var(--amber);}
-.pertab{padding:.5rem 1rem;border-radius:.5rem;border:1.5px solid var(--s200);background:#fff;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .15s;color:var(--s500);display:flex;align-items:center;gap:.3rem;}
-.pertab.on{background:var(--g600);border-color:var(--g600);color:#fff;}
-.pertab.locked{opacity:.65;cursor:default;}
-.rep-period-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.1rem;}
+  /* Spinner Styles */
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
 
-/* ── Marketplace ── */
-.fps{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.fp{padding:.45rem .875rem;border-radius:20px;border:1.5px solid var(--s200);background:#fff;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;color:var(--s500);transition:all .15s;white-space:nowrap;}
-.fp.on{background:var(--g600);border-color:var(--g600);color:#fff;}
-.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;margin-bottom:1rem;}
-.pcard{background:#fff;border:1.5px solid var(--g100);border-radius:.875rem;padding:.875rem;display:flex;flex-direction:column;gap:.35rem;position:relative;opacity:0;animation:fadeUp .35s ease forwards;transition:all .22s cubic-bezier(.4,0,.2,1);}
-.pcard:hover{transform:translateY(-4px);box-shadow:0 10px 28px rgba(22,163,74,.15);border-color:var(--g400);}
-.pcard.in{border-color:var(--g600);background:var(--g50);}
-.sbadge{position:absolute;top:.5rem;right:.5rem;font-size:.62rem;font-weight:700;display:flex;align-items:center;gap:.2rem;}
-.s-ok{color:var(--g700)}.s-low{color:var(--amber)}.s-out{color:var(--red)}
-.ppla{font-size:1.75rem;line-height:1;}
-.pcat{font-size:.62rem;font-weight:700;color:var(--s400);text-transform:uppercase;letter-spacing:.5px;}
-.pname{font-size:.88rem;font-weight:800;color:var(--s900);line-height:1.3;}
-.punit{font-size:.72rem;color:var(--s500);}
-.pmoq{font-size:.68rem;color:var(--amber);font-weight:700;display:flex;align-items:center;gap:.2rem;}
-.pfoot{display:flex;align-items:center;justify-content:space-between;margin-top:.25rem;}
-.pprice{font-size:.88rem;font-weight:900;color:var(--g700);}
-.adbtn{width:28px;height:28px;border-radius:50%;background:var(--g700);border:none;color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s cubic-bezier(.34,1.56,.64,1);}
-.adbtn:hover{transform:scale(1.15);box-shadow:0 4px 12px rgba(22,163,74,.4);}
-.adbtn:active{transform:scale(.9);}
+  .spinner-dark {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(34, 197, 94, 0.2);
+    border-top-color: #16a34a;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
 
-/* ── POS ── */
-.pos-tabs{display:flex;gap:.35rem;background:var(--s100);padding:4px;border-radius:.75rem;border:1px solid var(--s200);margin-bottom:1.25rem;}
-.pos-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.75rem .5rem;border:none;background:none;border-radius:.6rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700;color:var(--s500);transition:all .2s;min-height:52px;}
-.pos-tab.on{background:#fff;color:var(--g600);box-shadow:0 2px 10px rgba(22,163,74,.12);}
-.pos-form-card{background:#fff;border:2px solid var(--g100);border-radius:1rem;padding:1.25rem;margin-bottom:1rem;}
-.pos-fields{display:flex;flex-direction:column;gap:.875rem;margin-bottom:1rem;}
-.pos-3col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;}
-.pos-input{font-size:1rem!important;}
-.pos-num{font-size:1.2rem!important;font-weight:800!important;text-align:center!important;}
-.pos-sell{border-color:var(--g400)!important;}
-.pos-running-total{text-align:center;padding:1rem;margin-bottom:1rem;background:linear-gradient(135deg,var(--g50),#f0fff4);border-radius:.875rem;border:2px solid var(--g100);}
-.pos-total-label{font-size:.62rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:1px;margin-bottom:.25rem;}
-.pos-total-val{font-size:2rem;font-weight:900;color:var(--g700);letter-spacing:-1px;transition:color .3s;}
-.pos-calc-bar{display:flex;align-items:center;gap:.5rem;background:var(--g50);border:1.5px solid var(--g100);border-radius:.65rem;padding:.75rem 1rem;margin-bottom:1rem;animation:popIn .2s ease;}
-.calc-item{display:flex;flex-direction:column;align-items:center;flex:1;font-size:.7rem;gap:.2rem;}
-.calc-item span{color:var(--s500);}
-.calc-item strong{font-size:.92rem;font-weight:800;}
-.calc-divider{width:1px;height:30px;background:var(--s200);}
-.pos-rec-btn{width:100%;padding:1rem;border:none;border-radius:.875rem;font-family:'DM Sans',sans-serif;font-size:.98rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .2s;min-height:56px;}
-.pos-rec-green{background:linear-gradient(135deg,var(--g700),var(--g500));color:#fff;box-shadow:0 6px 20px rgba(22,163,74,.3);}
-.pos-rec-green:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(22,163,74,.4);}
-.pos-rec-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;box-shadow:0 6px 20px rgba(220,38,38,.2);}
-.pos-rec-red:hover{transform:translateY(-2px);}
-.pos-rec-btn:active{transform:scale(.97)!important;}
-.pos-meta-row{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;}
-.pos-tx-count{font-size:.8rem;color:var(--s500);display:flex;align-items:center;gap:.3rem;}
-.quick-prods-wrap{margin-bottom:1.1rem;}
-.quick-label{font-size:.65rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;display:flex;align-items:center;gap:.3rem;}
-.quick-prods-scroll{display:flex;gap:.5rem;overflow-x:auto;padding-bottom:.25rem;-webkit-overflow-scrolling:touch;}
-.quick-prods-scroll::-webkit-scrollbar{display:none;}
-.quick-prod-btn{flex-shrink:0;background:#fff;border:1.5px solid var(--g100);border-radius:.65rem;padding:.55rem .875rem;cursor:pointer;text-align:center;min-width:88px;transition:all .2s;font-family:'DM Sans',sans-serif;}
-.quick-prod-btn:hover,.quick-prod-btn.qp-active{border-color:var(--g600);background:var(--g50);transform:translateY(-2px);box-shadow:0 4px 12px rgba(22,163,74,.18);}
-.add-qp{border-style:dashed;color:var(--s500);}
-.qp-name{font-size:.8rem;font-weight:700;color:var(--s900);margin-bottom:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;}
-.qp-price{font-size:.7rem;color:var(--g700);font-weight:700;}
-.quick-add-first{width:100%;padding:.75rem;border:2px dashed var(--g200);border-radius:.75rem;background:var(--g50);color:var(--g700);font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:1rem;transition:all .2s;}
-.quick-add-first:hover{background:var(--g100);border-color:var(--g600);}
-.offline-banner{background:linear-gradient(135deg,var(--ambl),#fef9c3);border:1.5px solid #fde68a;border-radius:.875rem;padding:.8rem 1.1rem;margin-bottom:1rem;font-size:.88rem;font-weight:700;color:#92400e;display:flex;align-items:center;gap:.5rem;}
-.offline-pill{background:var(--ambl);color:var(--amber);font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;cursor:pointer;display:inline-flex;align-items:center;gap:.3rem;}
-.row-danger td{background:#fff5f5!important;}
-.row-warn td{background:#fffbeb!important;}
-.offline-row{background:#fffbeb!important;}
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 
-/* ── Stock alerts ── */
-.stock-badge{display:inline-flex;align-items:center;gap:.25rem;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:.25rem;}
-.stock-badge.out{background:var(--redl);color:var(--red);}
-.stock-badge.low{background:var(--ambl);color:var(--amber);}
-.reorder-btn{display:inline-flex;align-items:center;gap:.3rem;background:var(--g700);color:#fff;border:none;padding:.4rem .875rem;border-radius:.5rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;animation:pulse-slow 2s infinite;}
-.reorder-btn:hover{background:var(--g900);animation:none;transform:scale(1.02);}
-.sedit{display:flex;align-items:center;gap:.4rem;}
-.sedit input{width:65px;padding:5px 8px;border:1.5px solid var(--s300);border-radius:.5rem;font-family:'DM Sans',sans-serif;font-size:.88rem;}
+  /* Sidebar Transition */
+  .sidebar-transition {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 
-/* ── Upgrade modal ── */
-.upgrade-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;transition:opacity .2s;backdrop-filter:blur(4px);}
-.upgrade-overlay.show{opacity:1;}
-.upgrade-modal{background:#fff;border-radius:1.25rem;padding:2rem;max-width:360px;width:100%;text-align:center;animation:popIn .3s cubic-bezier(.34,1.4,.64,1);}
-.upgrade-icon{display:flex;justify-content:center;color:var(--amber);margin-bottom:.875rem;}
-.upgrade-title{font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:800;margin-bottom:.25rem;}
-.upgrade-feature{background:var(--g50);border:1px solid var(--g100);border-radius:.5rem;padding:.45rem 1rem;font-size:.85rem;font-weight:700;color:var(--g700);margin:.75rem 0;}
-.upgrade-desc{font-size:.82rem;color:var(--s500);line-height:1.6;margin-bottom:.65rem;}
-.upgrade-price{font-size:1.35rem;font-weight:900;color:var(--g700);margin-bottom:1.25rem;}
-.upgrade-actions{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;}
+  /* Card Hover Effects */
+  .card-hover {
+    transition: all 0.2s ease;
+  }
 
-/* ── Subscription page ── */
-.sub-current{background:linear-gradient(135deg,var(--g700),var(--g500));border-radius:1rem;padding:1.25rem 1.5rem;margin-bottom:1.5rem;color:#fff;text-align:center;}
-.sub-cur-label{font-size:.65rem;font-weight:700;opacity:.8;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:.3rem;}
-.sub-cur-plan{font-family:'Sora',sans-serif;font-size:1.75rem;font-weight:800;margin-bottom:.2rem;}
-.sub-cur-price{font-size:.88rem;opacity:.85;}
-.sub-plans{display:flex;flex-direction:column;gap:.875rem;margin-bottom:1.5rem;}
-.sub-plan-card{background:#fff;border:2px solid var(--s200);border-radius:1rem;padding:1.25rem;position:relative;transition:all .2s;opacity:0;animation:fadeUp .35s ease forwards;}
-.sub-plan-card:nth-child(1){animation-delay:.05s}
-.sub-plan-card:nth-child(2){animation-delay:.12s}
-.sub-plan-card:nth-child(3){animation-delay:.19s}
-.sub-plan-card.current{border-color:var(--g600);box-shadow:0 4px 20px rgba(22,163,74,.12);}
-.sub-plan-card.popular{border-color:var(--amber);}
-.sub-popular-badge{display:inline-flex;align-items:center;gap:.3rem;background:var(--amber);color:#fff;font-size:.62rem;font-weight:800;padding:3px 10px;border-radius:20px;margin-bottom:.65rem;}
-.sub-plan-name{font-size:.75rem;font-weight:800;color:var(--s500);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;}
-.sub-plan-price{font-family:'Sora',sans-serif;font-size:1.5rem;font-weight:800;color:var(--s900);margin-bottom:.875rem;line-height:1;}
-.sub-plan-price span{font-size:.72rem;color:var(--s500);font-weight:600;font-family:'DM Sans',sans-serif;}
-.sub-plan-features{margin-bottom:.875rem;}
-.sub-feat{display:flex;align-items:flex-start;gap:.4rem;font-size:.78rem;color:var(--s700);margin-bottom:.3rem;line-height:1.4;}
-.sub-feat-icon{flex-shrink:0;margin-top:1px;}
-.sub-feat-icon.yes{color:var(--g600);}
-.sub-feat-icon.no{color:var(--s300);}
-.sub-plan-btn{width:100%;padding:.75rem;border-radius:.65rem;border:2px solid var(--s200);background:#fff;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:800;cursor:pointer;transition:all .2s;color:var(--s700);}
-.sub-plan-btn:hover:not(.current-btn){border-color:var(--g600);color:var(--g600);transform:translateY(-1px);}
-.sub-plan-btn.current-btn{background:var(--g50);border-color:var(--g600);color:var(--g700);cursor:default;}
-.sub-plan-btn.pro-btn{background:linear-gradient(135deg,var(--g700),var(--g500));border:none;color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.3);}
-.sub-coming-soon{background:var(--b50);border:1px solid var(--b100);border-radius:1rem;padding:1rem 1.25rem;font-size:.82rem;color:var(--b900);line-height:1.6;display:flex;gap:.5rem;align-items:flex-start;}
-.trial-banner{background:linear-gradient(135deg,#d97706,#f59e0b);border-radius:1rem;padding:.875rem 1.25rem;margin-bottom:1rem;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:.75rem;font-size:.88rem;font-weight:700;}
-.trial-banner.big{padding:1.1rem 1.5rem;}
-.trial-btn{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);color:#fff;padding:.4rem .875rem;border-radius:.45rem;font-size:.78rem;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;}
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
 
-/* ── Locked page ── */
-.locked-page{text-align:center;padding:4rem 1.5rem;display:flex;flex-direction:column;align-items:center;gap:.875rem;}
-.locked-page-icon{color:var(--amber);opacity:.8;}
-.locked-page-title{font-family:'Sora',sans-serif;font-size:1.2rem;font-weight:800;}
-.locked-page-sub{font-size:.88rem;color:var(--s500);max-width:280px;line-height:1.65;}
-.locked-page-price{font-size:1.4rem;font-weight:900;color:var(--g700);}
+  /* Button Hover Effects */
+  .btn-hover {
+    transition: all 0.2s ease;
+  }
 
-/* ── Supervisor ── */
-.sup-hero{display:flex;align-items:center;gap:1rem;background:linear-gradient(135deg,var(--g700),var(--g500));border-radius:1rem;padding:1.25rem;margin-bottom:1.25rem;color:#fff;}
-.sup-hero-icon{display:flex;flex-shrink:0;}
-.sup-hero-title{font-size:1rem;font-weight:800;margin-bottom:.2rem;}
-.sup-hero-sub{font-size:.78rem;color:rgba(255,255,255,.8);line-height:1.5;}
-.sup-card{display:flex;align-items:center;gap:.875rem;background:#fff;border:1.5px solid var(--g100);border-radius:1rem;padding:1rem;margin-bottom:.75rem;transition:all .2s;}
-.sup-card:hover{border-color:var(--g400);box-shadow:0 4px 16px rgba(22,163,74,.1);}
-.sup-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--g600),var(--g500));color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;flex-shrink:0;}
-.sup-info{flex:1;}
-.sup-name{font-size:.95rem;font-weight:800;}
-.sup-phone{font-size:.78rem;color:var(--s500);margin-top:.1rem;}
-.sup-access{font-size:.75rem;margin-top:.2rem;display:flex;align-items:center;gap:.25rem;}
-.sup-dash-header{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,var(--g900),var(--g700));border-radius:1rem;padding:1.1rem 1.25rem;margin-bottom:1.1rem;color:#fff;}
-.sup-dash-biz{display:flex;align-items:center;gap:.875rem;}
-.sup-dash-avatar{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;}
-.sup-dash-name{font-size:.95rem;font-weight:800;}
-.sup-dash-role{font-size:.72rem;color:rgba(255,255,255,.75);margin-top:.15rem;}
+  .btn-hover:active {
+    transform: scale(0.97);
+  }
 
-/* ── Store cards ── */
-.store-card{display:flex;align-items:center;gap:.875rem;background:#fff;border:2px solid var(--s200);border-radius:1rem;padding:1.1rem;margin-bottom:.875rem;transition:all .2s;}
-.store-card.active{border-color:var(--g600);background:var(--g50);}
-.store-card-icon{width:44px;height:44px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;color:var(--g700);flex-shrink:0;}
-.store-card-info{flex:1;}
-.store-card-name{font-size:.92rem;font-weight:800;display:flex;align-items:center;gap:.3rem;}
-.store-card-sub{font-size:.78rem;color:var(--s500);margin-top:.15rem;}
-.store-card-actions{display:flex;align-items:center;gap:.4rem;}
-.active-badge{background:var(--g100);color:var(--g700);font-size:.62rem;font-weight:800;padding:3px 10px;border-radius:20px;}
-.add-store-card{border:2px dashed var(--g300)!important;cursor:pointer;transition:all .2s;}
-.add-store-card:hover{border-color:var(--g600)!important;background:var(--g50);}
-.add-store-inner{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:1.25rem;color:var(--g700);font-weight:700;}
-.primary-check{display:flex;align-items:center;gap:.65rem;cursor:pointer;padding:.65rem;background:var(--g50);border-radius:.65rem;border:1.5px solid var(--g100);font-size:.9rem;font-weight:600;}
-.primary-check input{width:18px;height:18px;accent-color:var(--g700);}
+  /* Mobile Optimizations */
+  @media (max-width: 768px) {
+    .otp-input {
+      width: 44px;
+      height: 52px;
+      font-size: 20px;
+    }
+    
+    .pin-key {
+      width: 60px;
+      height: 60px;
+      font-size: 20px;
+    }
 
-/* ── Debt card ── */
-.debt-card{background:#fff;border-radius:1rem;padding:1.1rem;margin-bottom:.875rem;transition:transform .2s;}
-.debt-card:hover{transform:translateX(2px);}
-.debt-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;}
-.debt-progress{height:5px;background:var(--s100);border-radius:3px;margin:.5rem 0;overflow:hidden;}
-.debt-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--g700),var(--g500));transition:width .8s ease;}
-.debt-amounts{display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.65rem;}
-.debt-actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;}
+    .toast {
+      max-width: calc(100vw - 40px);
+      bottom: 80px;
+    }
+  }
 
-/* ── Reports KPIs ── */
-.rep-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;margin-bottom:1.1rem;}
-.rep-kpi{background:#fff;border-radius:1rem;padding:1rem;border:1.5px solid var(--g100);opacity:0;animation:fadeUp .4s ease forwards;}
-.rep-kpi:nth-child(1){animation-delay:.05s}.rep-kpi:nth-child(2){animation-delay:.1s}.rep-kpi:nth-child(3){animation-delay:.15s}.rep-kpi:nth-child(4){animation-delay:.2s}
-.rep-kpi.green{border-left:4px solid var(--g600);}
-.rep-kpi.red{border-left:4px solid var(--red);}
-.rep-kpi-label{font-size:.62rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:.75px;margin-bottom:.3rem;}
-.rep-kpi-val{font-size:1.2rem;font-weight:900;color:var(--s900);line-height:1;margin-bottom:.2rem;}
-.rep-kpi-sub{font-size:.7rem;color:var(--s500);}
-.top-prod-row{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.875rem;}
-.top-prod-rank{width:22px;height:22px;border-radius:50%;background:var(--g100);color:var(--g700);font-size:.7rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.15rem;}
-.top-prod-info{flex:1;}
-.top-prod-name{font-size:.88rem;font-weight:700;margin-bottom:.3rem;}
-.top-prod-bar-wrap{height:6px;background:var(--g100);border-radius:3px;overflow:hidden;margin-bottom:.2rem;}
-.top-prod-bar{height:100%;border-radius:3px;transition:width 1s cubic-bezier(.4,0,.2,1) .3s;}
-.top-prod-meta{display:flex;gap:.75rem;font-size:.72rem;flex-wrap:wrap;}
-.cat-bar-row{display:grid;grid-template-columns:90px 1fr;gap:.5rem;align-items:center;margin-bottom:.65rem;font-size:.82rem;}
-.cat-bar-label{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cat-bar-track{height:7px;background:var(--g100);border-radius:3px;overflow:hidden;}
-.cat-bar-fill{height:100%;background:linear-gradient(90deg,var(--g700),var(--g500));border-radius:3px;transition:width 1s cubic-bezier(.4,0,.2,1) .3s;}
-.trend-wrap{display:flex;align-items:flex-end;gap:3px;height:90px;overflow-x:auto;padding:.5rem 0;}
-.trend-wrap::-webkit-scrollbar{display:none;}
-.trend-col{display:flex;flex-direction:column;align-items:center;gap:.2rem;min-width:26px;}
-.trend-bar{background:linear-gradient(to top,var(--g700),var(--g500));border-radius:3px 3px 0 0;width:18px;transition:height .8s ease;}
-.trend-label{font-size:.52rem;color:var(--s500);white-space:nowrap;}
-.locked-section{border:2px dashed var(--s200);background:var(--s100);border-radius:1rem;padding:1.25rem;display:flex;align-items:center;justify-content:center;margin-bottom:.875rem;}
-.locked-content{display:flex;align-items:center;gap:.5rem;color:var(--s500);font-size:.85rem;flex-wrap:wrap;justify-content:center;}
-.limit-badge{background:var(--ambl);color:var(--amber);font-size:.65rem;font-weight:800;padding:2px 8px;border-radius:20px;}
+  @media (max-width: 480px) {
+    .otp-input {
+      width: 40px;
+      height: 48px;
+      font-size: 18px;
+    }
+    
+    .pin-key {
+      width: 55px;
+      height: 55px;
+      font-size: 18px;
+    }
+  }
 
-/* ── Dashboard specific ── */
-.dash-top-card{margin-bottom:1rem;}
-.top-row{display:grid;grid-template-columns:1fr 3fr auto;gap:.5rem;align-items:center;margin-bottom:.6rem;}
-.top-name{font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.top-bar-wrap{height:6px;background:var(--g100);border-radius:3px;overflow:hidden;}
-.top-bar-fill{height:100%;background:linear-gradient(90deg,var(--g700),var(--g500));border-radius:3px;transition:width 1s ease .3s;}
-.top-rev{font-size:.75rem;font-weight:700;color:var(--g700);white-space:nowrap;}
-.store-switch-bar{display:flex;align-items:center;gap:.5rem;background:var(--g50);border:1px solid var(--g100);border-radius:.65rem;padding:.6rem 1rem;margin-bottom:1rem;font-size:.85rem;}
-.store-switch-bar strong{color:var(--g700);}
-.store-switch-bar button{margin-left:auto;background:none;border:1px solid var(--g400);color:var(--g700);padding:.3rem .75rem;border-radius:.4rem;font-size:.72rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:.25rem;transition:all .15s;}
-.store-switch-bar button:hover{background:var(--g700);color:#fff;border-color:var(--g700);}
+  /* Print Styles for Receipts */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    
+    body {
+      background: white;
+      padding: 20px;
+    }
 
-/* ── Toast ── */
-#twrap{position:fixed;bottom:calc(var(--nav-h) + .75rem);right:1rem;display:flex;flex-direction:column;gap:.4rem;z-index:1001;pointer-events:none;}
-.toast{display:flex;align-items:center;gap:.65rem;padding:.7rem 1rem;background:#fff;border:1px solid var(--s200);border-radius:.75rem;box-shadow:0 4px 20px rgba(0,0,0,.1);font-size:.82rem;font-weight:600;max-width:290px;animation:slideDown .3s cubic-bezier(.34,1.4,.64,1);transition:opacity .3s;}
-.toast.s{border-left:3px solid var(--g600);}
-.toast.e{border-left:3px solid var(--red);}
-.toast.i{border-left:3px solid #2563eb;}
-.toast.w{border-left:3px solid var(--amber);}
-.toast-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;flex-shrink:0;color:#fff;}
-.toast.s .toast-icon{background:var(--g600);}
-.toast.e .toast-icon{background:var(--red);}
-.toast.i .toast-icon{background:#2563eb;}
-.toast.w .toast-icon{background:var(--amber);}
+    .receipt {
+      box-shadow: none;
+      border: 1px solid #e5e7eb;
+    }
+  }
 
-/* ── Sync badge ── */
-#sync-badge{display:none;align-items:center;}
-.sync-pill{font-size:.7rem;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:.25rem;}
-.sync-pill.offline{background:var(--ambl);color:var(--amber);}
-.sync-pill.sync{background:var(--b700);color:#fff;cursor:pointer;}
+  /* Loading Skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+  }
 
-/* ── Dev OTP banner ── */
-#dev-otp-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1d4ed8,#2563eb);transform:translateY(-100%);transition:transform .4s cubic-bezier(.34,1.4,.64,1);box-shadow:0 4px 24px rgba(0,0,0,.25);}
-#dev-otp-banner.show{transform:translateY(0);}
-.dev-otp-inner{display:flex;align-items:center;justify-content:space-between;padding:.875rem 1.25rem;gap:1rem;flex-wrap:wrap;}
-.dev-otp-label{font-size:.68rem;font-weight:700;color:rgba(255,255,255,.8);margin-bottom:.2rem;}
-.dev-otp-code{font-size:1.75rem;font-weight:900;letter-spacing:6px;font-family:'DM Sans',sans-serif;color:#fff;}
-.dev-otp-actions{display:flex;gap:.4rem;align-items:center;}
-.dev-otp-btn{background:rgba(255,255,255,.9);border:none;color:#1d4ed8;padding:.5rem 1rem;border-radius:.5rem;font-size:.82rem;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:.3rem;}
-.dev-otp-close{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;width:32px;height:32px;border-radius:.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
 
-/* ── Spinner ── */
-.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:rot .7s linear infinite;}
-.spin.d{border-color:rgba(22,163,74,.2);border-top-color:var(--g700);}
-.page-loading{display:flex;align-items:center;justify-content:center;gap:.75rem;height:220px;color:var(--s500);font-size:.95rem;}
-@keyframes rot{to{transform:rotate(360deg)}}
+  /* Status Badge Styles */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
 
-/* ── Receipt ── */
-.receipt{background:#fff;border:1px solid var(--s200);border-radius:1rem;padding:1.5rem;max-width:500px;margin:0 auto;}
-.receipt-logo{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;}
-.receipt-logo img{width:36px;height:36px;border-radius:8px;object-fit:contain;}
-.receipt-logo-name{font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:800;color:var(--g700);}
-.receipt-title{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--s500);text-align:center;margin-bottom:.25rem;}
-.receipt-ref{font-size:.78rem;color:var(--s500);text-align:center;margin-bottom:1rem;}
-.receipt-parties{display:grid;grid-template-columns:1fr 1fr;gap:1rem;background:var(--s50);border-radius:.65rem;padding:.875rem;margin-bottom:1rem;}
-.rp-lbl{font-size:.62rem;font-weight:700;color:var(--s400);text-transform:uppercase;letter-spacing:.75px;margin-bottom:.2rem;}
-.rp-name{font-size:.88rem;font-weight:800;color:var(--s900);}
-.rp-info{font-size:.75rem;color:var(--s500);}
-.ri{display:flex;justify-content:space-between;align-items:flex-start;padding:.55rem 0;border-bottom:1px solid var(--s100);}
-.ri-name{font-size:.88rem;font-weight:700;}
-.ri-qty{font-size:.75rem;color:var(--s500);}
-.ri-price{font-size:.88rem;font-weight:800;color:var(--g700);}
-.rtotal{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:.875rem;border-top:2px solid var(--g200);}
-.rtl{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--s700);}
-.rtv{font-family:'Sora',sans-serif;font-size:1.3rem;font-weight:800;color:var(--g700);}
-.rfoot{text-align:center;font-size:.72rem;color:var(--s400);margin-top:1rem;padding-top:.875rem;border-top:1px solid var(--s100);}
+  .status-pending {
+    background: #fef3c7;
+    color: #d97706;
+  }
 
-/* ── Action bar ── */
-.action-bar{display:flex;gap:.65rem;flex-wrap:wrap;margin-bottom:1rem;}
-.share-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.65rem 1.1rem;border-radius:.65rem;border:none;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;}
-.share-btn.pdf{background:var(--g700);color:#fff;}
-.share-btn.pdf:hover{background:var(--g900);}
-.share-btn.wa{background:#25d366;color:#fff;}
-.share-btn.wa:hover{background:#128c7e;}
+  .status-confirmed {
+    background: #dbeafe;
+    color: #2563eb;
+  }
 
-/* ── Responsive ── */
-@media(max-width:768px){
-  :root{--sidebar-w:260px;}
-  .sidebar{transform:translateX(-100%);}
-  .main-content{margin-left:0;}
-  .hbg{display:flex;}
-  .bn{display:flex;}
-  .cfab{display:flex;}
-  #twrap{bottom:calc(var(--nav-h) + .5rem);}
-  .sub-plans{grid-template-columns:1fr;}
-  .pos-3col{grid-template-columns:1fr 1fr;}
-  .rep-kpis{grid-template-columns:repeat(2,1fr);}
-  .sr{grid-template-columns:repeat(2,1fr);}
-  .fr{grid-template-columns:1fr 1fr;}
-  .pgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));}
-  .dev-otp-code{font-size:1.4rem;letter-spacing:4px;}
-  .ob-left{display:none;}
-  .otp-row{gap:.3rem;}
-  .ob{width:42px;height:48px;}
-  .pc{padding:1rem;padding-bottom:calc(var(--nav-h)+1rem);}
-}
-@media(max-width:480px){
-  .pos-3col{grid-template-columns:1fr;}
-  .fr3{grid-template-columns:1fr 1fr;}
-  .pgrid{grid-template-columns:repeat(2,1fr);}
-  .rep-kpis{grid-template-columns:1fr 1fr;}
-  .upgrade-actions{grid-template-columns:1fr;}
-  .otp-row{gap:.25rem;}
-  .ob{width:38px;height:46px;font-size:1.2rem;}
-}
+  .status-delivered {
+    background: #dcfce7;
+    color: #16a34a;
+  }
 
-/* ── Onboarding Hero Image ── */
-.ob-hero-wrap{position:relative;width:100%;height:200px;overflow:hidden;flex-shrink:0;}
-.ob-hero-img{position:absolute;inset:0;background-size:cover;background-position:center 30%;filter:brightness(.55) saturate(1.15);}
-.ob-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,76,31,.3) 0%,rgba(15,23,42,.15) 40%,rgba(15,23,42,.75) 85%,rgba(15,23,42,.95) 100%);}
-.ob-hero-content{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:.875rem 1.1rem 1rem;}
-.ob-hero-brand{display:flex;align-items:center;gap:.5rem;}
-.ob-hero-logo{width:28px;height:28px;border-radius:7px;object-fit:contain;background:rgba(255,255,255,.12);padding:2px;}
-.ob-hero-logo-name{font-family:'Sora',sans-serif;font-size:.88rem;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:.3px;}
-.ob-hero-center{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.35rem;padding:.25rem 0;text-align:center;}
-.ob-tw-line{font-family:'Sora',sans-serif;font-size:1.45rem;font-weight:900;color:#ffffff;line-height:1.15;text-shadow:0 2px 20px rgba(0,0,0,.7);overflow:hidden;white-space:nowrap;border-right:2px solid rgba(255,255,255,.0);min-height:1.75rem;text-align:center;}
-.ob-tw-line2{color:#0f172a;font-size:1.1rem;font-weight:800;background:rgba(255,255,255,.88);padding:4px 14px;border-radius:20px;backdrop-filter:blur(4px);border-right:2px solid rgba(15,23,42,.0);text-align:center;}
-.ob-tw-line.typing{border-right-color:rgba(255,255,255,.75);animation:blink-cursor .7s step-end infinite;}
-.ob-tw-line2.typing{border-right-color:rgba(74,222,128,.85);}
-@keyframes blink-cursor{0%,100%{border-right-color:rgba(255,255,255,.75)}50%{border-right-color:transparent}}
-.ob-tw-line2.typing{animation:blink-cursor2 .7s step-end infinite;}
-@keyframes blink-cursor2{0%,100%{border-right-color:rgba(15,23,42,.85)}50%{border-right-color:transparent}}
-.ob-hero-pills{display:flex;gap:.4rem;flex-wrap:wrap;}
-.ob-hero-pill{padding:3px 10px;border-radius:20px;font-size:.62rem;font-weight:700;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(6px);}
-@media(min-width:500px){
-  .ob-hero-wrap{height:220px;}
-  .ob-tw-line{font-size:1.6rem;}
-  .ob-tw-line2{font-size:1.35rem;}
-}
+  .status-cancelled {
+    background: #fee2e2;
+    color: #dc2626;
+  }
 
-@media print{
-  #app-main>aside,.topbar,.bn,.cfab,.no-print,#twrap,#dev-otp-banner{display:none!important;}
-  .main-content{margin-left:0;}
-  .pc{padding:0;}
-}
+  /* Progress Bar */
+  .progress-bar {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+
+  /* Form Focus Effects */
+  .form-input:focus {
+    outline: none;
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  /* Offline Banner */
+  .offline-banner {
+    background: #fef3c7;
+    color: #d97706;
+    padding: 12px 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* Cart Panel */
+  .cart-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 400px;
+    background: white;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 200;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cart-panel.open {
+    transform: translateX(0);
+  }
+
+  @media (min-width: 768px) {
+    .cart-panel {
+      width: 400px;
+    }
+  }
+
+  /* History Items */
+  .history-item {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+  }
+
+  .history-item:hover {
+    background: #f3f4f6;
+    transform: translateX(4px);
+  }
+
+  .history-item.sale {
+    border-left: 4px solid #16a34a;
+  }
+
+  .history-item.expense {
+    border-left: 4px solid #dc2626;
+  }
+
+  /* Stat Cards */
+  .stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border-color: #16a34a;
+  }
+
+  /* Product Cards */
+  .product-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    border-color: #16a34a;
+  }
+
+  /* Tabs */
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #6b7280;
+  }
+
+  .tab.active {
+    background: white;
+    color: #16a34a;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  /* Calculator Card */
+  .calc-card {
+    background: linear-gradient(135deg, #f0fdf4, #e6f7ec);
+    border-radius: 16px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+
+  .calc-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(34, 197, 94, 0.2);
+  }
+
+  .calc-row:last-child {
+    border-bottom: none;
+  }
+
+  /* Button Styles */
+  .btn-primary {
+    background: #16a34a;
+    color: white;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-primary:hover {
+    background: #15803d;
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: #f3f4f6;
+    color: #1f2937;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-secondary:hover {
+    background: #e5e7eb;
+  }
+
+  .btn-danger {
+    background: #dc2626;
+    color: white;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-danger:hover {
+    background: #b91c1c;
+  }
 </style>
 </head>
-<body class="h-full bg-g-50">
+<body class="bg-gray-50 font-sans text-gray-900 antialiased">
 
-<!-- ══ ONBOARDING ══════════════════════════════════════════ -->
-<div id="onboarding">
-  <!-- Left panel — desktop only -->
-  <div class="ob-left hidden md:flex flex-col justify-between w-[440px] flex-shrink-0 relative overflow-hidden">
-    <div class="ob-bg"></div>
-    <div class="ob-overlay"></div>
-    <!-- Brand -->
-    <div class="relative z-10 p-10 pb-0">
-      <div class="flex items-center gap-3 mb-2">
-        <img src="logo.jpg" class="w-12 h-12 rounded-xl object-contain bg-white/10 p-1" onerror="this.style.display='none'" alt="BomaWave"/>
-        <span class="font-display text-3xl font-bold text-white" style="font-family:'Sora',sans-serif">BomaWave</span>
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- ONBOARDING SCREEN (Registration & Login) - 100% Complete -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div id="onboarding" class="fixed inset-0 z-50 flex bg-gray-900">
+  
+  <!-- Left Side - Branding Area (Desktop Only) -->
+  <div class="hidden lg:flex lg:w-2/5 relative overflow-hidden">
+    <!-- Background Image -->
+    <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800'); filter: brightness(0.35);"></div>
+    
+    <!-- Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/50 to-gray-900/90"></div>
+    
+    <!-- Content -->
+    <div class="relative z-10 flex flex-col justify-between p-8 text-white h-full">
+      <!-- Logo -->
+      <div>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M8 7h8M8 12h8M8 17h5"/>
+            </svg>
+          </div>
+          <span class="text-2xl font-bold tracking-tight">BomaWave</span>
+        </div>
+        <p class="text-xs uppercase tracking-wider text-gray-400 mb-2 font-semibold">FMCG Platform · Tanzania</p>
       </div>
-      <p class="text-[.62rem] font-bold tracking-[3px] uppercase text-white/40">FMCG · Tanzania</p>
+      
+      <!-- Hero Text -->
+      <div class="py-8">
+        <h1 class="text-4xl font-bold mb-4 leading-tight">Bidhaa haraka,<br><span class="text-primary-light">faida zaidi.</span></h1>
+        <p class="text-gray-300 text-sm leading-relaxed">Platform ya FMCG iliyoundwa kwa Tanzania — real-time, rahisi, ya kuaminika kwa wafanyabiashara wote.</p>
+      </div>
+      
+      <!-- Features Pills -->
+      <div class="flex gap-2 flex-wrap mb-8">
+        <span class="px-3 py-1 bg-white/10 rounded-full text-xs font-medium backdrop-blur-sm">⚡ Real-time</span>
+        <span class="px-3 py-1 bg-white/10 rounded-full text-xs font-medium backdrop-blur-sm">🇹🇿 Made for Tanzania</span>
+        <span class="px-3 py-1 bg-white/10 rounded-full text-xs font-medium backdrop-blur-sm">📱 Mobile First</span>
+        <span class="px-3 py-1 bg-white/10 rounded-full text-xs font-medium backdrop-blur-sm">🔒 Secure</span>
+        <span class="px-3 py-1 bg-white/10 rounded-full text-xs font-medium backdrop-blur-sm">💼 Business Ready</span>
+      </div>
+      
+      <!-- Footer -->
+      <p class="text-xs text-gray-500">© 2025 BomaWave · Dar es Salaam, Tanzania</p>
     </div>
-    <!-- Hero text with typewriter -->
-    <div class="relative z-10 px-10">
-      <h1 class="text-4xl font-black text-white leading-tight mb-4" style="font-family:'Sora',sans-serif;text-shadow:0 2px 20px rgba(0,0,0,.5)">
-        Bidhaa haraka,<br>
-        <span class="text-green-400">faida zaidi.</span>
-      </h1>
-      <p class="text-sm text-white/60 leading-7">Platform ya FMCG iliyoundwa kwa Tanzania — real-time, rahisi, ya kuaminika.</p>
-    </div>
-    <!-- Pills -->
-    <div class="relative z-10 px-10 pb-2 flex flex-wrap gap-2">
-      <span class="px-3 py-1 rounded-full text-[.68rem] font-bold bg-white/10 text-white/80 border border-white/15 backdrop-blur-sm">⚡ Real-time</span>
-      <span class="px-3 py-1 rounded-full text-[.68rem] font-bold bg-white/10 text-white/80 border border-white/15 backdrop-blur-sm">🇹🇿 Tanzania</span>
-      <span class="px-3 py-1 rounded-full text-[.68rem] font-bold bg-white/10 text-white/80 border border-white/15 backdrop-blur-sm">📱 Mobile First</span>
-    </div>
-    <p class="relative z-10 px-10 pb-8 text-[.62rem] text-white/20">© 2026 BomaWave · Dar es Salaam</p>
   </div>
 
-  <!-- Right panel — form -->
-  <div class="ob-right">
-    <div class="ob-card">
-      <!-- Card header -->
-      <!-- Hero section — home.jpg full bleed with typewriter overlay -->
-      <div class="ob-hero-wrap" id="ob-hero-wrap">
-        <!-- Full bleed image -->
-        <div class="ob-hero-img" style="background-image:url('home.jpg')"></div>
-        <!-- Gradient overlay -->
-        <div class="ob-hero-overlay"></div>
-        <!-- Content -->
-        <div class="ob-hero-content">
-          <!-- Logo + name small top-left -->
-          <div class="ob-hero-brand">
-            <img src="logo.jpg" class="ob-hero-logo" alt="BomaWave" onerror="this.style.display='none'"/>
-            <span class="ob-hero-logo-name">BomaWave</span>
+  <!-- Right Side - Forms Area -->
+  <div class="flex-1 flex items-center justify-center p-4 bg-gray-50 overflow-y-auto">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+      
+      <!-- Mobile Header (Visible only on mobile) -->
+      <div class="lg:hidden bg-gradient-to-r from-primary-dark to-primary p-6 text-white">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M8 7h8M8 12h8M8 17h5"/>
+            </svg>
           </div>
-          <!-- BIG typewriter text center -->
-          <div class="ob-hero-center">
-            <div class="ob-tw-line" id="tw-line1"></div>
-            <div class="ob-tw-line ob-tw-line2" id="tw-line2"></div>
-          </div>
-          <!-- Bottom trust pills -->
-          <div class="ob-hero-pills">
-            <span class="ob-hero-pill">⚡ Real-time</span>
-            <span class="ob-hero-pill">🇹🇿 Tanzania</span>
-            <span class="ob-hero-pill">📱 Mobile First</span>
-          </div>
+          <span class="text-xl font-bold tracking-tight">BomaWave</span>
+        </div>
+        <h2 class="text-xl font-bold mb-1">Karibu BomaWave</h2>
+        <p class="text-sm text-white/70">FMCG Ordering Platform · Tanzania</p>
+        <div class="flex gap-2 mt-4 flex-wrap">
+          <span class="px-3 py-1 bg-white/20 rounded-full text-xs">⚡ Real-time</span>
+          <span class="px-3 py-1 bg-white/20 rounded-full text-xs">🇹🇿 Made for Tanzania</span>
         </div>
       </div>
-      <!-- Card body -->
-      <div class="ob-body">
-        <!-- Progress bar -->
-        <div class="mb-5">
-          <div class="flex justify-between items-center mb-1.5">
-            <span class="text-[.65rem] font-bold uppercase tracking-widest text-g-600">Hatua</span>
-            <span class="text-[.65rem] text-gray-400" id="ppct">10%</span>
-          </div>
-          <div class="prog-bar"><div class="prog-fill" id="pfill" style="width:10%"></div></div>
-        </div>
 
-        <!-- STEP 1: LANGUAGE -->
+      <!-- Progress Bar Section -->
+      <div class="px-6 pt-6">
+        <div class="flex justify-between text-xs mb-2">
+          <span class="font-semibold text-primary" id="plbl">Hatua 1</span>
+          <span class="text-gray-400" id="ppct">10%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="pfill" style="width: 10%"></div>
+        </div>
+      </div>
+
+      <!-- Steps Container -->
+      <div class="p-6">
+        
+        <!-- ==================== STEP 1: LANGUAGE SELECTION ==================== -->
         <div class="step active" id="s1">
-          <h2 class="step-h">Chagua Lugha<br><span class="text-gray-400 font-normal text-base">Select Language</span></h2>
-          <button class="lang-btn" onclick="App.setLang('sw')">
-            <span class="lang-flag">🇹🇿</span>
-            <div><div class="lang-name">Kiswahili</div><div class="lang-sub">Endelea kwa Kiswahili</div></div>
-            <svg class="ml-auto text-gray-300" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          <h2 class="text-xl font-bold mb-2">Chagua Lugha</h2>
+          <p class="text-sm text-gray-500 mb-6">Select your preferred language</p>
+          
+          <button class="w-full flex items-center gap-4 p-4 border-2 border-gray-200 rounded-xl mb-3 hover:border-primary hover:bg-primary/5 transition-all group" onclick="App.setLang('sw')">
+            <span class="text-3xl">🇹🇿</span>
+            <div class="text-left">
+              <div class="font-semibold group-hover:text-primary transition-colors">Kiswahili</div>
+              <div class="text-xs text-gray-500">Endelea kwa Kiswahili</div>
+            </div>
           </button>
-          <button class="lang-btn" onclick="App.setLang('en')">
-            <span class="lang-flag">🇬🇧</span>
-            <div><div class="lang-name">English</div><div class="lang-sub">Continue in English</div></div>
-            <svg class="ml-auto text-gray-300" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          
+          <button class="w-full flex items-center gap-4 p-4 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all group" onclick="App.setLang('en')">
+            <span class="text-3xl">🇬🇧</span>
+            <div class="text-left">
+              <div class="font-semibold group-hover:text-primary transition-colors">English</div>
+              <div class="text-xs text-gray-500">Continue in English</div>
+            </div>
           </button>
         </div>
 
-        <!-- STEP 2: ROLE -->
+        <!-- ==================== STEP 2: ROLE SELECTION ==================== -->
         <div class="step" id="s2">
-          <div>
-            <h2 class="step-h" id="s2h">Wewe ni nani?</h2>
-            <p class="step-sub" id="s2sub">Chagua aina ya akaunti yako</p>
+          <h2 class="text-xl font-bold mb-2" id="s2h">Wewe ni nani?</h2>
+          <p class="text-sm text-gray-500 mb-6" id="s2sub">Chagua aina ya akaunti yako</p>
+          
+          <!-- Retailer Option -->
+          <button class="rc w-full flex items-center gap-4 p-4 border-2 border-gray-200 rounded-xl mb-3 hover:border-primary transition-all group" id="rb-ret" onclick="App.pickRole('retailer')">
+            <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary text-xl">🏪</div>
+            <div class="flex-1 text-left">
+              <div class="font-semibold group-hover:text-primary transition-colors" id="rn-ret">Duka (Retailer)</div>
+              <div class="text-xs text-gray-500" id="rd-ret">Naagiza bidhaa kwa duka langu</div>
+            </div>
+            <span id="ck-ret" style="display: none;" class="text-primary text-xl font-bold">✓</span>
+          </button>
+          
+          <!-- Distributor Option -->
+          <button class="rc w-full flex items-center gap-4 p-4 border-2 border-gray-200 rounded-xl mb-3 hover:border-primary transition-all group" id="rb-dist" onclick="App.pickRole('distributor')">
+            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 text-xl">🚚</div>
+            <div class="flex-1 text-left">
+              <div class="font-semibold group-hover:text-primary transition-colors" id="rn-dist">Msambazaji</div>
+              <div class="text-xs text-gray-500" id="rd-dist">Nasambaza bidhaa kwa maduka</div>
+            </div>
+            <span id="ck-dist" style="display: none;" class="text-primary text-xl font-bold">✓</span>
+          </button>
+          
+          <!-- Proceed Button -->
+          <button class="btn-primary w-full py-3 rounded-xl font-semibold mt-4 hidden" id="rnext" onclick="App.proceedFromRole()">
+            Endelea →
+          </button>
+          
+          <!-- Login Link -->
+          <div class="text-center mt-4">
+            <span class="text-xs text-gray-500" id="have-acc-txt">Una akaunti tayari?</span>
+            <button class="text-primary text-xs font-semibold ml-1 hover:underline" onclick="App.goStep(8)">Ingia →</button>
           </div>
-          <button class="rc retailer" id="rb-ret" onclick="App.pickRole('retailer')">
-            <div class="rci">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            </div>
-            <div class="flex-1">
-              <div class="rc-name" id="rn-ret">Duka (Retailer)</div>
-              <div class="rc-desc" id="rd-ret">Naagiza bidhaa kwa duka langu</div>
-            </div>
-            <span id="ck-ret" class="rc-check retailer">✓</span>
-          </button>
-          <button class="rc distributor" id="rb-dist" onclick="App.pickRole('distributor')">
-            <div class="rci">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            </div>
-            <div class="flex-1">
-              <div class="rc-name" id="rn-dist">Msambazaji</div>
-              <div class="rc-desc" id="rd-dist">Nasambaza bidhaa kwa maduka</div>
-            </div>
-            <span id="ck-dist" class="rc-check distributor">✓</span>
-          </button>
-          <button class="btn btn-p" id="rnext" style="display:none" onclick="App.proceedFromRole()">
-            <span id="rnext-txt">Endelea</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
-          <div class="flex items-center justify-center gap-1 text-sm">
-            <span class="text-gray-500 text-[.78rem]" id="have-acc-txt">Una akaunti tayari?</span>
-            <button class="btn-g font-bold text-g-600 text-[.78rem]" onclick="App.goStep(8)" id="login-link">Ingia →</button>
-          </div>
-          <button class="btn-g" onclick="App.goStep(1)">← Rudi Nyuma</button>
+          
+          <!-- Back Button -->
+          <button class="w-full text-center text-gray-400 text-sm mt-4 hover:text-gray-600 transition-colors" onclick="App.goStep(1)">← Rudi Nyuma</button>
         </div>
 
-        <!-- STEP 3: RETAILER DETAILS -->
+        <!-- ==================== STEP 3: RETAILER DETAILS ==================== -->
         <div class="step" id="s3">
-          <div>
-            <h2 class="step-h" id="s3h">Maelezo ya Duka</h2>
-            <p class="step-sub" id="s3sub">Jaza maelezo yako</p>
-          </div>
-          <div class="fg">
-            <label class="fl" id="l-store">Jina la Duka <span>*</span></label>
-            <input class="fi" id="reg-name" placeholder="mfano: Mama Fatuma Duka"/>
-          </div>
-          <div class="fg">
-            <label class="fl" id="l-phone">Namba ya Simu <span>*</span></label>
-            <div class="iw">
-              <div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
-              <input class="fi fi-phone" id="reg-phone" type="tel" inputmode="numeric" placeholder="712 345 678" maxlength="9" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
+          <h2 class="text-xl font-bold mb-2" id="s3h">Maelezo ya Duka</h2>
+          <p class="text-sm text-gray-500 mb-6" id="s3sub">Jaza maelezo yako kamili</p>
+          
+          <div class="space-y-4">
+            <!-- Store Name -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-store">Jina la Duka <span class="text-red-500">*</span></label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-all" id="reg-name" placeholder="mfano: Mama Fatuma Duka"/>
             </div>
-          </div>
-          <div class="fg">
-            <label class="fl" id="l-btype">Aina ya Biashara</label>
-            <select class="fi" id="reg-btype">
-              <option value="duka">Duka la Kawaida</option>
-              <option value="kiosk">Kiosk</option>
-              <option value="supermarket">Supermarket</option>
-              <option value="wholesale">Jumla (Wholesale)</option>
-            </select>
-          </div>
-          <div class="fr">
-            <div class="fg">
-              <label class="fl" id="l-region">Mkoa <span>*</span></label>
-              <select class="fi" id="reg-region" onchange="App.onRegionChange()"><option value=""></option></select>
+            
+            <!-- Phone Number -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-phone">Namba ya Simu <span class="text-red-500">*</span></label>
+              <div class="flex">
+                <span class="bg-gray-100 p-3 border-2 border-gray-200 border-r-0 rounded-l-xl text-gray-600">+255</span>
+                <input class="flex-1 p-3 border-2 border-gray-200 rounded-r-xl focus:border-primary focus:outline-none transition-all" id="reg-phone" type="tel" maxlength="9" placeholder="712345678" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
+              </div>
             </div>
-            <div class="fg">
-              <label class="fl" id="l-district">Wilaya</label>
-              <select class="fi" id="reg-district" onchange="App.onDistrictChange()"><option value=""></option></select>
+            
+            <!-- Business Type -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-btype">Aina ya Biashara</label>
+              <select class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-all" id="reg-btype">
+                <option value="duka">Duka la Kawaida</option>
+                <option value="kiosk">Kiosk</option>
+                <option value="supermarket">Supermarket</option>
+                <option value="wholesale">Jumla (Wholesale)</option>
+              </select>
             </div>
-          </div>
-          <div class="fr">
-            <div class="fg">
-              <label class="fl" id="l-ward">Kata</label>
-              <select class="fi" id="reg-ward"><option value=""></option></select>
+            
+            <!-- Location -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-semibold mb-1" id="l-region">Mkoa <span class="text-red-500">*</span></label>
+                <select class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none" id="reg-region" onchange="App.onRegionChange()"></select>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold mb-1" id="l-district">Wilaya <span class="text-red-500">*</span></label>
+                <select class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none" id="reg-district" onchange="App.onDistrictChange()"></select>
+              </div>
             </div>
-            <div class="fg">
-              <label class="fl" id="l-street">Mtaa</label>
-              <input class="fi" id="reg-street" placeholder="mfano: Kariakoo"/>
+            
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-semibold mb-1" id="l-ward">Kata</label>
+                <select class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none" id="reg-ward"></select>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold mb-1" id="l-street">Mtaa</label>
+                <input class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none" id="reg-street" placeholder="mfano: Msimbazi St"/>
+              </div>
             </div>
-          </div>
-          <div class="fg">
-            <label class="fl">PIN (tarakimu 4) <span>*</span></label>
-            <div class="iw">
-              <input class="fi" id="reg-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
-              <button type="button" class="eye" onclick="App.eyeToggle('reg-pin','epin1')" tabindex="-1">
-                <svg id="epin1" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            
+            <!-- PIN -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-pin">PIN ya Siri (tarakimu 4) <span class="text-red-500">*</span></label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl text-center tracking-widest text-xl focus:border-primary focus:outline-none transition-all" id="reg-pin" type="password" maxlength="4" placeholder="••••"/>
+            </div>
+            
+            <!-- Confirm PIN -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-pin2">Thibitisha PIN <span class="text-red-500">*</span></label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl text-center tracking-widest text-xl focus:border-primary focus:outline-none transition-all" id="reg-pin2" type="password" maxlength="4" placeholder="••••"/>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-3">
+              <button class="btn-secondary py-3 rounded-xl font-semibold" onclick="App.goStep(2)">← Rudi</button>
+              <button class="btn-primary py-3 rounded-xl font-semibold" id="reg-btn" onclick="App.submitDetails()">
+                <span id="reg-btn-txt">Endelea — Tuma OTP</span>
               </button>
             </div>
           </div>
-          <div class="fg">
-            <label class="fl">Thibitisha PIN <span>*</span></label>
-            <div class="iw">
-              <input class="fi" id="reg-pin2" type="password" inputmode="numeric" maxlength="4" placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
-              <button type="button" class="eye" onclick="App.eyeToggle('reg-pin2','epin2')" tabindex="-1">
-                <svg id="epin2" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
-            </div>
-          </div>
-          <button class="btn btn-p" onclick="App.submitDetails()">
-            <span id="reg-btn">Endelea — Tuma OTP</span>
-          </button>
-          <button class="btn-g" onclick="App.goStep(2)">← Rudi Nyuma</button>
         </div>
 
-        <!-- STEP 4: DISTRIBUTOR DETAILS -->
+        <!-- ==================== STEP 4: DISTRIBUTOR DETAILS ==================== -->
         <div class="step" id="s4">
-          <div>
-            <h2 class="step-h" id="s4h">Maelezo ya Biashara</h2>
-            <p class="step-sub" id="s4sub">Jaza maelezo ya usambazaji wako</p>
-          </div>
-          <div class="fg">
-            <label class="fl">Jina la Biashara <span>*</span></label>
-            <input class="fi" id="dreg-name" placeholder="mfano: Kariakoo Wholesalers"/>
-          </div>
-          <div class="fg">
-            <label class="fl">Namba ya Simu <span>*</span></label>
-            <div class="iw">
-              <div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
-              <input class="fi fi-phone" id="dreg-phone" type="tel" inputmode="numeric" placeholder="712 345 678" maxlength="9" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
+          <h2 class="text-xl font-bold mb-2" id="s4h">Maelezo ya Usambazaji</h2>
+          <p class="text-sm text-gray-500 mb-6" id="s4sub">Jaza maelezo yako kamili</p>
+          
+          <div class="space-y-4">
+            <!-- Business Name -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-dstore">Jina la Biashara <span class="text-red-500">*</span></label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none" id="dreg-name" placeholder="mfano: Kariakoo Wholesale Ltd"/>
             </div>
-          </div>
-          <div class="fr">
-            <div class="fg">
-              <label class="fl">Mkoa <span>*</span></label>
-              <select class="fi" id="dreg-region" onchange="App.onDRegionChange()"><option value=""></option></select>
+            
+            <!-- Phone Number -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-dphone">Namba ya Simu <span class="text-red-500">*</span></label>
+              <div class="flex">
+                <span class="bg-gray-100 p-3 border-2 border-gray-200 border-r-0 rounded-l-xl">+255</span>
+                <input class="flex-1 p-3 border-2 border-gray-200 rounded-r-xl focus:border-primary focus:outline-none" id="dreg-phone" type="tel" maxlength="9" placeholder="712345678" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
+              </div>
             </div>
-            <div class="fg">
-              <label class="fl">Wilaya</label>
-              <select class="fi" id="dreg-district" onchange="App.onDDistrictChange()"><option value=""></option></select>
+            
+            <!-- Location -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-semibold mb-1" id="l-dregion">Mkoa <span class="text-red-500">*</span></label>
+                <select class="w-full p-3 border-2 border-gray-200 rounded-xl" id="dreg-region" onchange="App.onDRegionChange()"></select>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold mb-1" id="l-ddistrict">Wilaya <span class="text-red-500">*</span></label>
+                <select class="w-full p-3 border-2 border-gray-200 rounded-xl" id="dreg-district" onchange="App.onDDistrictChange()"></select>
+              </div>
             </div>
-          </div>
-          <div class="fr">
-            <div class="fg">
-              <label class="fl">Kata</label>
-              <select class="fi" id="dreg-ward"><option value=""></option></select>
+            
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-semibold mb-1" id="l-dward">Kata</label>
+                <select class="w-full p-3 border-2 border-gray-200 rounded-xl" id="dreg-ward"></select>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold mb-1" id="l-dstreet">Mtaa</label>
+                <input class="w-full p-3 border-2 border-gray-200 rounded-xl" id="dreg-street" placeholder="mfano: Msimbazi St"/>
+              </div>
             </div>
-            <div class="fg">
-              <label class="fl">Mtaa</label>
-              <input class="fi" id="dreg-street" placeholder="Kariakoo"/>
+            
+            <!-- Coverage Area -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-coverage">Maeneo ya Usambazaji</label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl" id="dreg-coverage" placeholder="mfano: Kariakoo, Ilala, Kinondoni"/>
             </div>
-          </div>
-          <div class="fg">
-            <label class="fl">Maeneo ya Kuhudumia</label>
-            <input class="fi" id="dreg-coverage" placeholder="mfano: Ilala, Kinondoni, Temeke"/>
-          </div>
-          <div class="fg">
-            <label class="fl">Kiwango cha Chini cha Agizo (TZS)</label>
-            <input class="fi" id="dreg-mindel" type="number" min="0" placeholder="0"/>
-          </div>
-          <div class="fg">
-            <label class="fl">Aina za Bidhaa (Chagua)</label>
-            <div class="cat-grid" id="cat-grid"></div>
-          </div>
-          <div class="fg">
-            <label class="fl">PIN (tarakimu 4) <span>*</span></label>
-            <div class="iw">
-              <input class="fi" id="dreg-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
-              <button type="button" class="eye" onclick="App.eyeToggle('dreg-pin','edpin1')" tabindex="-1">
-                <svg id="edpin1" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            
+            <!-- Minimum Delivery Amount -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-mindel">Kiwango cha Chini cha Agizo (TZS)</label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl" id="dreg-mindel" type="number" min="0" placeholder="mfano: 50000"/>
+              <p class="text-xs text-gray-400 mt-1" id="l-mindel-hint">Agizo chini ya kiwango hiki halitakubaliwa</p>
+            </div>
+            
+            <!-- Product Categories -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-cats">Aina za Bidhaa</label>
+              <div class="grid grid-cols-2 gap-2" id="cat-grid"></div>
+            </div>
+            
+            <!-- PIN -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-dpin">PIN ya Siri (tarakimu 4) <span class="text-red-500">*</span></label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl text-center tracking-widest text-xl" id="dreg-pin" type="password" maxlength="4" placeholder="••••"/>
+            </div>
+            
+            <!-- Confirm PIN -->
+            <div>
+              <label class="block text-sm font-semibold mb-1" id="l-dpin2">Thibitisha PIN <span class="text-red-500">*</span></label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl text-center tracking-widest text-xl" id="dreg-pin2" type="password" maxlength="4" placeholder="••••"/>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-3">
+              <button class="btn-secondary py-3 rounded-xl font-semibold" onclick="App.goStep(2)">← Rudi</button>
+              <button class="btn-primary py-3 rounded-xl font-semibold" id="dreg-btn" onclick="App.submitDDetails()">
+                <span id="dreg-btn-txt">Endelea — Tuma OTP</span>
               </button>
             </div>
           </div>
-          <div class="fg">
-            <label class="fl">Thibitisha PIN <span>*</span></label>
-            <div class="iw">
-              <input class="fi" id="dreg-pin2" type="password" inputmode="numeric" maxlength="4" placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
-              <button type="button" class="eye" onclick="App.eyeToggle('dreg-pin2','edpin2')" tabindex="-1">
-                <svg id="edpin2" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
-            </div>
-          </div>
-          <button class="btn btn-p" onclick="App.submitDDetails()">
-            <span id="dreg-btn">Endelea — Tuma OTP</span>
-          </button>
-          <button class="btn-g" onclick="App.goStep(2)">← Rudi Nyuma</button>
         </div>
 
-        <!-- STEP 5: REGISTRATION OTP -->
+        <!-- ==================== STEP 5: OTP VERIFICATION ==================== -->
         <div class="step" id="s5">
-          <div>
-            <h2 class="step-h" id="s5h">Thibitisha Namba</h2>
-            <p class="step-sub">Imetumwa kwa: <strong id="otp-phone" class="text-g-600"></strong></p>
+          <h2 class="text-xl font-bold mb-2" id="s5h">Weka Nambari ya SMS</h2>
+          <p class="text-sm text-gray-500 mb-6">Imetumwa kwa: <strong id="otp-phone" class="text-primary"></strong></p>
+          
+          <div class="flex justify-center gap-3 mb-6 flex-wrap">
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="ob0" oninput="App.oi(0,this)" onkeydown="App.ok(0,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="ob1" oninput="App.oi(1,this)" onkeydown="App.ok(1,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="ob2" oninput="App.oi(2,this)" onkeydown="App.ok(2,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="ob3" oninput="App.oi(3,this)" onkeydown="App.ok(3,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="ob4" oninput="App.oi(4,this)" onkeydown="App.ok(4,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="ob5" oninput="App.oi(5,this)" onkeydown="App.ok(5,event)"/>
           </div>
-          <div class="otp-row">
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob0" oninput="App.oi(0,this)" onkeydown="App.ok(0,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob1" oninput="App.oi(1,this)" onkeydown="App.ok(1,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob2" oninput="App.oi(2,this)" onkeydown="App.ok(2,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob3" oninput="App.oi(3,this)" onkeydown="App.ok(3,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob4" oninput="App.oi(4,this)" onkeydown="App.ok(4,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="ob5" oninput="App.oi(5,this)" onkeydown="App.ok(5,event)"/>
-          </div>
-          <button class="btn btn-p" id="vbtn" onclick="App.verifyRegOTP()">
+          
+          <button class="btn-primary w-full py-3 rounded-xl font-semibold" id="vbtn" onclick="App.verifyRegOTP()">
             <span id="vtxt">Thibitisha</span>
           </button>
-          <div class="resend-wrap">
-            <span class="rt" id="rtimer"></span>
-            <button class="rb" id="rbtn" onclick="App.resendRegOTP()">Tuma Tena</button>
+          
+          <div class="text-center mt-4">
+            <span class="text-sm text-gray-400" id="rtimer"></span>
+            <button class="text-primary text-sm font-semibold hidden hover:underline" id="rbtn" onclick="App.resendRegOTP()">Tuma Tena</button>
           </div>
-          <button class="btn-g" onclick="App.goBack5()">← Badilisha maelezo</button>
+          
+          <button class="w-full text-center text-gray-400 text-sm mt-4 hover:text-gray-600 transition-colors" onclick="App.goBack5()">← Rudi Nyuma</button>
         </div>
 
-        <!-- STEP 7: PIN entry -->
+        <!-- ==================== STEP 7: PIN LOGIN ==================== -->
         <div class="step" id="s7">
-          <div class="text-center mb-2">
-            <h2 class="step-h" id="s7h">Karibu!</h2>
-            <p class="step-sub">Weka PIN yako kuingia</p>
+          <div class="text-center mb-6">
+            <h2 class="text-xl font-bold" id="s7h">Karibu!</h2>
+            <p class="text-sm text-gray-500" id="s7sub"></p>
           </div>
-          <div class="pin-dots" id="pindots">
-            <div class="pd" id="pd0"></div>
-            <div class="pd" id="pd1"></div>
-            <div class="pd" id="pd2"></div>
-            <div class="pd" id="pd3"></div>
+          
+          <div class="flex justify-center gap-4 mb-4">
+            <div class="pin-dot" id="pd0"></div>
+            <div class="pin-dot" id="pd1"></div>
+            <div class="pin-dot" id="pd2"></div>
+            <div class="pin-dot" id="pd3"></div>
           </div>
-          <p class="text-center text-xs text-red-500 font-semibold" id="perr"></p>
-          <div class="pin-grid">
-            <button class="pk" onclick="App.pk('1')">1</button>
-            <button class="pk" onclick="App.pk('2')">2</button>
-            <button class="pk" onclick="App.pk('3')">3</button>
-            <button class="pk" onclick="App.pk('4')">4</button>
-            <button class="pk" onclick="App.pk('5')">5</button>
-            <button class="pk" onclick="App.pk('6')">6</button>
-            <button class="pk" onclick="App.pk('7')">7</button>
-            <button class="pk" onclick="App.pk('8')">8</button>
-            <button class="pk" onclick="App.pk('9')">9</button>
-            <button class="pk" onclick="App.goStep(10)" style="font-size:.75rem;color:var(--s500)">PIN?</button>
-            <button class="pk" onclick="App.pk('0')">0</button>
-            <button class="pk" onclick="App.pdel()" style="font-size:1.3rem">⌫</button>
+          
+          <div class="text-center text-red-500 text-sm min-h-[20px]" id="perr"></div>
+          
+          <div class="grid grid-cols-3 gap-3 max-w-[260px] mx-auto mt-6">
+            <button class="pin-key" onclick="App.pk('1')">1</button>
+            <button class="pin-key" onclick="App.pk('2')">2</button>
+            <button class="pin-key" onclick="App.pk('3')">3</button>
+            <button class="pin-key" onclick="App.pk('4')">4</button>
+            <button class="pin-key" onclick="App.pk('5')">5</button>
+            <button class="pin-key" onclick="App.pk('6')">6</button>
+            <button class="pin-key" onclick="App.pk('7')">7</button>
+            <button class="pin-key" onclick="App.pk('8')">8</button>
+            <button class="pin-key" onclick="App.pk('9')">9</button>
+            <button class="pin-key bg-gray-50 text-gray-500 text-sm" onclick="App.goStep(10)" id="fp-btn">Nimesahau</button>
+            <button class="pin-key" onclick="App.pk('0')">0</button>
+            <button class="pin-key bg-gray-50 text-gray-500 text-xl" onclick="App.pdel()">⌫</button>
           </div>
-          <button class="btn-g text-center w-full mt-2" onclick="App.logout()">← Rudi</button>
         </div>
 
-        <!-- STEP 8: LOGIN PHONE -->
+        <!-- ==================== STEP 8: LOGIN PHONE ==================== -->
         <div class="step" id="s8">
+          <h2 class="text-xl font-bold mb-2" id="s8h">Ingia</h2>
+          <p class="text-sm text-gray-500 mb-6" id="s8sub">Weka namba yako ya simu</p>
+          
           <div>
-            <h2 class="step-h" id="s8h">Ingia</h2>
-            <p class="step-sub" id="s8sub">Weka namba yako ya simu</p>
-          </div>
-          <div class="fg">
-            <label class="fl">Namba ya Simu</label>
-            <div class="iw">
-              <div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
-              <input class="fi fi-phone" id="lphone" type="tel" inputmode="numeric" placeholder="712 345 678" maxlength="9" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
+            <label class="block text-sm font-semibold mb-1" id="l-lphone">Namba ya Simu</label>
+            <div class="flex">
+              <span class="bg-gray-100 p-3 border-2 border-gray-200 border-r-0 rounded-l-xl">+255</span>
+              <input class="flex-1 p-3 border-2 border-gray-200 rounded-r-xl focus:border-primary focus:outline-none transition-all" id="lphone" type="tel" maxlength="9" placeholder="712345678" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)" onkeydown="if(event.key==='Enter')App.sendLoginOTP()"/>
             </div>
           </div>
-          <button class="btn btn-p" onclick="App.sendLoginOTP()">
-            <span id="lotp-btn">Tuma OTP</span>
+          
+          <button class="btn-primary w-full py-3 rounded-xl font-semibold mt-6" onclick="App.sendLoginOTP()">
+            <span id="lotp-txt">Tuma Nambari ya Uthibitisho</span>
           </button>
-          <button class="btn-g" onclick="App.goStep(2)">← Unda Akaunti Mpya</button>
+          
+          <div class="text-center mt-4">
+            <button class="text-primary text-sm font-semibold hover:underline" onclick="App.goStep(2)">Huna akaunti? Jiandikishe →</button>
+          </div>
         </div>
 
-        <!-- STEP 9: LOGIN OTP -->
+        <!-- ==================== STEP 9: LOGIN OTP ==================== -->
         <div class="step" id="s9">
-          <div>
-            <h2 class="step-h" id="s9h">Weka Nambari ya SMS</h2>
-            <p class="step-sub">Imetumwa kwa: <strong id="lotp-phone" class="text-g-600"></strong></p>
+          <h2 class="text-xl font-bold mb-2" id="s9h">Weka Nambari ya SMS</h2>
+          <p class="text-sm text-gray-500 mb-6">Imetumwa kwa: <strong id="lotp-phone" class="text-primary"></strong></p>
+          
+          <div class="flex justify-center gap-3 mb-6 flex-wrap">
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="lb0" oninput="App.loi(0,this)" onkeydown="App.lok(0,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="lb1" oninput="App.loi(1,this)" onkeydown="App.lok(1,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="lb2" oninput="App.loi(2,this)" onkeydown="App.lok(2,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="lb3" oninput="App.loi(3,this)" onkeydown="App.lok(3,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="lb4" oninput="App.loi(4,this)" onkeydown="App.lok(4,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="lb5" oninput="App.loi(5,this)" onkeydown="App.lok(5,event)"/>
           </div>
-          <div class="otp-row">
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb0" oninput="App.loi(0,this)" onkeydown="App.lok(0,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb1" oninput="App.loi(1,this)" onkeydown="App.lok(1,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb2" oninput="App.loi(2,this)" onkeydown="App.lok(2,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb3" oninput="App.loi(3,this)" onkeydown="App.lok(3,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb4" oninput="App.loi(4,this)" onkeydown="App.lok(4,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="lb5" oninput="App.loi(5,this)" onkeydown="App.lok(5,event)"/>
-          </div>
-          <button class="btn btn-p" id="lvbtn" onclick="App.verifyLoginOTP()">
+          
+          <button class="btn-primary w-full py-3 rounded-xl font-semibold" id="lvbtn" onclick="App.verifyLoginOTP()">
             <span id="lvtxt">Thibitisha</span>
           </button>
-          <div class="resend-wrap">
-            <span class="rt" id="lrtimer"></span>
-            <button class="rb" id="lrbtn" onclick="App.resendLoginOTP()">Tuma Tena</button>
+          
+          <div class="text-center mt-4">
+            <span class="text-sm text-gray-400" id="lrtimer"></span>
+            <button class="text-primary text-sm font-semibold hidden hover:underline" id="lrbtn" onclick="App.resendLoginOTP()">Tuma Tena</button>
           </div>
-          <button class="btn-g" onclick="App.goStep(8)">← Badilisha namba</button>
+          
+          <button class="w-full text-center text-gray-400 text-sm mt-4 hover:text-gray-600 transition-colors" onclick="App.goStep(8)">← Badilisha namba</button>
         </div>
 
-        <!-- STEP 10: FORGOT PIN -->
+        <!-- ==================== STEP 10: FORGOT PIN ==================== -->
         <div class="step" id="s10">
+          <h2 class="text-xl font-bold mb-2" id="s10h">Nimesahau PIN</h2>
+          <p class="text-sm text-gray-500 mb-6" id="s10sub">Weka namba uliyotumia kusajili</p>
+          
           <div>
-            <h2 class="step-h" id="s10h">Nimesahau PIN</h2>
-            <p class="step-sub" id="s10sub">Weka namba uliyotumia kusajili</p>
-          </div>
-          <div class="fg">
-            <label class="fl">Namba ya Simu</label>
-            <div class="iw">
-              <div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
-              <input class="fi fi-phone" id="fphone" type="tel" inputmode="numeric" placeholder="712 345 678" maxlength="9" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
+            <label class="block text-sm font-semibold mb-1">Namba ya Simu</label>
+            <div class="flex">
+              <span class="bg-gray-100 p-3 border-2 border-gray-200 border-r-0 rounded-l-xl">+255</span>
+              <input class="flex-1 p-3 border-2 border-gray-200 rounded-r-xl focus:border-primary focus:outline-none" id="fphone" type="tel" maxlength="9" placeholder="712345678" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
             </div>
           </div>
-          <button class="btn btn-p" onclick="App.sendForgotOTP()">
-            <span id="fotp-btn">Tuma OTP</span>
+          
+          <button class="btn-primary w-full py-3 rounded-xl font-semibold mt-6" onclick="App.sendForgotOTP()">
+            <span id="fotp-txt">Tuma OTP</span>
           </button>
-          <button class="btn-g" onclick="App.goStep(7)">← Rudi</button>
+          
+          <button class="w-full text-center text-gray-400 text-sm mt-4 hover:text-gray-600 transition-colors" onclick="App.goStep(7)">← Rudi</button>
         </div>
 
-        <!-- STEP 11: FORGOT OTP -->
+        <!-- ==================== STEP 11: FORGOT OTP ==================== -->
         <div class="step" id="s11">
-          <div>
-            <h2 class="step-h" id="s11h">Weka Nambari ya SMS</h2>
-            <p class="step-sub">Imetumwa kwa: <strong id="fotp-phone" class="text-g-600"></strong></p>
+          <h2 class="text-xl font-bold mb-2" id="s11h">Weka Nambari ya SMS</h2>
+          <p class="text-sm text-gray-500 mb-6">Imetumwa kwa: <strong id="fotp-phone" class="text-primary"></strong></p>
+          
+          <div class="flex justify-center gap-3 mb-6 flex-wrap">
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="fb0" oninput="App.foi(0,this)" onkeydown="App.fok(0,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="fb1" oninput="App.foi(1,this)" onkeydown="App.fok(1,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="fb2" oninput="App.foi(2,this)" onkeydown="App.fok(2,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="fb3" oninput="App.foi(3,this)" onkeydown="App.fok(3,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="fb4" oninput="App.foi(4,this)" onkeydown="App.fok(4,event)"/>
+            <input class="otp-input" type="tel" maxlength="1" inputmode="numeric" id="fb5" oninput="App.foi(5,this)" onkeydown="App.fok(5,event)"/>
           </div>
-          <div class="otp-row">
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb0" oninput="App.foi(0,this)" onkeydown="App.fok(0,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb1" oninput="App.foi(1,this)" onkeydown="App.fok(1,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb2" oninput="App.foi(2,this)" onkeydown="App.fok(2,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb3" oninput="App.foi(3,this)" onkeydown="App.fok(3,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb4" oninput="App.foi(4,this)" onkeydown="App.fok(4,event)"/>
-            <input class="ob" type="tel" maxlength="1" inputmode="numeric" id="fb5" oninput="App.foi(5,this)" onkeydown="App.fok(5,event)"/>
-          </div>
-          <button class="btn btn-p" id="fvbtn" onclick="App.verifyForgotOTP()">
+          
+          <button class="btn-primary w-full py-3 rounded-xl font-semibold" id="fvbtn" onclick="App.verifyForgotOTP()">
             <span id="fvtxt">Thibitisha</span>
           </button>
-          <button class="btn-g" onclick="App.goStep(10)">← Rudi</button>
         </div>
 
-        <!-- STEP 12: NEW PIN -->
+        <!-- ==================== STEP 12: NEW PIN ==================== -->
         <div class="step" id="s12">
-          <div>
-            <h2 class="step-h" id="s12h">Weka PIN Mpya</h2>
-            <p class="step-sub" id="s12sub">Thibitisho limefaulu. Weka PIN mpya.</p>
-          </div>
-          <div class="fg">
-            <label class="fl">PIN Mpya <span>*</span></label>
-            <div class="iw">
-              <input class="fi" id="npin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
-              <button type="button" class="eye" onclick="App.eyeToggle('npin','enp1')" tabindex="-1">
-                <svg id="enp1" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
+          <h2 class="text-xl font-bold mb-2" id="s12h">Weka PIN Mpya</h2>
+          <p class="text-sm text-gray-500 mb-6" id="s12sub">Thibitisho limefaulu. Weka PIN mpya.</p>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-semibold mb-1">PIN Mpya <span class="text-red-500">*</span></label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl text-center tracking-widest text-xl focus:border-primary focus:outline-none" id="npin" type="password" maxlength="4" placeholder="••••"/>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold mb-1">Thibitisha PIN <span class="text-red-500">*</span></label>
+              <input class="w-full p-3 border-2 border-gray-200 rounded-xl text-center tracking-widest text-xl focus:border-primary focus:outline-none" id="npin2" type="password" maxlength="4" placeholder="••••"/>
             </div>
           </div>
-          <div class="fg">
-            <label class="fl">Thibitisha PIN <span>*</span></label>
-            <div class="iw">
-              <input class="fi" id="npin2" type="password" inputmode="numeric" maxlength="4" placeholder="••••" style="letter-spacing:4px;font-size:1.1rem;text-align:center;padding-right:3rem"/>
-              <button type="button" class="eye" onclick="App.eyeToggle('npin2','enp2')" tabindex="-1">
-                <svg id="enp2" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
-            </div>
-          </div>
-          <button class="btn btn-p" onclick="App.resetPin()">
+          
+          <button class="btn-primary w-full py-3 rounded-xl font-semibold mt-6" onclick="App.resetPin()">
             <span id="rpintxt">Hifadhi PIN Mpya</span>
           </button>
         </div>
-
-      </div><!-- end ob-body -->
-    </div><!-- end ob-card -->
-  </div><!-- end ob-right -->
-</div><!-- end onboarding -->
-
-<!-- Sidebar overlay -->
-<div class="sovl" id="sovl" onclick="App.closeSidebar()"></div>
-
-<!-- ══ APP MAIN ══════════════════════════════════════════════ -->
-<div id="app-main">
-  <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sb-brand">
-      <img src="logo.jpg" class="sb-li" alt="logo" onerror="this.style.display='none'"/>
-      <span class="sb-ln">BomaWave</span>
+        
+      </div>
     </div>
-    <div class="sb-user">
-      <div class="uav" id="sbav">U</div>
-      <div class="min-w-0">
-        <div class="un truncate" id="sbn">—</div>
-        <div class="flex items-center gap-1 mt-0.5">
-          <span class="rbadge" id="sbb">—</span>
-          <span id="sbsub"></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- MAIN APPLICATION CONTAINER -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div id="app-main" style="display: none;">
+  
+  <!-- Sidebar Overlay (Mobile) -->
+  <div class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300" id="sidebar-overlay" onclick="App.closeSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside class="fixed left-0 top-0 h-full w-72 bg-gradient-to-b from-gray-900 to-gray-800 z-50 transform -translate-x-full transition-transform duration-300 ease-out" id="sidebar">
+    <!-- Sidebar Header -->
+    <div class="p-5 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M8 7h8M8 12h8M8 17h5"/>
+          </svg>
+        </div>
+        <span class="text-white text-xl font-bold tracking-tight">BomaWave</span>
+      </div>
+    </div>
+    
+    <!-- User Info -->
+    <div class="p-5 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md" id="user-avatar">U</div>
+        <div>
+          <div class="text-white font-semibold" id="user-name">—</div>
+          <div class="text-xs text-gray-400" id="user-role">—</div>
         </div>
       </div>
     </div>
-    <nav class="sb-nav" id="sbnav"></nav>
-    <div class="sb-foot">
-      <div class="lsw">
-        <button class="lsw-b on" id="lsw-sw" onclick="App.switchLang('sw')">SW</button>
-        <button class="lsw-b" id="lsw-en" onclick="App.switchLang('en')">EN</button>
-      </div>
-      <button class="lo" onclick="App.logout()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        <span id="lbl-lo">Toka</span>
+    
+    <!-- Navigation Menu -->
+    <nav class="p-3 flex-1 overflow-y-auto" id="nav-menu"></nav>
+    
+    <!-- Footer -->
+    <div class="p-5 border-t border-white/10">
+      <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-200" onclick="App.logout()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Toka</span>
       </button>
     </div>
   </aside>
 
-  <!-- Main content -->
-  <div class="main-content">
-    <header class="topbar">
-      <div class="tbl">
-        <button class="hbg" id="hbg" onclick="App.toggleSidebar()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  <!-- Main Content Area -->
+  <main class="lg:ml-72 min-h-screen">
+    <!-- Top Bar -->
+    <header class="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-soft">
+      <div class="flex items-center gap-3">
+        <button class="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" id="mobile-menu-btn" onclick="App.toggleSidebar()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
         </button>
-        <div class="tbic">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        </div>
         <div>
-          <div class="tbt" id="tbt">Dashboard</div>
-          <div class="tbs" id="tbs"></div>
+          <h1 class="text-xl font-bold text-gray-900" id="page-title">Dashboard</h1>
+          <div class="text-sm text-gray-500" id="store-name"></div>
         </div>
       </div>
-      <div class="tbr relative">
-        <span id="sync-badge"></span>
-        <button class="nb-btn" id="nbb" onclick="App.toggleNotif()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span class="ndot" id="ndot" style="display:none">0</span>
+      
+      <div class="flex items-center gap-3">
+        <!-- Sync Badge -->
+        <div id="sync-badge" class="hidden"></div>
+        
+        <!-- Notifications Button -->
+        <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors relative" onclick="App.toggleNotif()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span id="notif-dot" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 hidden min-w-[18px] text-center">0</span>
         </button>
-        <div class="ndd" id="ndd">
-          <div class="ndh">
-            <span id="ndd-h">Arifa</span>
-            <button class="ndc" onclick="App.clearNotifs()">Futa Zote</button>
-          </div>
-          <div id="nlist"><div class="nde">Hakuna arifa</div></div>
-        </div>
       </div>
     </header>
-    <main class="pc" id="av"></main>
-  </div>
 
-  <!-- Bottom nav (mobile) -->
-  <nav class="bn" id="bn"></nav>
+    <!-- Dynamic Content Area -->
+    <div class="p-4" id="content-area">
+      <!-- Content loaded dynamically by app.js -->
+    </div>
+  </main>
+
+  <!-- Bottom Navigation (Mobile Only) -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 lg:hidden z-30 shadow-soft" id="bottom-nav"></nav>
 </div>
 
-<!-- Cart FAB -->
-<button class="cfab" id="cfab" onclick="App.toggleCart()">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-  <span class="cfb" id="cc">0</span>
-</button>
+<!-- Toast Notification Container -->
+<div id="toast-container" class="fixed bottom-20 right-4 z-50 space-y-2"></div>
 
-<!-- Cart panel -->
-<div class="cpanel" id="cpanel">
-  <div class="cphead">
-    <div>
-      <div class="cpt" id="cp-t">Agizo Lako</div>
-      <div class="cps" id="cp-s"></div>
-    </div>
-    <button class="cpclose" onclick="App.toggleCart()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="cpitems" id="cplist">
-    <div class="empty">
-      <div class="empty-ic">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-      </div>
-      <div class="empty-s" id="ce-txt">Bado hujachagua bidhaa</div>
-    </div>
-  </div>
-  <div class="cpfoot">
-    <div class="cptr">
-      <span class="cptl" id="ct-lbl">Jumla</span>
-      <span class="cptv" id="ct-val">TZS 0</span>
-    </div>
-    <div class="alert al-i no-print mb-3" style="font-size:.72rem">
-      Malipo yanafanywa moja kwa moja na Msambazaji baada ya kuthibitishwa.
-    </div>
-    <button class="btn btn-p" id="po-btn" onclick="App.placeOrder()">
-      <span id="po-txt">Tuma Agizo</span>
-    </button>
-  </div>
-</div>
-
-<!-- Toast container -->
-<div id="twrap"></div>
-
-<script>
-// ── Typewriter — runs immediately on page load ────────────────
-(function() {
-  const LINE1 = 'BomaWave';
-  const LINE2 = 'FMCG Ordering Platform · Tanzania';
-  const SPEED1 = 80;   // ms per character — line 1
-  const SPEED2 = 38;   // ms per character — line 2 (faster)
-  const PAUSE  = 320;  // pause between lines
-
-  function typeInto(el, text, speed, onDone) {
-    if (!el) { if (onDone) onDone(); return; }
-    el.textContent = '';
-    el.classList.add('typing');
-    let i = 0;
-    const tick = () => {
-      if (i <= text.length) {
-        el.textContent = text.slice(0, i);
-        i++;
-        setTimeout(tick, speed + (Math.random() * speed * 0.3));
-      } else {
-        el.classList.remove('typing');
-        if (onDone) setTimeout(onDone, 80);
-      }
-    };
-    tick();
-  }
-
-  function startTypewriter() {
-    const l1 = document.getElementById('tw-line1');
-    const l2 = document.getElementById('tw-line2');
-    // Start with short delay for drama
-    setTimeout(() => {
-      typeInto(l1, LINE1, SPEED1, () => {
-        setTimeout(() => {
-          typeInto(l2, LINE2, SPEED2, null);
-        }, PAUSE);
-      });
-    }, 400);
-  }
-
-  // Run when DOM ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startTypewriter);
-  } else {
-    startTypewriter();
-  }
-})();
-</script>
+<!-- Scripts -->
 <script type="module" src="app.js"></script>
 </body>
 </html>
