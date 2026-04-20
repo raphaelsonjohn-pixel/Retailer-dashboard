@@ -45,7 +45,8 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:16px;color:#0f1
 /* ═══════════════════════════════════════════════
    ONBOARDING
    ═══════════════════════════════════════════════ */
-#onboarding{position:fixed;inset:0;z-index:999;display:flex;background:#0a1628;overflow:hidden}
+/* On mobile: onboarding fills screen, ob-right handles all scrolling */
+#onboarding{position:fixed;inset:0;z-index:999;display:flex;background:#0a1628}
 
 /* Left panel — desktop */
 .ob-left{display:none;width:420px;flex-shrink:0;position:relative;overflow:hidden;flex-direction:column}
@@ -63,12 +64,41 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:16px;color:#0f1
 .ob-pill{display:flex;align-items:center;gap:.4rem;padding:.35rem .9rem;border-radius:20px;font-size:.75rem;font-weight:700;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px)}
 .ob-footer{font-size:.65rem;color:rgba(255,255,255,.25);letter-spacing:1.5px;text-transform:uppercase}
 
-/* Right panel — form */
-.ob-right{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;display:flex;align-items:flex-start;justify-content:center}
-@media(min-width:900px){.ob-right{background:var(--s50);align-items:center;padding:2rem 1.5rem}}
+/* Right panel — form: THIS is the scroll container on mobile */
+.ob-right{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  background:#fff;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  /* Ensure it can scroll to show all content including buttons at bottom */
+  height:100%;
+}
+@media(min-width:900px){
+  .ob-right{background:var(--s50);align-items:flex-start;padding:2rem 1.5rem;justify-content:center}
+}
 
-.ob-card{width:100%;max-width:460px;background:#fff;min-height:100%;display:flex;flex-direction:column}
-@media(min-width:900px){.ob-card{min-height:auto;border-radius:1.5rem;box-shadow:0 24px 60px rgba(0,0,0,.1),0 8px 20px rgba(0,0,0,.06);overflow:hidden}}
+/* Card: must NOT have overflow:hidden on mobile — that clips content */
+.ob-card{
+  width:100%;
+  max-width:460px;
+  background:#fff;
+  /* Let content define height so scroll works */
+  min-height:100%;
+  display:flex;
+  flex-direction:column;
+}
+@media(min-width:900px){
+  .ob-card{
+    min-height:auto;
+    border-radius:1.5rem;
+    box-shadow:0 24px 60px rgba(0,0,0,.1),0 8px 20px rgba(0,0,0,.06);
+    /* NO overflow:hidden — that was cutting off content */
+    margin:auto 0;
+  }
+}
 
 /* Card hero — mobile */
 .ob-hero{position:relative;height:220px;flex-shrink:0;overflow:hidden}
@@ -88,7 +118,15 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:16px;color:#0f1
 .ob-hero-pill{display:flex;align-items:center;gap:.3rem;padding:3px 10px;border-radius:20px;font-size:.62rem;font-weight:700;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.18)}
 
 /* Card body */
-.ob-body{flex:1;padding:1.75rem 1.5rem 3rem;display:flex;flex-direction:column;gap:0}
+.ob-body{
+  flex:1;
+  padding:1.75rem 1.5rem;
+  /* Large bottom padding ensures last button is never hidden by browser chrome or keyboard */
+  padding-bottom:5rem;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
 
 /* Progress */
 .ob-progress{margin-bottom:1.75rem}
@@ -697,14 +735,14 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
           </div>
           <button class="lang-btn" onclick="App.setLang('sw')">
             <div class="lang-flag">
-              <svg width="36" height="24" viewBox="0 0 36 24"><rect width="36" height="8" fill="#1EB53A"/><rect y="8" width="36" height="8" fill="#FCD116"/><rect y="16" width="36" height="8" fill="#0099C6"/></svg>
+              <span style="font-size:2rem;line-height:1">🇹🇿</span>
             </div>
             <div><div class="lang-name">Kiswahili</div><div class="lang-desc">Endelea kwa Kiswahili</div></div>
             <svg class="lang-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
           <button class="lang-btn" onclick="App.setLang('en')">
             <div class="lang-flag">
-              <svg width="36" height="24" viewBox="0 0 36 24"><rect width="36" height="24" fill="#012169"/><path d="M0,0 L36,24 M36,0 L0,24" stroke="#fff" stroke-width="4"/><path d="M0,0 L36,24 M36,0 L0,24" stroke="#C8102E" stroke-width="2"/><rect x="14" width="8" height="24" fill="#fff"/><rect y="9" width="36" height="6" fill="#fff"/><rect x="15" width="6" height="24" fill="#C8102E"/><rect y="10" width="36" height="4" fill="#C8102E"/></svg>
+              <span style="font-size:2rem;line-height:1">🇬🇧</span>
             </div>
             <div><div class="lang-name">English</div><div class="lang-desc">Continue in English</div></div>
             <svg class="lang-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -770,7 +808,7 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
             <label class="fl" id="l-phone">Namba ya Simu <span>*</span></label>
             <div class="iw">
               <div class="pfx">
-                <svg width="20" height="14" viewBox="0 0 36 24"><rect width="36" height="8" fill="#1EB53A"/><rect y="8" width="36" height="8" fill="#FCD116"/><rect y="16" width="36" height="8" fill="#0099C6"/></svg>
+                <span style="font-size:1rem;line-height:1">🇹🇿</span>
                 <span class="pfx-code">+255</span>
               </div>
               <input class="fi fi-phone" id="reg-phone" type="tel" inputmode="numeric" placeholder="712 345 678" maxlength="9" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
@@ -850,7 +888,7 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
             <label class="fl">Namba ya Simu <span>*</span></label>
             <div class="iw">
               <div class="pfx">
-                <svg width="20" height="14" viewBox="0 0 36 24"><rect width="36" height="8" fill="#1EB53A"/><rect y="8" width="36" height="8" fill="#FCD116"/><rect y="16" width="36" height="8" fill="#0099C6"/></svg>
+                <span style="font-size:1rem;line-height:1">🇹🇿</span>
                 <span class="pfx-code">+255</span>
               </div>
               <input class="fi fi-phone" id="dreg-phone" type="tel" inputmode="numeric" placeholder="712 345 678" maxlength="9" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
@@ -992,7 +1030,7 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
             <label class="fl">Namba ya Simu</label>
             <div class="iw">
               <div class="pfx">
-                <svg width="20" height="14" viewBox="0 0 36 24"><rect width="36" height="8" fill="#1EB53A"/><rect y="8" width="36" height="8" fill="#FCD116"/><rect y="16" width="36" height="8" fill="#0099C6"/></svg>
+                <span style="font-size:1rem;line-height:1">🇹🇿</span>
                 <span class="pfx-code">+255</span>
               </div>
               <input class="fi fi-phone" id="lphone" type="tel" inputmode="numeric" placeholder="712 345 678" maxlength="9" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)" autocomplete="tel"/>
@@ -1049,7 +1087,7 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
             <label class="fl">Namba ya Simu</label>
             <div class="iw">
               <div class="pfx">
-                <svg width="20" height="14" viewBox="0 0 36 24"><rect width="36" height="8" fill="#1EB53A"/><rect y="8" width="36" height="8" fill="#FCD116"/><rect y="16" width="36" height="8" fill="#0099C6"/></svg>
+                <span style="font-size:1rem;line-height:1">🇹🇿</span>
                 <span class="pfx-code">+255</span>
               </div>
               <input class="fi fi-phone" id="fphone" type="tel" inputmode="numeric" placeholder="712 345 678" maxlength="9" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/>
