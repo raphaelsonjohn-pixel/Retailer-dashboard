@@ -414,14 +414,17 @@ async function syncOfflineData() {
   const uS = sales.filter(s => !s.synced);
   const uE = exps.filter(e => !e.synced);
   for (const s of uS) {
-    const { local_id, ...data } = s;
+    // Strip IndexedDB-only fields — Supabase doesn't have these columns
+    const { local_id, synced, created_at, _off, ...data } = s;
     const { error } = await sb.from('sales').insert([data]);
     if (!error) await posDbMarkSynced('sales', local_id);
+    else console.warn('Sync sale error:', error.message);
   }
   for (const e of uE) {
-    const { local_id, ...data } = e;
+    const { local_id, synced, created_at, _off, ...data } = e;
     const { error } = await sb.from('expenses').insert([data]);
     if (!error) await posDbMarkSynced('expenses', local_id);
+    else console.warn('Sync expense error:', error.message);
   }
   const total = uS.length + uE.length;
   if (total > 0) toast(`Sync imekamilika — records ${total}`, 's');
@@ -855,7 +858,11 @@ window.App = {
   // ── Show App ──────────────────────────────────────────────
   async showApp() {
     const ob = $('onboarding'), am = $('app-main');
-    if (ob) ob.style.display = 'none';
+    if (ob) {
+      ob.style.display = 'none';
+      ob.style.pointerEvents = 'none';
+      ob.style.zIndex = '-1';
+    }
     if (am) am.style.display = 'block';
     await ensurePrimaryStore();
     await loadStores();
@@ -1460,8 +1467,11 @@ window.App = {
   updateCartUI() {
     const count = S.cart.reduce((s, c) => s + c.qty, 0);
     const fab = $('cfab'), cc = $('cc');
-    if (fab) fab.style.display = S.cart.length ? 'flex' : 'none';
-    if (cc)  cc.textContent = count;
+    if (fab) {
+      // Show FAB whenever cart has items, on any screen size
+      fab.style.display = S.cart.length ? 'flex' : 'none';
+    }
+    if (cc) cc.textContent = count;
     App.renderCartPanel();
   },
 
@@ -1469,7 +1479,15 @@ window.App = {
     const list  = $('cplist'), total = $('ct-val');
     if (!list) return;
     if (!S.cart.length) {
-      list.innerHTML = `<div class="empty"><div class="empty-ic"></div><div class="empty-s">${t('cartEmpty')}</div></div>`;
+      list.innerHTML = `<div class="empty">
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".3">
+            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+          </svg>
+        </div>
+        <div class="empty-s">${t('cartEmpty')}</div>
+      </div>`;
       if (total) total.textContent = 'TZS 0';
       return;
     }
@@ -1477,11 +1495,16 @@ window.App = {
     list.innerHTML = S.cart.map(c => {
       const moqWarn = c.qty < c.min_order_qty;
       return `<div class="cpi">
-        <div class="cpi-em">${CAT_ICONS['other'] || ''}</div>
+        <div class="cpi-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+        </div>
         <div style="flex:1;min-width:0">
           <div class="cpi-name">${c.product_name}</div>
           <div class="cpi-price">${fmt(c.qty * c.unit_price)}</div>
-          ${moqWarn ? `<div class="cpi-moq">Onyo: Min: ${c.min_order_qty}</div>` : ''}
+          ${moqWarn ? `<div class="cpi-moq">Min: ${c.min_order_qty}</div>` : ''}
         </div>
         <div class="qc">
           <button class="qb" onclick="App.cartChange('${c.product_id}',-1)">−</button>
