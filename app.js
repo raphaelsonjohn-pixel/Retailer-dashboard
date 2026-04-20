@@ -63,7 +63,7 @@ const CATS = [
   {id:'dairy',     sw:'Maziwa',           en:'Dairy'},
   {id:'other',     sw:'Nyingine',         en:'Other'},
 ];
-const CAT_ICONS = { beverages:'🧃', flour:'🌾', oil:'🫙', sugar:'🍚', soap:'🧼', personal:'🪥', dairy:'🥛', other:'📦' };
+const CAT_ICONS = { beverages:'', flour:'', oil:'', sugar:'', soap:'', personal:'', dairy:'', other:'' };
 
 // ── Translations ───────────────────────────────────────────────
 const T = {
@@ -120,9 +120,15 @@ function toast(msg, type = 's') {
   const wrap = $('twrap');
   if (!wrap) return;
   const el = document.createElement('div');
-  const icons = { s: '✅', e: '❌', i: 'ℹ️', w: '⚠️' };
-  el.className = `toast ${type}`;
-  el.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
+  const classMap = { s: 'success', e: 'error', i: 'info', w: 'warning' };
+  const iconMap = {
+    s: '<polyline points="20 6 9 17 4 12"/>',
+    e: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    i: '<line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/><circle cx="12" cy="12" r="10"/>',
+    w: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  };
+  el.className = `toast ${classMap[type] || 'info'}`;
+  el.innerHTML = `<span class="toast-icon"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">${iconMap[type] || iconMap.i}</svg></span><span>${msg}</span>`;
   wrap.appendChild(el);
   setTimeout(() => el.remove(), 4100);
 }
@@ -358,7 +364,7 @@ function renderStoreSwitcher() {
   wrap.style.display = 'flex';
   wrap.innerHTML = S.stores.map(st => `
     <button class="store-btn${S.store?.id === st.id ? ' active' : ''}" onclick="App.switchStore('${st.id}')">
-      <span>🏪</span>
+      <span></span>
       <span style="flex:1;text-align:left;font-size:.78rem;font-weight:${S.store?.id === st.id ? 800 : 600}">${st.store_name}</span>
       ${S.store?.id === st.id ? '<span style="color:var(--g400)">●</span>' : ''}
     </button>`).join('') +
@@ -467,7 +473,7 @@ window.App = {
     const r = await callOTP({ action: 'send_otp', phone });
     setBusy('reg-btn', false, 'Endelea — Tuma OTP');
     if (!r.success) return toast(r.message || 'Hitilafu', 'e');
-    toast('OTP imetumwa! ✅', 's');
+    toast('OTP imetumwa!', 's');
     setText('otp-phone', phone);
     App.clearOTPBoxes('ob');
     App.startResendTimer();
@@ -499,7 +505,7 @@ window.App = {
     const r = await callOTP({ action: 'send_otp', phone });
     setBusy('dreg-btn', false, 'Endelea — Tuma OTP');
     if (!r.success) return toast(r.message || 'Hitilafu', 'e');
-    toast('OTP imetumwa! ✅', 's');
+    toast('OTP imetumwa!', 's');
     setText('otp-phone', phone);
     App.clearOTPBoxes('ob');
     App.startResendTimer();
@@ -563,7 +569,7 @@ window.App = {
     const reg = await callOTP({ action: 'complete_registration', phone: S.pendingPhone, ...S.pendingData });
     setBusy('vbtn', false, 'Thibitisha');
     if (!reg.success) return toast(reg.message || 'Tatizo la kuunda akaunti', 'e');
-    toast('Akaunti imefunguliwa! 🎉', 's');
+    toast('Akaunti imefunguliwa! ', 's');
     S.user = reg.user;
     saveSession();
     await ensurePrimaryStore();
@@ -581,7 +587,7 @@ window.App = {
     S.pendingPhone = phone;
     const r = await callOTP({ action: 'send_otp', phone });
     if (!r.success) return toast(r.message || 'Hitilafu', 'e');
-    toast('OTP imetumwa! ✅', 's');
+    toast('OTP imetumwa!', 's');
     setText('lotp-phone', phone);
     App.clearOTPBoxes('lb');
     App.startLoginResendTimer();
@@ -675,7 +681,7 @@ window.App = {
     S.pendingPhone = phone;
     const r = await callOTP({ action: 'send_otp', phone });
     if (!r.success) return toast(r.message || 'Hitilafu', 'e');
-    toast('OTP imetumwa! ✅', 's');
+    toast('OTP imetumwa!', 's');
     setText('fotp-phone', phone);
     App.clearOTPBoxes('fb');
     goStep(11);
@@ -713,7 +719,7 @@ window.App = {
     const r = await callOTP({ action: 'reset_pin', phone: S.pendingPhone, pin });
     setBusy('rpintxt', false, S.lang === 'sw' ? 'Hifadhi PIN Mpya' : 'Save New PIN');
     if (!r.success) return toast(r.message || 'Hitilafu', 'e');
-    toast(S.lang === 'sw' ? 'PIN imebadilishwa! ✅' : 'PIN updated! ✅', 's');
+    toast(S.lang === 'sw' ? 'PIN imebadilishwa!' : 'PIN updated!', 's');
     S.user = r.user;
     saveSession();
     App.showApp();
@@ -740,10 +746,10 @@ window.App = {
     const count = await getPendingCount();
     if (!S.isOnline) {
       el.style.display = 'flex';
-      el.innerHTML = `<span class="sync-pill offline">⚡ Offline${count > 0 ? ` · ${count} pending` : ''}</span>`;
+      el.innerHTML = `<span class="sync-pill sync-offline">Offline${count > 0 ? ` · ${count} pending` : ''}</span>`;
     } else if (count > 0) {
       el.style.display = 'flex';
-      el.innerHTML = `<span class="sync-pill sync" onclick="syncOfflineData()">↑ Sync ${count}</span>`;
+      el.innerHTML = `<span class="sync-pill sync-pending" onclick="syncOfflineData()">↑ Sync ${count}</span>`;
     } else {
       el.style.display = 'none';
     }
@@ -790,8 +796,8 @@ window.App = {
               <span>${S.lang === 'sw' ? 'Fanya Duka Kuu' : 'Set as Primary Store'}</span>
             </label>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.25rem">
-              <button class="btn btn-s" onclick="App.navTo('dashboard')">${S.lang === 'sw' ? 'Rudi' : 'Back'}</button>
-              <button class="btn btn-p" onclick="App.saveNewStore()">
+              <button class="btn btn-secondary" onclick="App.navTo('dashboard')">${S.lang === 'sw' ? 'Rudi' : 'Back'}</button>
+              <button class="btn btn-primary" onclick="App.saveNewStore()">
                 <span id="as-btn">+ ${S.lang === 'sw' ? 'Ongeza Duka' : 'Add Store'}</span>
               </button>
             </div>
@@ -816,7 +822,7 @@ window.App = {
     }]);
     setBusy('as-btn', false, `+ ${S.lang === 'sw' ? 'Ongeza Duka' : 'Add Store'}`);
     if (error) return toast('Hitilafu ya kuongeza duka', 'e');
-    toast(S.lang === 'sw' ? 'Duka limeongezwa! ✅' : 'Store added! ✅', 's');
+    toast(S.lang === 'sw' ? 'Duka limeongezwa!' : 'Store added!', 's');
     await loadStores();
     renderStoreSwitcher();
     App.navTo('dashboard');
@@ -828,22 +834,22 @@ window.App = {
     view.innerHTML = `
       <div style="max-width:420px;margin:2rem auto">
         <div style="text-align:center;margin-bottom:1.5rem">
-          <div style="font-size:2rem">🏪</div>
+          <div style="font-size:2rem"></div>
           <div style="font-size:1.25rem;font-weight:800;margin-top:.5rem">${S.lang === 'sw' ? 'Chagua Duka' : 'Select Store'}</div>
           <div style="font-size:.9rem;color:var(--s500);margin-top:.25rem">${S.lang === 'sw' ? 'Duka gani unafanya kazi nalo leo?' : 'Which store are you working at today?'}</div>
         </div>
         ${S.stores.map(st => `
           <div class="card" style="margin-bottom:.875rem;cursor:pointer;border:2px solid ${S.store?.id === st.id ? 'var(--g600)' : 'var(--s200)'}" onclick="App.switchStore('${st.id}');App.navTo('dashboard')">
             <div class="cp" style="display:flex;align-items:center;gap:1rem">
-              <div style="width:52px;height:52px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">🏪</div>
+              <div style="width:52px;height:52px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0"></div>
               <div style="flex:1">
-                <div style="font-size:1.05rem;font-weight:800">${st.store_name} ${st.is_primary ? '⭐' : ''}</div>
+                <div style="font-size:1.05rem;font-weight:800">${st.store_name} ${st.is_primary ? '' : ''}</div>
                 <div style="font-size:.85rem;color:var(--s500)">${st.district || st.region || ''}</div>
               </div>
               <div style="color:var(--g700);font-size:1.3rem">→</div>
             </div>
           </div>`).join('')}
-        <button class="btn btn-p" style="margin-top:.75rem" onclick="App.showAddStore()">+ ${S.lang === 'sw' ? 'Ongeza Duka' : 'Add Store'}</button>
+        <button class="btn btn-primary" style="margin-top:.75rem" onclick="App.showAddStore()">+ ${S.lang === 'sw' ? 'Ongeza Duka' : 'Add Store'}</button>
       </div>`;
   },
 
@@ -853,22 +859,22 @@ window.App = {
     view.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
         <span style="font-size:1.1rem;font-weight:800">${S.lang === 'sw' ? 'Maduka Yangu' : 'My Stores'} (${S.stores.length})</span>
-        <button class="btn btn-p" style="width:auto;padding:.65rem 1.25rem" onclick="App.showAddStore()">+ ${S.lang === 'sw' ? 'Ongeza' : 'Add'}</button>
+        <button class="btn btn-primary" style="width:auto;padding:.65rem 1.25rem" onclick="App.showAddStore()">+ ${S.lang === 'sw' ? 'Ongeza' : 'Add'}</button>
       </div>
       ${S.stores.map(st => `
         <div class="card" style="margin-bottom:.875rem;border:2px solid ${S.store?.id === st.id ? 'var(--g600)' : 'var(--s200)'}">
           <div class="cp">
             <div style="display:flex;align-items:center;gap:1rem">
-              <div style="width:48px;height:48px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">🏪</div>
+              <div style="width:48px;height:48px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0"></div>
               <div style="flex:1">
-                <div style="font-size:1rem;font-weight:800">${st.store_name} ${st.is_primary ? '⭐' : ''}</div>
+                <div style="font-size:1rem;font-weight:800">${st.store_name} ${st.is_primary ? '' : ''}</div>
                 <div style="font-size:.85rem;color:var(--s500)">${st.district || ''} ${st.region || ''}</div>
               </div>
               ${S.store?.id === st.id ? `<span class="active-badge">ACTIVE</span>` : ''}
             </div>
             ${S.store?.id !== st.id ? `<div style="display:flex;gap:.5rem;margin-top:.875rem">
-              <button class="bsm b" onclick="App.switchStore('${st.id}');App.navTo('dashboard')">${S.lang === 'sw' ? 'Ingia' : 'Switch'}</button>
-              <button class="bsm r" onclick="App.deleteStore('${st.id}')">${S.lang === 'sw' ? 'Futa' : 'Delete'}</button>
+              <button class="btn-sm btn-sm-blue" onclick="App.switchStore('${st.id}');App.navTo('dashboard')">${S.lang === 'sw' ? 'Ingia' : 'Switch'}</button>
+              <button class="btn-sm btn-sm-red" onclick="App.deleteStore('${st.id}')">${S.lang === 'sw' ? 'Futa' : 'Delete'}</button>
             </div>` : ''}
           </div>
         </div>`).join('')}`;
@@ -1046,7 +1052,7 @@ window.App = {
   async renderPage(page) {
     const view = $('av');
     if (!view) return;
-    view.innerHTML = `<div class="page-loading"><span class="spin d"></span></div>`;
+    view.innerHTML = `<div class="page-loading"><span class="spin spin-dark"></span> Inapakia...</div>`;
 
     const tbic = $('tbic'), icons = {
       dashboard: svgIcon('grid'), marketplace: svgIcon('store'),
@@ -1103,10 +1109,10 @@ window.App = {
     const view = $('av');
     view.innerHTML = `
       <div class="sr">
-        <div class="sc g"><div class="sic">${svgIcon('revenue')}</div><div class="sl">${S.lang === 'sw' ? 'Mapato Leo' : 'Today Revenue'}</div><div class="sv" id="dash-rev">TZS 0</div></div>
-        <div class="sc g"><div class="sic">${svgIcon('profit')}</div><div class="sl">${t('profit')}</div><div class="sv" id="dash-profit">TZS 0</div></div>
-        <div class="sc a"><div class="sic">${svgIcon('pkg')}</div><div class="sl">${S.lang === 'sw' ? 'Yanasubiri' : 'Pending'}</div><div class="sv">${pending}</div></div>
-        <div class="sc b"><div class="sic">${svgIcon('orders')}</div><div class="sl">${S.lang === 'sw' ? 'Zimetolewa' : 'Delivered'}</div><div class="sv">${delivered}</div></div>
+        <div class="sc green"><div class="sic">${svgIcon('revenue')}</div><div class="sl">${S.lang === 'sw' ? 'Mapato Leo' : 'Today Revenue'}</div><div class="sv" id="dash-rev">TZS 0</div></div>
+        <div class="sc green"><div class="sic">${svgIcon('profit')}</div><div class="sl">${t('profit')}</div><div class="sv" id="dash-profit">TZS 0</div></div>
+        <div class="sc amber"><div class="sic">${svgIcon('pkg')}</div><div class="sl">${S.lang === 'sw' ? 'Yanasubiri' : 'Pending'}</div><div class="sv">${pending}</div></div>
+        <div class="sc blue"><div class="sic">${svgIcon('orders')}</div><div class="sl">${S.lang === 'sw' ? 'Zimetolewa' : 'Delivered'}</div><div class="sv">${delivered}</div></div>
       </div>
       <div class="card">
         <div class="cp">
@@ -1122,7 +1128,7 @@ window.App = {
                 <td>${statusPill(o.status, S.lang)}</td>
                 <td style="font-weight:700">${fmt(o.total_price)}</td>
                 <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0, 10)}</td>
-              </tr>`).join('') || `<tr><td colspan="4"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
+              </tr>`).join('') || `<tr><td colspan="4"><div class="empty"><div class="empty-ic"></div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
             </tbody>
           </table></div>
         </div>
@@ -1148,7 +1154,7 @@ window.App = {
     });
 
     if (!sorted.length) {
-      $('av').innerHTML = `<div class="empty"><div class="empty-ic">🏪</div><div class="empty-t">${S.lang === 'sw' ? 'Hakuna wasambazaji' : 'No distributors found'}</div></div>`;
+      $('av').innerHTML = `<div class="empty"><div class="empty-ic"></div><div class="empty-t">${S.lang === 'sw' ? 'Hakuna wasambazaji' : 'No distributors found'}</div></div>`;
       return;
     }
 
@@ -1164,16 +1170,16 @@ window.App = {
 
     const renderProducts = (catFilter = 'all') => {
       const filtered = catFilter === 'all' ? products : products.filter(p => p.category === catFilter);
-      if (!filtered.length) return `<div class="empty" style="grid-column:1/-1"><div class="empty-ic">📦</div><div class="empty-s">${t('noProducts')}</div></div>`;
+      if (!filtered.length) return `<div class="empty" style="grid-column:1/-1"><div class="empty-ic"></div><div class="empty-s">${t('noProducts')}</div></div>`;
       return filtered.map(p => {
         const ci = S.cart.find(c => c.product_id === p.id);
         const inCart = !!ci;
         const stock = p.stock_qty > 10 ? 'ok' : p.stock_qty > 0 ? 'low' : 'out';
-        const stockTxt = stock === 'ok' ? '✅ Stok' : stock === 'low' ? `⚠️ ${p.stock_qty} imebaki` : '❌ Hakuna';
+        const stockTxt = stock === 'ok' ? 'Stok' : stock === 'low' ? `Onyo: ${p.stock_qty} imebaki` : 'Hakuna';
         return `<div class="pcard${inCart ? ' in' : ''}" id="pc-${p.id}">
           <span class="sbadge s-${stock}">${stockTxt}</span>
-          <div class="ppla">${CAT_ICONS[p.category] || '📦'}</div>
-          <div class="pcat">${p.category}</div>
+          <div class="pcat-wrap">${CAT_ICONS[p.category] || ''}</div>
+          <div class="pcategory">${p.category}</div>
           <div class="pname">${p.product_name}</div>
           <div class="punit">${p.selling_unit || ''}</div>
           ${p.min_order_qty > 1 ? `<div class="pmoq">Min: ${p.min_order_qty} ${p.selling_unit || 'pc'}</div>` : ''}
@@ -1196,7 +1202,7 @@ window.App = {
     const sel = sorted.find(d => d.id === distId);
     const minDel = sel?.min_delivery_amount || 0;
     const distOpts = sorted.map(d =>
-      `<option value="${d.id}"${d.id === distId ? ' selected' : ''}>${d.store_name} — ${d.district || d.region || ''}${d.region === u.region ? ' ⭐' : ''}</option>`
+      `<option value="${d.id}"${d.id === distId ? ' selected' : ''}>${d.store_name} — ${d.district || d.region || ''}${d.region === u.region ? ' ' : ''}</option>`
     ).join('');
 
     const view = $('av');
@@ -1207,7 +1213,7 @@ window.App = {
             <label class="fl">${S.lang === 'sw' ? 'Chagua Msambazaji' : 'Select Distributor'}</label>
             <select class="fi" id="dist-sel" onchange="App.changeDist(this.value)">${distOpts}</select>
           </div>
-          ${minDel > 0 ? `<div class="alert al-w" style="margin:0">⚠️ ${S.lang === 'sw' ? 'Kiwango cha chini:' : 'Minimum order:'} <strong>${fmt(minDel)}</strong></div>` : ''}
+          ${minDel > 0 ? `<div class="alert al-w" style="margin:0">Onyo: ${S.lang === 'sw' ? 'Kiwango cha chini:' : 'Minimum order:'} <strong>${fmt(minDel)}</strong></div>` : ''}
         </div>
       </div>
       <div class="fps" id="cat-filter">
@@ -1243,11 +1249,11 @@ window.App = {
         const ci = S.cart.find(c => c.product_id === prod.id);
         const inCart = !!ci;
         const stock = prod.stock_qty > 10 ? 'ok' : prod.stock_qty > 0 ? 'low' : 'out';
-        const stockTxt = stock === 'ok' ? '✅ Stok' : stock === 'low' ? `⚠️ ${prod.stock_qty} imebaki` : '❌ Hakuna';
+        const stockTxt = stock === 'ok' ? 'Stok' : stock === 'low' ? `Onyo: ${prod.stock_qty} imebaki` : 'Hakuna';
         return `<div class="pcard${inCart ? ' in' : ''}" id="pc-${prod.id}">
           <span class="sbadge s-${stock}">${stockTxt}</span>
-          <div class="ppla">${CAT_ICONS[prod.category] || '📦'}</div>
-          <div class="pcat">${prod.category}</div>
+          <div class="pcat-wrap">${CAT_ICONS[prod.category] || ''}</div>
+          <div class="pcategory">${prod.category}</div>
           <div class="pname">${prod.product_name}</div>
           <div class="punit">${prod.selling_unit || ''}</div>
           ${prod.min_order_qty > 1 ? `<div class="pmoq">Min: ${prod.min_order_qty}</div>` : ''}
@@ -1336,7 +1342,7 @@ window.App = {
     const list  = $('cplist'), total = $('ct-val');
     if (!list) return;
     if (!S.cart.length) {
-      list.innerHTML = `<div class="empty"><div class="empty-ic">🛒</div><div class="empty-s">${t('cartEmpty')}</div></div>`;
+      list.innerHTML = `<div class="empty"><div class="empty-ic"></div><div class="empty-s">${t('cartEmpty')}</div></div>`;
       if (total) total.textContent = 'TZS 0';
       return;
     }
@@ -1344,11 +1350,11 @@ window.App = {
     list.innerHTML = S.cart.map(c => {
       const moqWarn = c.qty < c.min_order_qty;
       return `<div class="cpi">
-        <div class="cpi-em">${CAT_ICONS['other'] || '📦'}</div>
+        <div class="cpi-em">${CAT_ICONS['other'] || ''}</div>
         <div style="flex:1;min-width:0">
           <div class="cpi-name">${c.product_name}</div>
           <div class="cpi-price">${fmt(c.qty * c.unit_price)}</div>
-          ${moqWarn ? `<div class="cpi-moq">⚠️ Min: ${c.min_order_qty}</div>` : ''}
+          ${moqWarn ? `<div class="cpi-moq">Onyo: Min: ${c.min_order_qty}</div>` : ''}
         </div>
         <div class="qc">
           <button class="qb" onclick="App.cartChange('${c.product_id}',-1)">−</button>
@@ -1418,8 +1424,8 @@ window.App = {
               <td>${o.items_count}</td>
               <td><strong>${fmt(o.total_price)}</strong></td>
               <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0, 10)}</td>
-              <td>${o.status === 'delivered' ? `<button class="bsm b" onclick="App.showInvoice('${o.id}')">${t('invoices')}</button>` : ''}</td>
-            </tr>`).join('') || `<tr><td colspan="6"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
+              <td>${o.status === 'delivered' ? `<button class="btn-sm btn-sm-blue" onclick="App.showInvoice('${o.id}')">${t('invoices')}</button>` : ''}</td>
+            </tr>`).join('') || `<tr><td colspan="6"><div class="empty"><div class="empty-ic"></div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
           </tbody>
         </table></div>
       </div></div>`;
@@ -1443,12 +1449,12 @@ window.App = {
               <td><strong>${fmt(o.total_price)}</strong></td>
               <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0, 10)}</td>
               <td style="display:flex;gap:.3rem;flex-wrap:wrap">
-                ${o.status === 'pending'   ? `<button class="bsm b" onclick="App.updateOrderStatus('${o.id}','confirmed')">${S.lang === 'sw' ? 'Thibitisha' : 'Confirm'}</button>` : ''}
-                ${o.status === 'confirmed' ? `<button class="bsm g" onclick="App.updateOrderStatus('${o.id}','delivered')">${S.lang === 'sw' ? 'Toa' : 'Deliver'}</button>` : ''}
-                ${o.status === 'delivered' ? `<button class="bsm g" onclick="App.showReceipt('${o.id}')">${t('printReceipt')}</button>` : ''}
-                ${o.status !== 'cancelled' && o.status !== 'delivered' ? `<button class="bsm r" onclick="App.updateOrderStatus('${o.id}','cancelled')">${S.lang === 'sw' ? 'Futa' : 'Cancel'}</button>` : ''}
+                ${o.status === 'pending'   ? `<button class="btn-sm btn-sm-blue" onclick="App.updateOrderStatus('${o.id}','confirmed')">${S.lang === 'sw' ? 'Thibitisha' : 'Confirm'}</button>` : ''}
+                ${o.status === 'confirmed' ? `<button class="btn-sm btn-sm-green" onclick="App.updateOrderStatus('${o.id}','delivered')">${S.lang === 'sw' ? 'Toa' : 'Deliver'}</button>` : ''}
+                ${o.status === 'delivered' ? `<button class="btn-sm btn-sm-green" onclick="App.showReceipt('${o.id}')">${t('printReceipt')}</button>` : ''}
+                ${o.status !== 'cancelled' && o.status !== 'delivered' ? `<button class="btn-sm btn-sm-red" onclick="App.updateOrderStatus('${o.id}','cancelled')">${S.lang === 'sw' ? 'Futa' : 'Cancel'}</button>` : ''}
               </td>
-            </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
+            </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic"></div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
           </tbody>
         </table></div>
       </div></div>`;
@@ -1490,7 +1496,7 @@ window.App = {
     const view = $('av');
     view.innerHTML = `
       <div class="no-print" style="display:flex;gap:.65rem;margin-bottom:1rem">
-        <button class="share-btn pdf" onclick="window.print()">${svgIcon('print')} ${t('printReceipt')}</button>
+        <button class="share-btn share-btn-blue" onclick="window.print()">${svgIcon('print')} ${t('printReceipt')}</button>
       </div>
       <div class="receipt" id="print-area">
         <div class="receipt-logo"><img src="logo.jpg" onerror="this.style.display='none'"/>
@@ -1527,12 +1533,12 @@ window.App = {
     const view = $('av');
     view.innerHTML = `
       <div class="no-print" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">
-        <button class="share-btn pdf" onclick="window.print()">${svgIcon('print')} ${t('printPDF')}</button>
-        <button class="share-btn wa" onclick="window.open('https://wa.me/?text=${shareText}','_blank')">
+        <button class="share-btn share-btn-blue" onclick="window.print()">${svgIcon('print')} ${t('printPDF')}</button>
+        <button class="share-btn share-btn-whatsapp" onclick="window.open('https://wa.me/?text=${shareText}','_blank')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
           WhatsApp
         </button>
-        <button class="share-btn sms" onclick="window.open('sms:?body=${shareText}','_blank')">${svgIcon('sms')} SMS</button>
+        <button class="share-btn share-btn-sms" onclick="window.open('sms:?body=${shareText}','_blank')">${svgIcon('sms')} SMS</button>
       </div>
       <div class="receipt" id="print-area">
         <div class="receipt-logo"><img src="logo.jpg" onerror="this.style.display='none'"/>
@@ -1547,7 +1553,7 @@ window.App = {
         <div>${(items || []).map(i => `<div class="ri"><div><div class="ri-name">${i.product_name}</div><div class="ri-qty">× ${i.qty} @ ${fmt(i.unit_price)}</div></div><div class="ri-price">${fmt(i.subtotal)}</div></div>`).join('')}</div>
         <div class="rtotal"><span class="rtl">JUMLA</span><span class="rtv">${fmt(order.total_price)}</span></div>
         <div style="margin-top:.75rem;padding:.65rem;background:var(--s100);border-radius:.5rem;font-size:.75rem">
-          <div style="display:flex;justify-content:space-between"><span>Hali ya Malipo</span><strong>${inv.status === 'paid' ? '✅ Imelipwa' : '⏳ Haijalipwa'}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Hali ya Malipo</span><strong>${inv.status === 'paid' ? 'Imelipwa' : '⏳ Haijalipwa'}</strong></div>
           ${inv.due_date ? `<div style="display:flex;justify-content:space-between"><span>Tarehe ya Mwisho</span><strong>${inv.due_date}</strong></div>` : ''}
         </div>
         <div class="rfoot">Malipo yalipwe kabla ya tarehe iliyoonyeshwa. · BomaWave FMCG · Tanzania</div>
@@ -1571,10 +1577,10 @@ window.App = {
               <td><strong>${fmt(inv.amount)}</strong></td>
               <td style="color:var(--s500);font-size:.75rem">${inv.issued_at?.slice(0, 10)}</td>
               <td style="display:flex;gap:.3rem;flex-wrap:wrap">
-                ${inv.order_id ? `<button class="bsm b" onclick="App.showInvoice('${inv.order_id}')">${t('shareInvoice')}</button>` : ''}
-                ${inv.status === 'unpaid' ? `<button class="bsm g" onclick="App.markInvPaid('${inv.id}')">${S.lang === 'sw' ? 'Malipo Yamefika' : 'Mark Paid'}</button>` : ''}
+                ${inv.order_id ? `<button class="btn-sm btn-sm-blue" onclick="App.showInvoice('${inv.order_id}')">${t('shareInvoice')}</button>` : ''}
+                ${inv.status === 'unpaid' ? `<button class="btn-sm btn-sm-green" onclick="App.markInvPaid('${inv.id}')">${S.lang === 'sw' ? 'Malipo Yamefika' : 'Mark Paid'}</button>` : ''}
               </td>
-            </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic">📄</div><div class="empty-s">${S.lang === 'sw' ? 'Hakuna ankara' : 'No invoices'}</div></div></td></tr>`}
+            </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic"></div><div class="empty-s">${S.lang === 'sw' ? 'Hakuna ankara' : 'No invoices'}</div></div></td></tr>`}
           </tbody>
         </table></div>
       </div></div>`;
@@ -1612,7 +1618,7 @@ window.App = {
           <div class="fg"><label class="fl">MOQ</label><input class="fi" id="pmoq" type="number" min="1" value="1"/></div>
           <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Kipimo' : 'Unit'}</label><input class="fi" id="pu" placeholder="Krate (24)"/></div>
         </div>
-        <button class="btn btn-p" onclick="App.addProduct()" style="max-width:240px">
+        <button class="btn btn-primary" onclick="App.addProduct()" style="max-width:240px">
           <span id="add-p-txt">+ ${t('addProduct')}</span>
         </button>
       </div></div>
@@ -1627,9 +1633,9 @@ window.App = {
               <td><strong style="color:var(--g700)">${fmt(p.price)}</strong></td>
               <td style="color:var(--amber);font-weight:700">${p.min_order_qty}</td>
               <td><div class="sedit"><input type="number" id="sq-${p.id}" value="${p.stock_qty}" min="0" style="width:60px"/>
-                <button class="bsm g" onclick="App.updateStock('${p.id}')">${S.lang === 'sw' ? 'Hifadhi' : 'Save'}</button></div></td>
-              <td><button class="bsm r" onclick="App.deleteProduct('${p.id}')">${S.lang === 'sw' ? 'Futa' : 'Delete'}</button></td>
-            </tr>`).join('') || `<tr><td colspan="6"><div class="empty"><div class="empty-ic">📦</div><div class="empty-s">${t('noProducts')}</div></div></td></tr>`}
+                <button class="btn-sm btn-sm-green" onclick="App.updateStock('${p.id}')">${S.lang === 'sw' ? 'Hifadhi' : 'Save'}</button></div></td>
+              <td><button class="btn-sm btn-sm-red" onclick="App.deleteProduct('${p.id}')">${S.lang === 'sw' ? 'Futa' : 'Delete'}</button></td>
+            </tr>`).join('') || `<tr><td colspan="6"><div class="empty"><div class="empty-ic"></div><div class="empty-s">${t('noProducts')}</div></div></td></tr>`}
           </tbody>
         </table></div>
       </div></div>`;
@@ -1648,7 +1654,7 @@ window.App = {
     }]);
     setBusy('add-p-txt', false, `+ ${t('addProduct')}`);
     if (error) return toast('Hitilafu ya kuongeza bidhaa', 'e');
-    toast(S.lang === 'sw' ? 'Bidhaa imeongezwa! ✅' : 'Product added! ✅', 's');
+    toast(S.lang === 'sw' ? 'Bidhaa imeongezwa!' : 'Product added!', 's');
     App.pageProducts();
   },
 
@@ -1706,27 +1712,27 @@ window.App = {
 
     const view = $('av');
     view.innerHTML = `
-      ${!S.isOnline ? `<div class="offline-banner">⚡ ${S.lang === 'sw' ? 'Nje ya mtandao — data inashikiliwa hapa' : 'Offline — data saved locally'}</div>` : ''}
+      ${!S.isOnline ? `<div class="offline-banner">${S.lang === 'sw' ? 'Nje ya mtandao — data inashikiliwa hapa' : 'Offline — data saved locally'}</div>` : ''}
 
       <!-- ── LIVE PROFIT DASHBOARD ── -->
-      <div class="pos-live-dash">
+      <div class="pos-dash">
         <div class="pos-live-row">
-          <div class="pos-kpi green">
+          <div class="pos-kpi kpi-green">
             <div class="pos-kpi-label">${S.lang === 'sw' ? 'Mapato Leo' : 'Revenue'}</div>
             <div class="pos-kpi-val" id="pos-rev">TZS 0</div>
             <div class="pos-kpi-sub">${txCount} ${S.lang === 'sw' ? 'mauzo' : 'sales'}</div>
           </div>
-          <div class="pos-kpi ${todayProfit >= 0 ? 'green' : 'red'}">
+          <div class="pos-kpi ${todayProfit >= 0 ? 'kpi-green' : 'kpi-red'}">
             <div class="pos-kpi-label">${S.lang === 'sw' ? 'Faida Ghafi' : 'Gross Profit'}</div>
             <div class="pos-kpi-val" id="pos-profit">TZS 0</div>
             <div class="pos-kpi-sub" style="color:${marginColor};font-weight:800">Margin ${margin}%</div>
           </div>
-          <div class="pos-kpi red">
+          <div class="pos-kpi kpi-red">
             <div class="pos-kpi-label">${S.lang === 'sw' ? 'Matumizi' : 'Expenses'}</div>
             <div class="pos-kpi-val" id="pos-exp">TZS 0</div>
             <div class="pos-kpi-sub">${allExps.length} ${S.lang === 'sw' ? 'rekodi' : 'entries'}</div>
           </div>
-          <div class="pos-kpi ${netProfit >= 0 ? 'green' : 'red'}">
+          <div class="pos-kpi ${netProfit >= 0 ? 'kpi-green' : 'kpi-red'}">
             <div class="pos-kpi-label">${S.lang === 'sw' ? 'Faida Halisi' : 'Net Profit'}</div>
             <div class="pos-kpi-val" id="pos-net" style="color:${netProfit < 0 ? 'var(--red)' : 'inherit'}">TZS 0</div>
             <div class="pos-kpi-sub">${S.lang === 'sw' ? 'Baada ya matumizi' : 'After expenses'}</div>
@@ -1749,7 +1755,7 @@ window.App = {
 
         ${offS.length + offE.length > 0 ? `
         <div class="offline-pill-wrap">
-          <span class="offline-pill" onclick="syncOfflineData()">⚡ ${offS.length + offE.length} offline — ${S.lang === 'sw' ? 'bonyeza kusync' : 'tap to sync'}</span>
+          <span class="offline-pill" onclick="syncOfflineData()">${offS.length + offE.length} offline — ${S.lang === 'sw' ? 'bonyeza kusync' : 'tap to sync'}</span>
         </div>` : ''}
       </div>
 
@@ -1808,7 +1814,7 @@ window.App = {
 
           <!-- ── LIVE CALCULATOR ── -->
           <div id="pos-calc" class="pos-calc-box" style="display:none">
-            <div class="pos-calc-title">📊 ${S.lang === 'sw' ? 'Hesabu ya Haraka' : 'Live Calculator'}</div>
+            <div class="pos-calc-title">${S.lang === 'sw' ? 'Hesabu ya Haraka' : 'Live Calculator'}</div>
             <div class="pos-calc-grid">
               <div class="pos-calc-item">
                 <span>${S.lang === 'sw' ? 'Mapato' : 'Revenue'}</span>
@@ -1827,8 +1833,8 @@ window.App = {
             </div>
           </div>
 
-          <button class="pos-rec-btn pos-rec-green" onclick="App.recordSale()">
-            <span id="rec-sale-txt">✓ ${S.lang === 'sw' ? 'Rekodi Mauzo' : 'Record Sale'}</span>
+          <button class="pos-rec-btn rec-blue" onclick="App.recordSale()">
+            <span id="rec-sale-txt">${S.lang === 'sw' ? 'Rekodi Mauzo' : 'Record Sale'}</span>
           </button>
         </div>
       </div>
@@ -1844,12 +1850,12 @@ window.App = {
           <div class="pos-field-group">
             <label class="pos-label">${S.lang === 'sw' ? 'Aina ya Matumizi' : 'Expense Category'}</label>
             <select class="pos-input pos-select" id="e-cat" onchange="App.posSaveExpForm()">
-              <option value="rent"${S._posExpForm.cat === 'rent' ? ' selected' : ''}>${S.lang === 'sw' ? '🏠 Kodi' : '🏠 Rent'}</option>
-              <option value="transport"${S._posExpForm.cat === 'transport' ? ' selected' : ''}>${S.lang === 'sw' ? '🚛 Usafiri' : '🚛 Transport'}</option>
-              <option value="salary"${S._posExpForm.cat === 'salary' ? ' selected' : ''}>${S.lang === 'sw' ? '👤 Mshahara' : '👤 Salary'}</option>
-              <option value="utilities"${S._posExpForm.cat === 'utilities' ? ' selected' : ''}>${S.lang === 'sw' ? '💡 Umeme/Maji' : '💡 Utilities'}</option>
-              <option value="stock"${S._posExpForm.cat === 'stock' ? ' selected' : ''}>${S.lang === 'sw' ? '📦 Kununua Stok' : '📦 Stock Purchase'}</option>
-              <option value="other"${S._posExpForm.cat === 'other' ? ' selected' : ''}>${S.lang === 'sw' ? '📌 Nyingine' : '📌 Other'}</option>
+              <option value="rent"${S._posExpForm.cat === 'rent' ? ' selected' : ''}>${S.lang === 'sw' ? ' Kodi' : ' Rent'}</option>
+              <option value="transport"${S._posExpForm.cat === 'transport' ? ' selected' : ''}>${S.lang === 'sw' ? ' Usafiri' : ' Transport'}</option>
+              <option value="salary"${S._posExpForm.cat === 'salary' ? ' selected' : ''}>${S.lang === 'sw' ? ' Mshahara' : ' Salary'}</option>
+              <option value="utilities"${S._posExpForm.cat === 'utilities' ? ' selected' : ''}>${S.lang === 'sw' ? ' Umeme/Maji' : ' Utilities'}</option>
+              <option value="stock"${S._posExpForm.cat === 'stock' ? ' selected' : ''}>${S.lang === 'sw' ? ' Kununua Stok' : ' Stock Purchase'}</option>
+              <option value="other"${S._posExpForm.cat === 'other' ? ' selected' : ''}>${S.lang === 'sw' ? ' Nyingine' : ' Other'}</option>
             </select>
           </div>
 
@@ -1874,8 +1880,8 @@ window.App = {
             </div>
           </div>
 
-          <button class="pos-rec-btn pos-rec-red" onclick="App.recordExpense()">
-            <span id="rec-exp-txt">✓ ${S.lang === 'sw' ? 'Rekodi Matumizi' : 'Record Expense'}</span>
+          <button class="pos-rec-btn rec-red" onclick="App.recordExpense()">
+            <span id="rec-exp-txt">${S.lang === 'sw' ? 'Rekodi Matumizi' : 'Record Expense'}</span>
           </button>
         </div>
       </div>
@@ -1904,8 +1910,8 @@ window.App = {
         <!-- Sales list -->
         <div class="card" style="margin-bottom:1rem"><div class="cp">
           <div class="sh">
-            <span class="st">💰 ${S.lang === 'sw' ? 'Mauzo Leo' : "Today's Sales"} (${allSales.length})</span>
-            ${offS.length > 0 ? `<span class="offline-pill">⚡ ${offS.length} offline</span>` : ''}
+            <span class="st">${S.lang === 'sw' ? 'Mauzo Leo' : "Today's Sales"} (${allSales.length})</span>
+            ${offS.length > 0 ? `<span class="offline-pill">${offS.length} offline</span>` : ''}
           </div>
           ${allSales.length ? `
           <div style="display:flex;flex-direction:column;gap:.5rem">
@@ -1917,7 +1923,7 @@ window.App = {
               const isLoss = profit < 0;
               return `<div class="pos-hist-card${s._off ? ' offline-card' : ''}">
                 <div class="pos-hist-card-left">
-                  <div class="pos-hist-prod">${s.product_name}${s._off ? ' <span class="offline-tag">⚡</span>' : ''}</div>
+                  <div class="pos-hist-prod">${s.product_name}${s._off ? ' <span class="offline-tag"></span>' : ''}</div>
                   <div class="pos-hist-meta">${s.qty} × ${fmt(s.selling_price)} · ${s.created_at?.slice(11, 16) || '—'}</div>
                 </div>
                 <div class="pos-hist-card-right">
@@ -1928,13 +1934,13 @@ window.App = {
                 </div>
               </div>`;
             }).join('')}
-          </div>` : `<div class="empty"><div class="empty-ic">💰</div><div class="empty-s">${S.lang === 'sw' ? 'Hakuna mauzo leo' : 'No sales today'}</div></div>`}
+          </div>` : `<div class="empty"><div class="empty-ic"></div><div class="empty-s">${S.lang === 'sw' ? 'Hakuna mauzo leo' : 'No sales today'}</div></div>`}
         </div></div>
 
         <!-- Expenses list -->
         <div class="card"><div class="cp">
           <div class="sh">
-            <span class="st">💸 ${S.lang === 'sw' ? 'Matumizi Leo' : "Today's Expenses"} (${allExps.length})</span>
+            <span class="st">${S.lang === 'sw' ? 'Matumizi Leo' : "Today's Expenses"} (${allExps.length})</span>
           </div>
           ${allExps.length ? `
           <div style="display:flex;flex-direction:column;gap:.5rem">
@@ -1948,7 +1954,7 @@ window.App = {
                   <div class="pos-hist-rev" style="color:var(--red)">− ${fmt(e.amount)}</div>
                 </div>
               </div>`).join('')}
-          </div>` : `<div class="empty"><div class="empty-ic">💸</div><div class="empty-s">${S.lang === 'sw' ? 'Hakuna matumizi leo' : 'No expenses today'}</div></div>`}
+          </div>` : `<div class="empty"><div class="empty-ic"></div><div class="empty-s">${S.lang === 'sw' ? 'Hakuna matumizi leo' : 'No expenses today'}</div></div>`}
         </div></div>
       </div>`;
 
@@ -2062,15 +2068,15 @@ window.App = {
       const { error } = await sb.from('sales').insert([data]);
       if (error) {
         await posDbAdd('sales', data);
-        toast(S.lang === 'sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w');
+        toast(S.lang === 'sw' ? 'Imehifadhiwa offline' : 'Saved offline', 'w');
       } else {
-        toast(S.lang === 'sw' ? '✅ Mauzo yamerekodiwa!' : '✅ Sale recorded!', 's');
+        toast(S.lang === 'sw' ? 'Mauzo yamerekodiwa!' : 'Sale recorded!', 's');
       }
     } else {
       await posDbAdd('sales', data);
-      toast(S.lang === 'sw' ? '⚡ Imehifadhiwa offline — itasync baadaye' : '⚡ Saved offline', 'w');
+      toast(S.lang === 'sw' ? 'Imehifadhiwa offline — itasync baadaye' : 'Saved offline', 'w');
     }
-    setBusy('rec-sale-txt', false, `✓ ${S.lang === 'sw' ? 'Rekodi Mauzo' : 'Record Sale'}`);
+    setBusy('rec-sale-txt', false, `${S.lang === 'sw' ? 'Rekodi Mauzo' : 'Record Sale'}`);
 
     // Clear form + state
     S._posSaleForm = { prod: '', cat: 'beverages', qty: 1, buy: '', sell: '' };
@@ -2099,13 +2105,13 @@ window.App = {
     setBusy('rec-exp-txt', true);
     if (S.isOnline) {
       const { error } = await sb.from('expenses').insert([data]);
-      if (error) { await posDbAdd('expenses', data); toast('⚡ Saved offline', 'w'); }
-      else toast(S.lang === 'sw' ? '✅ Matumizi yamerekodiwa!' : '✅ Expense recorded!', 's');
+      if (error) { await posDbAdd('expenses', data); toast('Saved offline', 'w'); }
+      else toast(S.lang === 'sw' ? 'Matumizi yamerekodiwa!' : 'Expense recorded!', 's');
     } else {
       await posDbAdd('expenses', data);
-      toast(S.lang === 'sw' ? '⚡ Imehifadhiwa offline' : '⚡ Saved offline', 'w');
+      toast(S.lang === 'sw' ? 'Imehifadhiwa offline' : 'Saved offline', 'w');
     }
-    setBusy('rec-exp-txt', false, `✓ ${S.lang === 'sw' ? 'Rekodi Matumizi' : 'Record Expense'}`);
+    setBusy('rec-exp-txt', false, `${S.lang === 'sw' ? 'Rekodi Matumizi' : 'Record Expense'}`);
 
     S._posExpForm = { cat: 'rent', amt: '', desc: '' };
     if ($('e-amt'))  $('e-amt').value  = '';
@@ -2124,7 +2130,7 @@ window.App = {
         <button class="pertab" onclick="App.loadReports('month',this)">${S.lang === 'sw' ? 'Mwezi' : 'Month'}</button>
         <button class="pertab" onclick="App.loadReports('year',this)">${S.lang === 'sw' ? 'Mwaka' : 'Year'}</button>
       </div>
-      <div id="rep-body"><div class="page-loading"><span class="spin d"></span></div></div>`;
+      <div id="rep-body"><div class="page-loading"><span class="spin spin-dark"></span></div></div>`;
     await App.loadReports('today', view.querySelector('.pertab'));
   },
 
@@ -2182,7 +2188,7 @@ window.App = {
         <div class="rep-kpi ${net >= 0 ? 'green' : 'red'}"><div class="rep-kpi-label">${S.lang === 'sw' ? 'Faida Halisi' : 'Net Profit'}</div><div class="rep-kpi-val">${fmt(net)}</div><div class="rep-kpi-sub">${S.lang === 'sw' ? 'Baada ya matumizi' : 'After expenses'}</div></div>
       </div>
       <div class="rsec" style="margin-bottom:1rem">
-        <div class="rsec-t">📊 ${S.lang === 'sw' ? 'Muhtasari wa Fedha' : 'Financial Summary'}</div>
+        <div class="rsec-t">${S.lang === 'sw' ? 'Muhtasari wa Fedha' : 'Financial Summary'}</div>
         <div class="rrow"><span class="rl">${S.lang === 'sw' ? 'Jumla TX' : 'Total Transactions'}</span><span class="rv">${txCount}</span></div>
         <div class="rrow"><span class="rl">${S.lang === 'sw' ? 'Wastani kwa Mauzo' : 'Avg per Sale'}</span><span class="rv">${fmt(avgSale)}</span></div>
         <div class="rrow"><span class="rl">${S.lang === 'sw' ? 'Gharama ya Bidhaa' : 'Cost of Goods'}</span><span class="rv r">${fmt(cost)}</span></div>
@@ -2191,7 +2197,7 @@ window.App = {
         <div class="rrow div"><span class="rl" style="font-weight:800">Net Profit</span><span class="rv ${net >= 0 ? 'g' : 'r'}" style="font-size:1.1rem;font-weight:800">${fmt(net)}</span></div>
       </div>
       <div class="rsec" style="margin-bottom:1rem">
-        <div class="rsec-t">🏆 ${S.lang === 'sw' ? 'Bidhaa Zinazoongoza' : 'Top Products'}</div>
+        <div class="rsec-t">${S.lang === 'sw' ? 'Bidhaa Zinazoongoza' : 'Top Products'}</div>
         ${topProds.length ? topProds.map(([name, v], i) => {
           const isLoss = v.profit < 0;
           return `<div class="top-prod-row">
@@ -2201,7 +2207,7 @@ window.App = {
               <div class="top-prod-bar-wrap"><div class="top-prod-bar" style="width:${Math.round(v.rev / maxProdRev * 100)}%;background:${isLoss ? 'var(--red)' : 'linear-gradient(90deg,var(--g700),var(--g500))'}"></div></div>
               <div class="top-prod-meta">
                 <span>${fmt(v.rev)}</span>
-                <span style="color:${isLoss ? 'var(--red)' : 'var(--g700)'}; font-weight:700">${isLoss ? '❌ Hasara' : fmt(v.profit) + ' faida'}</span>
+                <span style="color:${isLoss ? 'var(--red)' : 'var(--g700)'}; font-weight:700">${isLoss ? 'Hasara' : fmt(v.profit) + ' faida'}</span>
                 <span style="color:var(--s500)">Qty: ${v.qty}</span>
               </div>
             </div>
@@ -2209,18 +2215,18 @@ window.App = {
         }).join('') : `<div style="color:var(--s500);text-align:center;padding:1rem">${S.lang === 'sw' ? 'Hakuna data' : 'No data'}</div>`}
       </div>
       <div class="rsec" style="margin-bottom:1rem">
-        <div class="rsec-t">📦 ${S.lang === 'sw' ? 'Mauzo kwa Aina' : 'Sales by Category'}</div>
+        <div class="rsec-t"> ${S.lang === 'sw' ? 'Mauzo kwa Aina' : 'Sales by Category'}</div>
         ${Object.entries(byCat).sort((a, b) => b[1].rev - a[1].rev).map(([cat, v]) => {
           const catMargin = v.rev > 0 ? Math.round(v.profit / v.rev * 100) : 0;
           const isLoss = v.profit < 0;
           return `<div class="cat-bar-row" style="margin-bottom:.75rem">
-            <div class="cat-bar-label">${CAT_ICONS[cat] || '📦'} ${cat}</div>
+            <div class="cat-bar-label">${CAT_ICONS[cat] || ''} ${cat}</div>
             <div>
               <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(v.rev / maxCatRev * 100)}%;${isLoss ? 'background:var(--red)' : ''}"></div></div>
               <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-top:.2rem">
                 <span style="color:var(--s500)">${fmt(v.rev)}</span>
                 <span style="color:${isLoss ? 'var(--red)' : catMargin >= 15 ? 'var(--g700)' : 'var(--s500)'}">
-                  ${isLoss ? '❌ Hasara' : `Faida: ${fmt(v.profit)}`}
+                  ${isLoss ? 'Hasara' : `Faida: ${fmt(v.profit)}`}
                 </span>
               </div>
             </div>
@@ -2228,7 +2234,7 @@ window.App = {
         }).join('') || `<div style="color:var(--s500);text-align:center;padding:1rem">${S.lang === 'sw' ? 'Hakuna data' : 'No data'}</div>`}
       </div>
       ${expT > 0 ? `<div class="rsec" style="margin-bottom:1rem">
-        <div class="rsec-t">💸 ${S.lang === 'sw' ? 'Matumizi kwa Aina' : 'Expenses by Category'}</div>
+        <div class="rsec-t">${S.lang === 'sw' ? 'Matumizi kwa Aina' : 'Expenses by Category'}</div>
         ${Object.entries(byExp).sort((a, b) => b[1] - a[1]).map(([cat, val]) => `
           <div class="cat-bar-row" style="margin-bottom:.65rem">
             <div class="cat-bar-label" style="color:var(--red)">${cat}</div>
@@ -2240,7 +2246,7 @@ window.App = {
       </div>` : ''}
       ${period !== 'today' && Object.keys(trend).length > 0 ? `
       <div class="rsec">
-        <div class="rsec-t">📈 ${S.lang === 'sw' ? 'Mwelekeo wa Mauzo' : 'Sales Trend'}</div>
+        <div class="rsec-t">${S.lang === 'sw' ? 'Mwelekeo wa Mauzo' : 'Sales Trend'}</div>
         <div class="trend-wrap">
           ${Object.entries(trend).sort().slice(-14).map(([date, val]) => {
             const maxT = Math.max(...Object.values(trend), 1);
@@ -2277,7 +2283,7 @@ window.App = {
           </div>
           <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Maelezo' : 'Description'}</label>
             <input class="fi" id="d-desc" placeholder="${S.lang === 'sw' ? 'mfano: Mkopo wa mchele' : 'e.g. Rice credit'}"/></div>
-          <button class="btn btn-p" onclick="App.addDebt()" style="max-width:200px">
+          <button class="btn btn-primary" onclick="App.addDebt()" style="max-width:200px">
             <span id="add-debt-txt">${S.lang === 'sw' ? 'Rekodi Deni' : 'Record Debt'}</span>
           </button>
         </div>
@@ -2300,12 +2306,12 @@ window.App = {
               </div>
               ${d.status !== 'paid' ? `<div style="display:flex;gap:.4rem;flex-wrap:wrap">
                 <input class="fi" id="dp-${d.id}" type="number" min="0" placeholder="${S.lang === 'sw' ? 'Kiasi' : 'Amount'}" style="max-width:120px;padding:.4rem .6rem;font-size:.85rem"/>
-                <button class="bsm g" onclick="App.payDebt('${d.id}')">${S.lang === 'sw' ? 'Rekodi Malipo' : 'Record Payment'}</button>
-                <button class="bsm r" onclick="App.deleteDebt('${d.id}')">${S.lang === 'sw' ? 'Futa' : 'Delete'}</button>
+                <button class="btn-sm btn-sm-green" onclick="App.payDebt('${d.id}')">${S.lang === 'sw' ? 'Rekodi Malipo' : 'Record Payment'}</button>
+                <button class="btn-sm btn-sm-red" onclick="App.deleteDebt('${d.id}')">${S.lang === 'sw' ? 'Futa' : 'Delete'}</button>
               </div>` : ''}
             </div>
           </div>`;
-        }).join('') || `<div class="empty"><div class="empty-ic">💳</div><div class="empty-t">${S.lang === 'sw' ? 'Hakuna madeni' : 'No debts'}</div></div>`}
+        }).join('') || `<div class="empty"><div class="empty-ic"></div><div class="empty-t">${S.lang === 'sw' ? 'Hakuna madeni' : 'No debts'}</div></div>`}
       </div>`;
   },
 
@@ -2320,7 +2326,7 @@ window.App = {
     }]);
     setBusy('add-debt-txt', false, S.lang === 'sw' ? 'Rekodi Deni' : 'Record Debt');
     if (error) return toast('Hitilafu', 'e');
-    toast(S.lang === 'sw' ? 'Deni limerekodiwa! ✅' : 'Debt recorded! ✅', 's');
+    toast(S.lang === 'sw' ? 'Deni limerekodiwa!' : 'Debt recorded!', 's');
     App.pageDebts();
   },
 
@@ -2331,7 +2337,7 @@ window.App = {
     const newPaid = (debt.amount_paid || 0) + extra;
     const status  = newPaid >= debt.amount ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid';
     await sb.from('debts').update({ amount_paid: newPaid, status }).eq('id', id);
-    toast(S.lang === 'sw' ? 'Malipo yamerekodiwa! ✅' : 'Payment recorded! ✅', 's');
+    toast(S.lang === 'sw' ? 'Malipo yamerekodiwa!' : 'Payment recorded!', 's');
     App.pageDebts();
   },
 
@@ -2357,7 +2363,7 @@ window.App = {
               <td style="font-size:.8rem">${u.phone_number}</td>
               <td>${statusBadge(u.role)}</td>
               <td style="font-size:.78rem">${u.district || u.region || '—'}</td>
-              <td><span class="pill ${u.is_active ? 'p-del' : 'p-can'}">${u.is_active ? '✅ Active' : '❌ Blocked'}</span></td>
+              <td><span class="pill ${u.is_active ? 'p-del' : 'p-can'}">${u.is_active ? 'Active' : 'Blocked'}</span></td>
             </tr>`).join('')}
           </tbody>
         </table></div>
@@ -2377,10 +2383,10 @@ window.App = {
     const view = $('av');
     view.innerHTML = `
       <div class="sr">
-        <div class="sc g"><div class="sic">${svgIcon('users')}</div><div class="sl">Retailers</div><div class="sv">${retailers}</div></div>
-        <div class="sc b"><div class="sic">${svgIcon('orders')}</div><div class="sl">Distributors</div><div class="sv">${distributors}</div></div>
-        <div class="sc a"><div class="sic">${svgIcon('pkg')}</div><div class="sl">Orders</div><div class="sv">${totalOrders}</div></div>
-        <div class="sc g"><div class="sic">${svgIcon('revenue')}</div><div class="sl">GMV</div><div class="sv">${fmt(totalValue)}</div></div>
+        <div class="sc green"><div class="sic">${svgIcon('users')}</div><div class="sl">Retailers</div><div class="sv">${retailers}</div></div>
+        <div class="sc blue"><div class="sic">${svgIcon('orders')}</div><div class="sl">Distributors</div><div class="sv">${distributors}</div></div>
+        <div class="sc amber"><div class="sic">${svgIcon('pkg')}</div><div class="sl">Orders</div><div class="sv">${totalOrders}</div></div>
+        <div class="sc green"><div class="sic">${svgIcon('revenue')}</div><div class="sl">GMV</div><div class="sv">${fmt(totalValue)}</div></div>
       </div>
       <div class="card"><div class="cp">
         <div class="sh"><span class="st">Platform Stats</span></div>
@@ -2396,19 +2402,19 @@ window.App = {
       .select('*').eq('business_id', S.user.id).eq('is_active', true);
     $('av').innerHTML = `
       <div class="sup-hero">
-        <div class="sup-hero-icon">👔</div>
+        <div class="sup-hero-icon"></div>
         <div>
           <div class="sup-hero-title">${S.lang === 'sw' ? 'Wasimamizi wa Biashara' : 'Business Supervisors'}</div>
           <div class="sup-hero-sub">${S.lang === 'sw' ? 'Mtu anayeweza kuona ufanisi wako bila kuingiliana na data' : 'View-only access to your business performance'}</div>
         </div>
       </div>
       <div class="card" style="margin-bottom:1rem"><div class="cp">
-        <div class="page-title">➕ ${S.lang === 'sw' ? 'Ongeza Msimamizi' : 'Add Supervisor'}</div>
+        <div class="page-title">${S.lang === 'sw' ? 'Ongeza Msimamizi' : 'Add Supervisor'}</div>
         <div style="display:flex;flex-direction:column;gap:.875rem;margin-top:.875rem">
           <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Jina la Msimamizi' : 'Supervisor Name'} *</label>
             <input class="fi" id="sup-name" placeholder="${S.lang === 'sw' ? 'mfano: Baba John' : 'e.g. John Smith'}"/></div>
           <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Namba ya Simu' : 'Phone Number'} *</label>
-            <div class="iw"><div class="pfx"><span class="pfx-flag">🇹🇿</span><span class="pfx-code">+255</span></div>
+            <div class="iw"><div class="pfx"><span class="pfx-flag">TZ</span><span class="pfx-code">+255</span></div>
               <input class="fi fi-phone" id="sup-phone" type="tel" inputmode="numeric" maxlength="9" placeholder="712 345 678" oninput="this.value=this.value.replace(/\D/g,'').slice(0,9)"/></div></div>
           <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Kiwango cha Ufikiaji' : 'Access Level'}</label>
             <select class="fi" id="sup-access">
@@ -2416,23 +2422,23 @@ window.App = {
               <option value="full">${S.lang === 'sw' ? 'Kamili' : 'Full Access'}</option>
             </select></div>
           <div class="alert al-i">ℹ️ ${S.lang === 'sw' ? 'Msimamizi atapata PIN kupitia SMS' : 'Supervisor will receive a PIN via SMS'}</div>
-          <button class="btn btn-p" onclick="App.addSupervisor()">
+          <button class="btn btn-primary" onclick="App.addSupervisor()">
             <span id="add-sup-txt">+ ${S.lang === 'sw' ? 'Ongeza Msimamizi' : 'Add Supervisor'}</span>
           </button>
         </div>
       </div></div>
       <div class="page-title">${S.lang === 'sw' ? 'Wasimamizi Waliopo' : 'Current Supervisors'} (${(sups || []).length})</div>
       ${(sups || []).length === 0
-        ? `<div class="empty"><div class="empty-ic">👔</div><div class="empty-t">${S.lang === 'sw' ? 'Hakuna msimamizi bado' : 'No supervisors yet'}</div></div>`
+        ? `<div class="empty"><div class="empty-ic"></div><div class="empty-t">${S.lang === 'sw' ? 'Hakuna msimamizi bado' : 'No supervisors yet'}</div></div>`
         : (sups || []).map(sup => `
           <div class="sup-card">
             <div class="sup-avatar">${sup.name[0].toUpperCase()}</div>
             <div class="sup-info">
               <div class="sup-name">${sup.name}</div>
               <div class="sup-phone">${sup.phone_number}</div>
-              <div class="sup-access">${sup.access_level === 'full' ? `✅ ${S.lang === 'sw' ? 'Ufikiaji Kamili' : 'Full Access'}` : `👁 ${S.lang === 'sw' ? 'Kuona Tu' : 'View Only'}`}</div>
+              <div class="sup-access">${sup.access_level === 'full' ? `${S.lang === 'sw' ? 'Ufikiaji Kamili' : 'Full Access'}` : `${S.lang === 'sw' ? 'Kuona Tu' : 'View Only'}`}</div>
             </div>
-            <button class="bsm r" onclick="App.removeSupervisor('${sup.id}')">${S.lang === 'sw' ? 'Ondoa' : 'Remove'}</button>
+            <button class="btn-sm btn-sm-red" onclick="App.removeSupervisor('${sup.id}')">${S.lang === 'sw' ? 'Ondoa' : 'Remove'}</button>
           </div>`).join('')}`;
   },
 
@@ -2451,7 +2457,7 @@ window.App = {
     }]);
     setBusy('add-sup-txt', false, `+ ${S.lang === 'sw' ? 'Ongeza Msimamizi' : 'Add Supervisor'}`);
     if (error) return toast(S.lang === 'sw' ? 'Hitilafu ya kuongeza' : 'Error adding supervisor', 'e');
-    toast(S.lang === 'sw' ? '✅ Msimamizi ameongezwa!' : 'Supervisor added!', 's');
+    toast(S.lang === 'sw' ? 'Msimamizi ameongezwa!' : 'Supervisor added!', 's');
     App.pageSupervisor();
   },
 
@@ -2467,7 +2473,7 @@ window.App = {
       .select('*,profiles!business_id(id,store_name,role,region,district)')
       .eq('phone_number', S.user.phone_number).eq('is_active', true).maybeSingle();
     if (!supRecord) {
-      $('av').innerHTML = `<div class="empty"><div class="empty-ic">👔</div><div class="empty-t">${S.lang === 'sw' ? 'Huna biashara unayoangalia' : 'No business assigned'}</div></div>`;
+      $('av').innerHTML = `<div class="empty"><div class="empty-ic"></div><div class="empty-t">${S.lang === 'sw' ? 'Huna biashara unayoangalia' : 'No business assigned'}</div></div>`;
       return;
     }
     const bizId = supRecord.business_id, bizName = supRecord.profiles?.store_name || 'Biashara';
@@ -2490,24 +2496,24 @@ window.App = {
     $('av').innerHTML = `
       <div class="sup-dash-header">
         <div class="sup-dash-biz"><div class="sup-dash-avatar">${bizName[0]}</div>
-          <div><div class="sup-dash-name">${bizName}</div><div class="sup-dash-role">👔 Supervisor Dashboard · 30d</div></div></div>
+          <div><div class="sup-dash-name">${bizName}</div><div class="sup-dash-role"> Supervisor Dashboard · 30d</div></div></div>
         <span class="pill p-del">View Only</span>
       </div>
       <div class="sr">
-        <div class="sc g"><div class="sic">${svgIcon('revenue')}</div><div class="sl">Mapato</div><div class="sv" id="sdrev">TZS 0</div></div>
+        <div class="sc green"><div class="sic">${svgIcon('revenue')}</div><div class="sl">Mapato</div><div class="sv" id="sdrev">TZS 0</div></div>
         <div class="sc ${profit30 >= 0 ? 'g' : 'r'}"><div class="sic">${svgIcon('profit')}</div><div class="sl">Faida</div><div class="sv" id="sdpro">TZS 0</div></div>
-        <div class="sc r"><div class="sic">${svgIcon('expense')}</div><div class="sl">Matumizi</div><div class="sv" id="sdexp">TZS 0</div></div>
+        <div class="sc red"><div class="sic">${svgIcon('expense')}</div><div class="sl">Matumizi</div><div class="sv" id="sdexp">TZS 0</div></div>
         <div class="sc ${net30 >= 0 ? 'g' : 'r'}"><div class="sic">${svgIcon('chart')}</div><div class="sl">Net</div><div class="sv" id="sdnet">TZS 0</div></div>
       </div>
       <div class="rsec">
-        <div class="rsec-t">📊 Viashiria Muhimu (30 days)</div>
+        <div class="rsec-t">Viashiria Muhimu (30 days)</div>
         <div class="rrow"><span class="rl">Profit Margin</span><span class="rv ${margin >= 15 ? 'g' : margin >= 5 ? 'a' : 'r'}">${margin}%</span></div>
         <div class="rrow"><span class="rl">Outstanding Debts</span><span class="rv ${totDebt > 0 ? 'r' : 'g'}">${fmt(totDebt)}</span></div>
         <div class="rrow"><span class="rl">Total Orders</span><span class="rv">${(orders || []).length}</span></div>
         <div class="rrow div"><span class="rl" style="font-weight:800">Net Profit</span><span class="rv ${net30 >= 0 ? 'g' : 'r'}" style="font-size:1.1rem;font-weight:800">${fmt(net30)}</span></div>
       </div>
       <div class="rsec">
-        <div class="rsec-t">🏆 Top Products</div>
+        <div class="rsec-t">Top Products</div>
         ${topP.length ? topP.map(([name, rev], i) => `<div class="rrow"><span class="rl"><strong>${i + 1}.</strong> ${name}</span><span class="rv g">${fmt(rev)}</span></div>`).join('') : `<div style="color:var(--s500);text-align:center;padding:.875rem">No data</div>`}
       </div>`;
     setTimeout(() => {
@@ -2546,12 +2552,12 @@ function svgIcon(name) {
 // ── Status helpers ─────────────────────────────────────────────
 function statusPill(status, lang) {
   const map = {
-    pending:   { cls: 'p-pen', sw: 'Inasubiri',      en: 'Pending' },
-    confirmed: { cls: 'p-con', sw: 'Imethibitishwa', en: 'Confirmed' },
-    delivered: { cls: 'p-del', sw: 'Imetolewa',      en: 'Delivered' },
-    cancelled: { cls: 'p-can', sw: 'Imefutwa',       en: 'Cancelled' },
+    pending:   { cls: 'pill-amber', sw: 'Inasubiri',      en: 'Pending' },
+    confirmed: { cls: 'pill-blue',  sw: 'Imethibitishwa', en: 'Confirmed' },
+    delivered: { cls: 'pill-green', sw: 'Imetolewa',      en: 'Delivered' },
+    cancelled: { cls: 'pill-red',   sw: 'Imefutwa',       en: 'Cancelled' },
   };
-  const s = map[status] || { cls: 'p-pen', sw: status, en: status };
+  const s = map[status] || { cls: 'pill-amber', sw: status, en: status };
   return `<span class="pill ${s.cls}">${lang === 'sw' ? s.sw : s.en}</span>`;
 }
 
@@ -2603,8 +2609,8 @@ _posCSS.textContent = `
 .pos-live-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:.875rem;}
 @media(max-width:640px){.pos-live-row{grid-template-columns:repeat(2,1fr);}}
 .pos-kpi{background:var(--g50);border-radius:.75rem;padding:.75rem .875rem;border:1.5px solid var(--g100);transition:transform .2s;}
-.pos-kpi.green{border-color:var(--g200);background:linear-gradient(135deg,#f0fdf4,#fff);}
-.pos-kpi.red{border-color:#fecaca;background:linear-gradient(135deg,#fff5f5,#fff);}
+.pos-kpi.kpi-green{border-color:var(--g200);background:linear-gradient(135deg,#f0fdf4,#fff);}
+.pos-kpi.kpi-red{border-color:#fecaca;background:linear-gradient(135deg,#fff5f5,#fff);}
 .pos-kpi-label{font-size:.62rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:.75px;margin-bottom:.25rem;}
 .pos-kpi-val{font-size:1rem;font-weight:900;color:var(--s900);letter-spacing:-.5px;line-height:1.2;}
 .pos-kpi-sub{font-size:.62rem;color:var(--s500);margin-top:.2rem;}
@@ -2659,10 +2665,10 @@ _posCSS.textContent = `
 
 /* ── Record buttons ── */
 .pos-rec-btn{width:100%;padding:1.1rem;border:none;border-radius:.875rem;font-family:'DM Sans',sans-serif;font-size:1.05rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .2s;min-height:56px;letter-spacing:.3px;}
-.pos-rec-green{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;box-shadow:0 6px 20px rgba(34,197,94,.35);}
-.pos-rec-green:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(34,197,94,.45);}
-.pos-rec-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;box-shadow:0 6px 20px rgba(220,38,38,.25);}
-.pos-rec-red:hover{transform:translateY(-2px);}
+.rec-blue{background:linear-gradient(135deg,var(--b700,#1d4ed8),var(--b500,#3b82f6));color:#fff;box-shadow:0 6px 20px rgba(37,99,235,.35);}
+.rec-blue:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(37,99,235,.45);}
+.rec-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;box-shadow:0 6px 20px rgba(220,38,38,.25);}
+.rec-red:hover{transform:translateY(-2px);}
 .pos-rec-btn:active{transform:scale(.97)!important;}
 
 /* ── Expense preview box ── */
@@ -2719,7 +2725,7 @@ _posCSS.textContent = `
 
 /* ── Spinner ── */
 .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:_rot .7s linear infinite;}
-.spin.d{border-color:rgba(22,163,74,.2);border-top-color:var(--g700);}
+.spin spin-dark{border-color:rgba(22,163,74,.2);border-top-color:var(--g700);}
 @keyframes _rot{to{transform:rotate(360deg)}}
 
 /* ── Global font boosts ── */
