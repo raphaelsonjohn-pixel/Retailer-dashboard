@@ -160,7 +160,18 @@ function loadSession() {
       localStorage.getItem('bw_v4') ||
       localStorage.getItem('bw_v3') || 'null'
     );
-    if (d?.user) { S.user = d.user; S.lang = d.lang || 'sw'; S._savedStoreId = d.storeId; return true; }
+    if (d?.user) {
+      // Reject dev-user IDs — they are fake IDs that break Supabase queries.
+      // A real Supabase UUID looks like: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      const isRealUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(d.user.id || '');
+      if (!isRealUUID) {
+        console.warn('BomaWave: Clearing stale dev session (ID:', d.user.id, ')');
+        clearSession();
+        return false;
+      }
+      S.user = d.user; S.lang = d.lang || 'sw'; S._savedStoreId = d.storeId;
+      return true;
+    }
   } catch {}
   return false;
 }
@@ -378,6 +389,18 @@ window.App = {
 
   // expose goStep so HTML onclick="App.goStep(n)" works
   goStep,
+
+  // ── PIN strength dots (must live here, NOT in inline script, because
+  //    type="module" loads after HTML inline scripts execute, so if a user
+  //    types into the PIN field before the module finishes loading the
+  //    inline window.App._pinStrength gets overwritten by this object.
+  //    Defining it here guarantees it's always present on window.App.) ──
+  _pinStrength(inputId, dotsId) {
+    const val = document.getElementById(inputId)?.value || '';
+    document.querySelectorAll(`#${dotsId} .pin-dot-m`).forEach((d, i) => {
+      d.classList.toggle('on', i < val.length);
+    });
+  },
 
   // ── Language ─────────────────────────────────────────────
   setLang(lang) {
@@ -1370,6 +1393,14 @@ window.App = {
 
   async placeOrder() {
     if (!S.cart.length) return toast(t('cartEmpty'), 'e');
+
+    // Guard: reject dev-user sessions before hitting Supabase
+    if (!S.user?.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(S.user.id)) {
+      toast(S.lang === 'sw' ? 'Tafadhali ingia tena — session yako imekwisha' : 'Please log in again — session expired', 'e');
+      setTimeout(() => App.logout(), 1500);
+      return;
+    }
+
     const moqFail = S.cart.filter(c => c.qty < c.min_order_qty);
     if (moqFail.length) {
       toast(`${S.lang === 'sw' ? 'Kiwango cha chini hafikiwi:' : 'MOQ not met:'} ${moqFail.map(c => c.product_name).join(', ')}`, 'e');
@@ -1390,7 +1421,8 @@ window.App = {
     }]).select().single();
     if (error || !order) {
       setBusy('po-btn', false, t('placeOrder'));
-      return toast('Hitilafu ya kutuma agizo', 'e');
+      console.error('placeOrder error:', error);
+      return toast(error?.message || 'Hitilafu ya kutuma agizo', 'e');
     }
     await sb.from('order_items').insert(S.cart.map(c => ({
       order_id: order.id, product_id: c.product_id,
@@ -1647,13 +1679,31 @@ window.App = {
       qty = parseInt($('pq')?.value || '0'), moq = parseInt($('pmoq')?.value || '1'),
       unit = $('pu')?.value.trim();
     if (!name || !price) return toast(S.lang === 'sw' ? 'Jaza jina na bei' : 'Fill name and price', 'e');
+
+    // Guard: user must have a real UUID before attempting any Supabase insert
+    if (!S.user?.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(S.user.id)) {
+      toast(S.lang === 'sw' ? 'Tafadhali ingia tena — session yako imekwisha' : 'Please log in again — session expired', 'e');
+      setTimeout(() => App.logout(), 1500);
+      return;
+    }
+
     setBusy('add-p-txt', true);
     const { error } = await sb.from('products').insert([{
       distributor_id: S.user.id, product_name: name, category: cat,
       price, cost_price: cost, stock_qty: qty, min_order_qty: moq, selling_unit: unit,
+      is_active: true,
     }]);
     setBusy('add-p-txt', false, `+ ${t('addProduct')}`);
-    if (error) return toast('Hitilafu ya kuongeza bidhaa', 'e');
+    if (error) {
+      console.error('addProduct error:', error);
+      // Show specific error: RLS violation, FK violation, or network error
+      const msg = error.code === '42501'
+        ? (S.lang === 'sw' ? 'Ruhusa imekataliwa. Angalia Supabase RLS policies.' : 'Permission denied. Check Supabase RLS policies.')
+        : error.code === '23503'
+        ? (S.lang === 'sw' ? 'ID yako haipo kwenye profiles table.' : 'Your ID not found in profiles table.')
+        : error.message || 'Hitilafu ya kuongeza bidhaa';
+      return toast(msg, 'e');
+    }
     toast(S.lang === 'sw' ? 'Bidhaa imeongezwa!' : 'Product added!', 's');
     App.pageProducts();
   },
@@ -2050,6 +2100,9 @@ window.App = {
     if (!prod || !sell || qty < 1)
       return toast(S.lang === 'sw' ? 'Jaza jina la bidhaa na bei ya kuuza' : 'Fill product name and selling price', 'e');
 
+    // Guard: if user has a dev ID, save offline only (don't attempt Supabase)
+    const hasRealId = S.user?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(S.user.id);
+
     // FIX: compute and store revenue, profit, margin explicitly
     const revenue = sell * qty;
     const profit  = (sell - buy) * qty;
@@ -2064,7 +2117,7 @@ window.App = {
     };
 
     setBusy('rec-sale-txt', true);
-    if (S.isOnline) {
+    if (S.isOnline && hasRealId) {
       const { error } = await sb.from('sales').insert([data]);
       if (error) {
         await posDbAdd('sales', data);
@@ -2771,7 +2824,8 @@ async function boot() {
     tbr.insertBefore(span, tbr.firstChild);
   }
 
-  // Restore session
+  // Restore session — loadSession() already validates UUID format
+  // and clears stale dev-user sessions automatically
   if (loadSession() && S.user) {
     await loadStores();
     S.pinBuf = '';
@@ -2785,6 +2839,8 @@ async function boot() {
     if (prog) prog.style.width = '90%';
     goStep(7);
   }
+  // If loadSession returned false (dev session cleared), user stays on step 1 (language)
+  // which is the correct starting point for a fresh login.
 
   if (S.isOnline) setTimeout(syncOfflineData, 3000);
 }
