@@ -413,19 +413,60 @@ async function syncOfflineData() {
   const exps  = await posDbGetAll('expenses');
   const uS = sales.filter(s => !s.synced);
   const uE = exps.filter(e => !e.synced);
+
+  const isValidUUID = id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '');
+
   for (const s of uS) {
-    // Strip IndexedDB-only fields — Supabase doesn't have these columns
     const { local_id, synced, created_at, _off, ...data } = s;
-    const { error } = await sb.from('sales').insert([data]);
+
+    // Skip records with invalid/dev user IDs — they will never sync
+    if (!isValidUUID(data.user_id)) {
+      await posDbMarkSynced('sales', local_id); // mark as synced so we stop retrying
+      continue;
+    }
+
+    // Only send columns that definitely exist in Supabase sales table
+    const safeData = {
+      user_id:       data.user_id,
+      product_name:  data.product_name,
+      category:      data.category,
+      qty:           data.qty,
+      buying_price:  data.buying_price,
+      selling_price: data.selling_price,
+      sale_date:     data.sale_date,
+      store_id:      data.store_id || null,
+    };
+    // Only add optional computed columns if they have valid values
+    if (typeof data.revenue === 'number') safeData.revenue = data.revenue;
+    if (typeof data.profit  === 'number') safeData.profit  = data.profit;
+
+    const { error } = await sb.from('sales').insert([safeData]);
     if (!error) await posDbMarkSynced('sales', local_id);
     else console.warn('Sync sale error:', error.message);
   }
+
   for (const e of uE) {
     const { local_id, synced, created_at, _off, ...data } = e;
-    const { error } = await sb.from('expenses').insert([data]);
+
+    if (!isValidUUID(data.user_id)) {
+      await posDbMarkSynced('expenses', local_id);
+      continue;
+    }
+
+    const safeData = {
+      user_id:      data.user_id,
+      category:     data.category,
+      description:  data.description,
+      amount:       data.amount,
+      expense_date: data.expense_date,
+      store_id:     data.store_id || null,
+    };
+
+    const { error } = await sb.from('expenses').insert([safeData]);
     if (!error) await posDbMarkSynced('expenses', local_id);
     else console.warn('Sync expense error:', error.message);
   }
+
   const total = uS.length + uE.length;
   if (total > 0) toast(`Sync imekamilika — records ${total}`, 's');
   App.renderSyncBadge?.();
@@ -2230,25 +2271,41 @@ window.App = {
     // Guard: if user has a dev ID, save offline only (don't attempt Supabase)
     const hasRealId = S.user?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(S.user.id);
 
-    // FIX: compute and store revenue, profit, margin explicitly
+    // Compute values — margin stored only in IndexedDB, not sent to Supabase
     const revenue = sell * qty;
     const profit  = (sell - buy) * qty;
-    // FIX: margin = (sell - buy) / sell * 100
     const margin  = sell > 0 ? Math.round((sell - buy) / sell * 100) : 0;
 
+    // data object used for IndexedDB (includes all fields for local display)
     const data = {
       user_id: S.user.id, product_name: prod, category: cat,
       qty, buying_price: buy, selling_price: sell,
-      revenue, profit, margin,           // ← stored explicitly
+      revenue, profit, margin,
       sale_date: today(), store_id: S.store?.id || null,
+    };
+
+    // Supabase-safe object — only columns that exist in the sales table
+    const supabaseData = {
+      user_id:       S.user.id,
+      product_name:  prod,
+      category:      cat,
+      qty,
+      buying_price:  buy,
+      selling_price: sell,
+      revenue,
+      profit,
+      // margin intentionally omitted — column may not exist in schema
+      sale_date:     today(),
+      store_id:      S.store?.id || null,
     };
 
     setBusy('rec-sale-txt', true);
     if (S.isOnline && hasRealId) {
-      const { error } = await sb.from('sales').insert([data]);
+      const { error } = await sb.from('sales').insert([supabaseData]);
       if (error) {
         await posDbAdd('sales', data);
         toast(S.lang === 'sw' ? 'Imehifadhiwa offline' : 'Saved offline', 'w');
+        console.warn('recordSale error:', error.message);
       } else {
         toast(S.lang === 'sw' ? 'Mauzo yamerekodiwa!' : 'Sale recorded!', 's');
       }
@@ -2935,6 +2992,15 @@ async function boot() {
   buildCatGrid();
   goStep(1);
 
+  // ── Clean stale IndexedDB records with dev-user IDs ──────────
+  // They will never sync — mark synced so we stop retrying them
+  if (posDB) {
+    const isUUID = id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '');
+    const [allS, allE] = await Promise.all([posDbGetAll('sales'), posDbGetAll('expenses')]);
+    for (const r of allS) { if (!isUUID(r.user_id)) await posDbMarkSynced('sales', r.local_id); }
+    for (const r of allE) { if (!isUUID(r.user_id)) await posDbMarkSynced('expenses', r.local_id); }
+  }
+
   // Inject store-switcher slot into sidebar
   const sbnav = $('sbnav');
   if (sbnav && !$('store-switcher')) {
@@ -2951,8 +3017,24 @@ async function boot() {
     tbr.insertBefore(span, tbr.firstChild);
   }
 
-  // Restore session — loadSession() already validates UUID format
-  // and clears stale dev-user sessions automatically
+  // ── Cart FAB — attach reliable event listeners ───────────────
+  // onclick="App.toggleCart()" in HTML fires before module loads on some
+  // browsers. addEventListener on DOMContentLoaded is always reliable.
+  const fab = $('cfab');
+  if (fab) {
+    fab.addEventListener('click', (e) => {
+      e.stopPropagation();
+      App.toggleCart();
+    });
+    // touchend prevents 300ms delay on mobile
+    fab.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      App.toggleCart();
+    }, { passive: false });
+  }
+
+  // Restore session — loadSession() validates UUID and clears dev sessions
   if (loadSession() && S.user) {
     await loadStores();
     S.pinBuf = '';
@@ -2966,8 +3048,6 @@ async function boot() {
     if (prog) prog.style.width = '90%';
     goStep(7);
   }
-  // If loadSession returned false (dev session cleared), user stays on step 1 (language)
-  // which is the correct starting point for a fresh login.
 
   if (S.isOnline) setTimeout(syncOfflineData, 3000);
 }
