@@ -179,15 +179,119 @@ function clearSession() {
   ['bw_v5','bw_v4','bw_v3'].forEach(k => localStorage.removeItem(k));
 }
 
-// ── OTP API call ───────────────────────────────────────────────
+// ── OTP API call + Dev Banner ──────────────────────────────────
+// When AfricasTalking fails on Tanzania routes, server returns dev_otp
+// in the response. The banner slides in from top showing the code
+// so developer can test without waiting for SMS.
 async function callOTP(payload) {
   const res = await fetch(OTP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
     body: JSON.stringify(payload),
   });
-  return res.json();
+  const data = await res.json();
+  // Show dev OTP banner if server sends back the code
+  if (data.dev_otp || data.otp_code) {
+    showDevOTPBanner(data.dev_otp || data.otp_code);
+  } else if (payload.action === 'verify_otp' || payload.action === 'complete_registration') {
+    hideDevOTPBanner();
+  }
+  return data;
 }
+
+// ── Dev OTP banner ─────────────────────────────────────────────
+function showDevOTPBanner(code) {
+  let banner = document.getElementById('dev-otp-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'dev-otp-banner';
+    Object.assign(banner.style, {
+      position: 'fixed', top: '0', left: '0', right: '0', zIndex: '9999',
+      background: 'linear-gradient(135deg,#1e40af,#2563eb)',
+      transform: 'translateY(-100%)',
+      transition: 'transform .4s cubic-bezier(.34,1.4,.64,1)',
+      boxShadow: '0 6px 32px rgba(37,99,235,.4)',
+      fontFamily: "'DM Sans',sans-serif",
+    });
+    document.body.appendChild(banner);
+  }
+  const codeStr = String(code);
+  banner.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.875rem 1.25rem 1rem;gap:.875rem;flex-wrap:wrap">
+      <div>
+        <div style="font-size:.62rem;font-weight:800;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:.3rem">
+          Dev Mode — SMS Haikufika (AfricasTalking TZ route)
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem">
+          <div style="font-size:2.2rem;font-weight:900;letter-spacing:10px;color:#fff;font-variant-numeric:tabular-nums">
+            ${codeStr}
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <button onclick="window.devOtpAutofill('${codeStr}')" style="
+          background:rgba(255,255,255,.95);border:none;color:#1e40af;
+          padding:.6rem 1.1rem;border-radius:.6rem;font-size:.88rem;
+          font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif;
+          display:flex;align-items:center;gap:.35rem;min-height:40px;
+        ">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Jaza &amp; Ingia
+        </button>
+        <button onclick="navigator.clipboard?.writeText('${codeStr}')" style="
+          background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);
+          color:#fff;padding:.55rem .875rem;border-radius:.6rem;font-size:.82rem;
+          font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;min-height:40px;
+        ">
+          Nakili
+        </button>
+        <button onclick="window.hideDevOTPBanner()" style="
+          background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);
+          color:rgba(255,255,255,.65);width:36px;height:36px;border-radius:.55rem;
+          cursor:pointer;display:flex;align-items:center;justify-content:center;
+          min-height:36px;
+        ">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+  // Slide in after paint
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    banner.style.transform = 'translateY(0)';
+  }));
+}
+
+function hideDevOTPBanner() {
+  const b = document.getElementById('dev-otp-banner');
+  if (b) { b.style.transform = 'translateY(-110%)'; setTimeout(() => b.remove(), 450); }
+}
+window.hideDevOTPBanner = hideDevOTPBanner;
+
+// Auto-fill OTP boxes from the banner button
+window.devOtpAutofill = function(code) {
+  const digits = String(code).split('');
+  // Try each prefix in order — only fill if the boxes exist in the DOM
+  const prefixes = ['ob', 'lb', 'fb'];
+  let prefixUsed = null;
+  for (const p of prefixes) {
+    if (document.getElementById(`${p}0`)) { prefixUsed = p; break; }
+  }
+  if (!prefixUsed) return;
+  digits.forEach((d, i) => {
+    const el = document.getElementById(`${prefixUsed}${i}`);
+    if (el) { el.value = d; el.classList.add('on'); }
+  });
+  hideDevOTPBanner();
+  // Auto-submit after short visual delay
+  setTimeout(() => {
+    if (prefixUsed === 'ob') App.verifyRegOTP?.();
+    else if (prefixUsed === 'lb') App.verifyLoginOTP?.();
+    else if (prefixUsed === 'fb') App.verifyForgotOTP?.();
+  }, 250);
+};
 
 // ── Phone normalizer ───────────────────────────────────────────
 function normPhone(raw) {
