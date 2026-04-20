@@ -1261,12 +1261,18 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
 })();
 
-// ── PIN strength dots ──────────────────────────────────────
-window.App=window.App||{};
-window.App._pinStrength=function(inputId,dotsId){
-  const val=document.getElementById(inputId)?.value||'';
-  document.querySelectorAll(`#${dotsId} .pin-dot-m`).forEach((d,i)=>d.classList.toggle('on',i<val.length));
-};
+// _pinStrength is defined inside window.App in app.js (type="module").
+// This stub handles the rare race condition where the user types before
+// the module finishes loading — it will be overwritten by the real one.
+window.App = window.App || {};
+if (!window.App._pinStrength) {
+  window.App._pinStrength = function(inputId, dotsId) {
+    const val = document.getElementById(inputId)?.value || '';
+    document.querySelectorAll('#' + dotsId + ' .pin-dot-m').forEach(function(d, i) {
+      d.classList.toggle('on', i < val.length);
+    });
+  };
+}
 </script>
 <script type="module" src="app.js"></script>
 </body>
