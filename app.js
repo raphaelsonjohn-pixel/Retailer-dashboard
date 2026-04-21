@@ -895,15 +895,16 @@ window.App = {
 
   // ── Show App ──────────────────────────────────────────────
   async showApp() {
-    const ob = $('onboarding'), am = $('app-main');
-    if (ob) {
-      ob.style.display = 'none';
-      ob.style.pointerEvents = 'none';
-      ob.style.zIndex = '-1';
-    }
+    // Remove onboarding from DOM entirely — display:none alone is not
+    // enough on some mobile browsers; the fixed z-index element still
+    // intercepts touch events. Removal guarantees it cannot block anything.
+    const ob = $('onboarding');
+    if (ob) ob.remove();
+
+    const am = $('app-main');
     if (am) am.style.display = 'block';
 
-    // Attach FAB listeners here — app is now visible and App object is ready
+    // Attach FAB listeners now that app is visible and App object is ready
     const fab = $('cfab');
     if (fab && !fab._listenerAttached) {
       fab._listenerAttached = true;
@@ -1089,10 +1090,8 @@ window.App = {
       _posExpForm:  { cat: 'rent', amt: '', desc: '' },
     };
     clearSession();
-    const ob = $('onboarding'), am = $('app-main');
-    if (ob) ob.style.display = 'flex';
-    if (am) am.style.display = 'none';
-    goStep(1);
+    // Onboarding was removed from DOM in showApp() — reload page to get it back
+    window.location.reload();
   },
 
   // ══════════════════════════════════════════════════════════
