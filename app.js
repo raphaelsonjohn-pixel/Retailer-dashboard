@@ -436,9 +436,6 @@ async function syncOfflineData() {
       sale_date:     data.sale_date,
       store_id:      data.store_id || null,
     };
-    // Only add optional computed columns if they have valid values
-    if (typeof data.revenue === 'number') safeData.revenue = data.revenue;
-    if (typeof data.profit  === 'number') safeData.profit  = data.profit;
 
     const { error } = await sb.from('sales').insert([safeData]);
     if (!error) await posDbMarkSynced('sales', local_id);
@@ -905,6 +902,21 @@ window.App = {
       ob.style.zIndex = '-1';
     }
     if (am) am.style.display = 'block';
+
+    // Attach FAB listeners here — app is now visible and App object is ready
+    const fab = $('cfab');
+    if (fab && !fab._listenerAttached) {
+      fab._listenerAttached = true;
+      fab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        App.toggleCart();
+      });
+      fab.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        App.toggleCart();
+      }, { passive: false });
+    }
     await ensurePrimaryStore();
     await loadStores();
     if (S.user.role === 'retailer' && S.stores.length > 1 && !S.store) {
@@ -2284,7 +2296,8 @@ window.App = {
       sale_date: today(), store_id: S.store?.id || null,
     };
 
-    // Supabase-safe object — only columns that exist in the sales table
+    // Supabase-safe object — only the core columns every sales table has
+    // profit, revenue, margin are NOT sent — they may not exist in schema
     const supabaseData = {
       user_id:       S.user.id,
       product_name:  prod,
@@ -2292,9 +2305,6 @@ window.App = {
       qty,
       buying_price:  buy,
       selling_price: sell,
-      revenue,
-      profit,
-      // margin intentionally omitted — column may not exist in schema
       sale_date:     today(),
       store_id:      S.store?.id || null,
     };
@@ -3015,23 +3025,6 @@ async function boot() {
     const span = document.createElement('span');
     span.id = 'sync-badge';
     tbr.insertBefore(span, tbr.firstChild);
-  }
-
-  // ── Cart FAB — attach reliable event listeners ───────────────
-  // onclick="App.toggleCart()" in HTML fires before module loads on some
-  // browsers. addEventListener on DOMContentLoaded is always reliable.
-  const fab = $('cfab');
-  if (fab) {
-    fab.addEventListener('click', (e) => {
-      e.stopPropagation();
-      App.toggleCart();
-    });
-    // touchend prevents 300ms delay on mobile
-    fab.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      App.toggleCart();
-    }, { passive: false });
   }
 
   // Restore session — loadSession() validates UUID and clears dev sessions
