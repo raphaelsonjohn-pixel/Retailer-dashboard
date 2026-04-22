@@ -535,29 +535,24 @@ function renderStoreSwitcher() {
 function attachFABListener() {
   const fab = $('cfab');
   if (!fab) {
-    // Element not ready yet — retry after short delay
     setTimeout(attachFABListener, 300);
     return;
   }
 
-  // cloneNode(true) removes ALL previously attached listeners
-  // This prevents double-firing if showApp() is called more than once
+  // cloneNode removes all stale listeners
   const newFab = fab.cloneNode(true);
   fab.parentNode.replaceChild(newFab, fab);
 
   const handleTap = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    window.openCart();
+    App.navTo('cart');
     return false;
   };
 
-  // touchstart fires immediately when finger touches screen
-  // (touchend has ~300ms delay on iOS/Android)
+  // touchstart fires immediately (no 300ms delay like touchend)
   newFab.addEventListener('touchstart', handleTap, { passive: false });
   newFab.addEventListener('click', handleTap);
-
-  // Make absolutely sure it's clickable
   newFab.style.pointerEvents = 'auto';
   newFab.style.cursor = 'pointer';
 }
