@@ -566,16 +566,16 @@ function attachFABListener() {
 window.openCart = function() {
   const panel = $('cpanel');
   const overlay = $('cart-overlay');
-  if (panel) panel.classList.add('open');
-  if (overlay) { overlay.style.display = 'block'; overlay.classList.add('open'); }
+  if (panel)   panel.classList.add('open');
+  if (overlay) overlay.style.display = 'block';
   document.body.style.overflow = 'hidden';
 };
 
 window.closeCart = function() {
   const panel = $('cpanel');
   const overlay = $('cart-overlay');
-  if (panel) panel.classList.remove('open');
-  if (overlay) { overlay.classList.remove('open'); overlay.style.display = 'none'; }
+  if (panel)   panel.classList.remove('open');
+  if (overlay) overlay.style.display = 'none';
   document.body.style.overflow = '';
 };
 
