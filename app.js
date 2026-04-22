@@ -35,7 +35,24 @@ let S = {
   _posExpForm:  { cat: 'rent', amt: '', desc: '' },
 };
 
-// ── Tanzania Location Data ─────────────────────────────────────
+// ── Permission checker ────────────────────────────────────────
+// Staff roles: owner > manager > cashier > viewer
+const ROLE_PERMS = {
+  owner:   ['all'],
+  manager: ['pos','orders','reports','debts','products','marketplace','my-orders','boss'],
+  cashier: ['pos','my-orders','marketplace'],
+  viewer:  ['reports','my-orders','dashboard'],
+};
+
+function can(feature) {
+  if (!S.user) return false;
+  if (!S.user.is_staff) return true; // owner — full access
+  const staffRole = S.user.staff_role || 'viewer';
+  const perms = ROLE_PERMS[staffRole] || ROLE_PERMS.viewer;
+  return perms.includes('all') || perms.includes(feature);
+}
+
+
 const LOC = {
   'Dar es Salaam': {
     'Ilala':      ['Kariakoo','Gerezani','Upanga','Buguruni','Ilala','Kisutu'],
@@ -847,6 +864,35 @@ window.App = {
       for (let i = 0; i < 6; i++) $(`lb${i}`)?.classList.add('err');
       return toast(r.message || 'Nambari si sahihi', 'e');
     }
+
+    // Check staff_members table first — staff login
+    const { data: staffRec } = await sb.from('staff_members')
+      .select('*, profiles!staff_members_business_id_fkey(*)')
+      .eq('phone_number', S.pendingPhone).eq('is_active', true).maybeSingle();
+
+    if (staffRec) {
+      // Staff member found — load their business profile + staff role
+      const business = staffRec.profiles;
+      S.user = {
+        ...business,
+        staff_role: staffRec.role,
+        staff_name: staffRec.full_name,
+        staff_id:   staffRec.id,
+        is_staff:   true,
+        // Override store_name display with staff name
+        display_name: staffRec.full_name,
+      };
+      saveSession();
+      await loadStores();
+      S.pinBuf = '';
+      App.renderPinDots();
+      setText('s7h', S.lang === 'sw' ? `Karibu, ${staffRec.full_name}!` : `Welcome, ${staffRec.full_name}!`);
+      setText('s7sub', business.store_name || '');
+      goStep(7);
+      return;
+    }
+
+    // Regular owner login
     if (!r.user_exists)
       return toast(S.lang === 'sw' ? 'Namba hii haijasajiliwa. Unda akaunti kwanza.' : 'Number not registered. Please create account.', 'e');
     S.user = r.user;
@@ -1137,11 +1183,13 @@ window.App = {
   // ══════════════════════════════════════════════════════════
   renderApp() {
     const u  = S.user;
-    const av = u.store_name?.[0]?.toUpperCase() || 'U';
+    const av = (u.display_name || u.store_name)?.[0]?.toUpperCase() || 'U';
     setText('sbav', av);
-    setText('sbn',  u.store_name || '—');
+    setText('sbn',  u.is_staff ? `${u.store_name} (${u.staff_name})` : u.store_name || '—');
     const badgeClass = { retailer: 'rb-ret', distributor: 'rb-dist', admin: 'rb-adm' }[u.role] || 'rb-ret';
-    const badgeTxt   = { retailer: 'Duka', distributor: 'Msambazaji', admin: 'Admin' }[u.role] || u.role;
+    const badgeTxt   = u.is_staff
+      ? (u.staff_role === 'manager' ? 'Meneja' : u.staff_role === 'cashier' ? 'Cashier' : 'Mwangalizi')
+      : { retailer: 'Duka', distributor: 'Msambazaji', admin: 'Admin' }[u.role] || u.role;
     const bb = $('sbb');
     if (bb) { bb.className = `rbadge ${badgeClass}`; bb.textContent = badgeTxt; }
 
@@ -1173,28 +1221,41 @@ window.App = {
 
   getNavItems(role) {
     const base = [{ page: 'dashboard', icon: svgIcon('grid'), label: t('dashboard'), shortLabel: 'Home' }];
-    // POS is available to BOTH retailer and distributor
-    if (role === 'retailer') return [...base,
-      { page: 'marketplace', icon: svgIcon('store'),   label: t('marketplace'), shortLabel: 'Soko' },
-      { page: 'my-orders',  icon: svgIcon('pkg'),     label: t('myOrders'),    shortLabel: 'Maagizo' },
-      { page: 'pos',        icon: svgIcon('pos'),     label: t('pos'),         shortLabel: 'POS' },
-      { page: 'debts',      icon: svgIcon('debt'),    label: t('debts'),       shortLabel: 'Madeni' },
-      { page: 'reports',    icon: svgIcon('chart'),   label: t('reports'),     shortLabel: 'Ripoti' },
-      { page: 'my-stores',  icon: svgIcon('store'),   label: S.lang === 'sw' ? 'Maduka Yangu' : 'My Stores', shortLabel: 'Maduka' },
-    ];
-    if (role === 'distributor') return [...base,
-      { page: 'products',  icon: svgIcon('pkg'),     label: t('products'),   shortLabel: 'Bidhaa' },
-      { page: 'orders',    icon: svgIcon('orders'),  label: t('orders'),     shortLabel: 'Maagizo' },
-      { page: 'pos',       icon: svgIcon('pos'),     label: t('pos'),        shortLabel: 'POS' },    // ← ADDED for distributor
-      { page: 'invoices',  icon: svgIcon('invoice'), label: t('invoices'),   shortLabel: 'Ankara' },
-      { page: 'reports',   icon: svgIcon('chart'),   label: t('reports'),    shortLabel: 'Ripoti' },
-    ];
-    if (role === 'admin') return [...base,
-      { page: 'users',     icon: svgIcon('users'),    label: t('users'),     shortLabel: 'Watumiaji' },
-      { page: 'orders',    icon: svgIcon('orders'),   label: t('orders'),    shortLabel: 'Maagizo' },
-      { page: 'analytics', icon: svgIcon('analytics'),label: t('analytics'), shortLabel: 'Data' },
-    ];
-    return base;
+    let items = [];
+
+    if (role === 'retailer') {
+      items = [
+        { page: 'marketplace', icon: svgIcon('store'),   label: t('marketplace'), shortLabel: 'Soko' },
+        { page: 'my-orders',   icon: svgIcon('pkg'),     label: t('myOrders'),    shortLabel: 'Maagizo' },
+        { page: 'pos',         icon: svgIcon('pos'),     label: t('pos'),         shortLabel: 'POS' },
+        { page: 'debts',       icon: svgIcon('debt'),    label: t('debts'),       shortLabel: 'Madeni' },
+        { page: 'reports',     icon: svgIcon('chart'),   label: t('reports'),     shortLabel: 'Ripoti' },
+        { page: 'my-stores',   icon: svgIcon('store'),   label: S.lang === 'sw' ? 'Maduka Yangu' : 'My Stores', shortLabel: 'Maduka' },
+        { page: 'boss',        icon: svgIcon('users'),   label: S.lang === 'sw' ? 'Boss Mode' : 'Boss Mode', shortLabel: 'Boss' },
+      ];
+    } else if (role === 'distributor') {
+      items = [
+        { page: 'products',    icon: svgIcon('pkg'),     label: t('products'),   shortLabel: 'Bidhaa' },
+        { page: 'orders',      icon: svgIcon('orders'),  label: t('orders'),     shortLabel: 'Maagizo' },
+        { page: 'pos',         icon: svgIcon('pos'),     label: t('pos'),        shortLabel: 'POS' },
+        { page: 'debts',       icon: svgIcon('debt'),    label: t('debts'),      shortLabel: 'Madeni' },
+        { page: 'invoices',    icon: svgIcon('invoice'), label: t('invoices'),   shortLabel: 'Ankara' },
+        { page: 'reports',     icon: svgIcon('chart'),   label: t('reports'),    shortLabel: 'Ripoti' },
+        { page: 'boss',        icon: svgIcon('users'),   label: 'Boss Mode',     shortLabel: 'Boss' },
+      ];
+    } else if (role === 'admin') {
+      items = [
+        { page: 'users',       icon: svgIcon('users'),    label: t('users'),     shortLabel: 'Watumiaji' },
+        { page: 'orders',      icon: svgIcon('orders'),   label: t('orders'),    shortLabel: 'Maagizo' },
+        { page: 'analytics',   icon: svgIcon('analytics'),label: t('analytics'), shortLabel: 'Data' },
+      ];
+    }
+
+    // Filter by staff permissions
+    const filtered = [...base, ...items].filter(n =>
+      n.page === 'dashboard' || can(n.page)
+    );
+    return filtered;
   },
 
   navTo(page) {
@@ -1314,6 +1375,7 @@ window.App = {
       supervisor:      () => App.pageSupervisor(),
       'supervisor-dash': () => App.pageSupervisorDash(),
       cart:            () => App.pageCart(),
+      boss:            () => App.pageBoss(),
     };
     await (pages[page] || pages.dashboard)();
   },
@@ -1780,15 +1842,21 @@ window.App = {
     if (txt) txt.innerHTML = '<span class="spin"></span>';
 
     try {
-      // Step 1: Insert order
+      // Step 1: Insert order with retailer contact info embedded
       const ref = genRef('ORD');
       const { data: order, error: oErr } = await sb.from('orders').insert([{
-        order_ref:      ref,
-        retailer_id:    S.user.id,
-        distributor_id: distId,
-        total_price:    total,
-        items_count:    S.cart.length,
-        status:         'pending',
+        order_ref:        ref,
+        retailer_id:      S.user.id,
+        distributor_id:   distId,
+        total_price:      total,
+        items_count:      S.cart.length,
+        status:           'pending',
+        // Embed retailer contact so distributor sees it immediately
+        retailer_name:    S.user.store_name || null,
+        retailer_phone:   S.user.phone_number || null,
+        retailer_ward:    S.user.ward || null,
+        retailer_street:  S.user.street || null,
+        retailer_district: S.user.district || null,
       }]).select().single();
 
       if (oErr || !order) {
@@ -1836,24 +1904,94 @@ window.App = {
     const { data: orders } = await sb.from('orders')
       .select('*').eq('retailer_id', S.user.id)
       .order('created_at', { ascending: false });
+
+    // Fetch distributor profiles
+    const distIds = [...new Set((orders || []).map(o => o.distributor_id).filter(Boolean))];
+    const { data: distProfiles } = distIds.length
+      ? await sb.from('profiles').select('id,store_name,phone_number').in('id', distIds)
+      : { data: [] };
+    const distMap = Object.fromEntries((distProfiles || []).map(d => [d.id, d]));
+
+    // Get retailer location for ETA calculation
+    let myLat = null, myLng = null;
+    await new Promise(resolve => {
+      if (!navigator.geolocation) return resolve();
+      navigator.geolocation.getCurrentPosition(
+        pos => { myLat = pos.coords.latitude; myLng = pos.coords.longitude; resolve(); },
+        () => resolve(), { timeout: 5000, maximumAge: 300000 }
+      );
+    });
+
+    // Haversine distance formula
+    const haversine = (lat1, lng1, lat2, lng2) => {
+      const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
+      const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    };
+
     const view = $('av');
     view.innerHTML = `
-      <div class="card"><div class="cp">
-        <div class="sh"><span class="st">${t('myOrders')}</span></div>
-        <div class="tw"><table class="dt">
-          <thead><tr><th>REF</th><th>HALI</th><th>BIDHAA</th><th>JUMLA</th><th>TAREHE</th><th>VITENDO</th></tr></thead>
-          <tbody>${(orders || []).map(o => `
-            <tr class="dt-row">
-              <td><strong style="color:var(--g700)">${o.order_ref}</strong></td>
-              <td>${statusPill(o.status, S.lang)}</td>
-              <td>${o.items_count}</td>
-              <td><strong>${fmt(o.total_price)}</strong></td>
-              <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0, 10)}</td>
-              <td>${o.status === 'delivered' ? `<button class="btn-sm btn-sm-blue" onclick="App.showInvoice('${o.id}')">${t('invoices')}</button>` : ''}</td>
-            </tr>`).join('') || `<tr><td colspan="6"><div class="empty"><div class="empty-ic"></div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
-          </tbody>
-        </table></div>
-      </div></div>`;
+      <div class="page-title">${t('myOrders')}</div>
+      ${(orders || []).length === 0
+        ? `<div class="empty"><div class="empty-t">${t('noOrders')}</div></div>`
+        : (orders || []).map(o => {
+            const dist = distMap[o.distributor_id] || {};
+
+            // Calculate ETA if in transit and we have location data
+            let etaHtml = '';
+            if (o.status === 'in_transit' && o.dist_lat && o.dist_lng && myLat && myLng) {
+              const km = haversine(myLat, myLng, o.dist_lat, o.dist_lng);
+              const eta = Math.round(km * 3); // ~3 min per km estimate
+              etaHtml = `
+                <div style="background:var(--a50);border:1px solid var(--a100);border-radius:.75rem;padding:.75rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--a600)" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                  <div>
+                    <div style="font-size:.82rem;font-weight:800;color:var(--a600)">${S.lang === 'sw' ? 'Agizo Linakuja!' : 'Order on the way!'}</div>
+                    <div style="font-size:.75rem;color:var(--a600)">${km.toFixed(1)}km ${S.lang === 'sw' ? 'mbali · Takriban dakika' : 'away · ~'} ${eta} ${S.lang === 'sw' ? '' : 'min'}</div>
+                  </div>
+                </div>`;
+            }
+
+            return `
+            <div class="card" style="margin-bottom:.875rem">
+              <div class="cp">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+                  <div>
+                    <div style="font-weight:800;color:var(--g700)">${o.order_ref}</div>
+                    <div style="font-size:.72rem;color:var(--s500)">${o.created_at?.slice(0,10)}</div>
+                  </div>
+                  ${statusPill(o.status, S.lang)}
+                </div>
+
+                ${etaHtml}
+
+                <!-- Distributor info -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+                  <div>
+                    <div style="font-size:.72rem;color:var(--s500)">${S.lang === 'sw' ? 'Msambazaji' : 'Distributor'}</div>
+                    <div style="font-weight:700">${dist.store_name || '—'}</div>
+                    <div style="font-size:.78rem;color:var(--s500)">${dist.phone_number || ''}</div>
+                  </div>
+                  ${dist.phone_number ? `
+                  <a href="tel:${dist.phone_number}"
+                    style="display:flex;align-items:center;gap:.3rem;background:var(--b50);color:var(--b700);border:1px solid var(--b200);padding:.45rem .875rem;border-radius:.6rem;text-decoration:none;font-size:.8rem;font-weight:700">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.44 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.96-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    ${S.lang === 'sw' ? 'Piga Simu' : 'Call'}
+                  </a>` : ''}
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:.85rem;color:var(--s500)">${S.lang === 'sw' ? 'Jumla' : 'Total'}</span>
+                  <span style="font-weight:900;color:var(--b700)">${fmt(o.total_price)}</span>
+                </div>
+
+                ${o.status === 'delivered' ? `
+                <div style="margin-top:.65rem">
+                  <button class="btn-sm btn-sm-blue" onclick="App.showInvoice('${o.id}')">${t('invoices')}</button>
+                </div>` : ''}
+              </div>
+            </div>`;
+          }).join('')}`;
   },
 
   // ── ORDERS (Distributor) ──────────────────────────────────
@@ -1861,50 +1999,157 @@ window.App = {
     const { data: orders } = await sb.from('orders')
       .select('*').eq('distributor_id', S.user.id)
       .order('created_at', { ascending: false });
+
+    // Fetch retailer profiles for all orders
+    const retailerIds = [...new Set((orders || []).map(o => o.retailer_id).filter(Boolean))];
+    const { data: retailerProfiles } = retailerIds.length
+      ? await sb.from('profiles').select('id,store_name,phone_number,ward,street,district,lat,lng').in('id', retailerIds)
+      : { data: [] };
+    const retailerMap = Object.fromEntries((retailerProfiles || []).map(r => [r.id, r]));
+
     const view = $('av');
     view.innerHTML = `
-      <div class="card"><div class="cp">
-        <div class="sh"><span class="st">${t('orders')}</span></div>
-        <div class="tw"><table class="dt">
-          <thead><tr><th>REF</th><th>HALI</th><th>JUMLA</th><th>TAREHE</th><th>VITENDO</th></tr></thead>
-          <tbody>${(orders || []).map(o => `
-            <tr class="dt-row">
-              <td><strong style="color:var(--g700)">${o.order_ref}</strong></td>
-              <td>${statusPill(o.status, S.lang)}</td>
-              <td><strong>${fmt(o.total_price)}</strong></td>
-              <td style="color:var(--s500);font-size:.75rem">${o.created_at?.slice(0, 10)}</td>
-              <td style="display:flex;gap:.3rem;flex-wrap:wrap">
-                ${o.status === 'pending'   ? `<button class="btn-sm btn-sm-blue" onclick="App.updateOrderStatus('${o.id}','confirmed')">${S.lang === 'sw' ? 'Thibitisha' : 'Confirm'}</button>` : ''}
-                ${o.status === 'confirmed' ? `<button class="btn-sm btn-sm-green" onclick="App.updateOrderStatus('${o.id}','delivered')">${S.lang === 'sw' ? 'Toa' : 'Deliver'}</button>` : ''}
-                ${o.status === 'delivered' ? `<button class="btn-sm btn-sm-green" onclick="App.showReceipt('${o.id}')">${t('printReceipt')}</button>` : ''}
-                ${o.status !== 'cancelled' && o.status !== 'delivered' ? `<button class="btn-sm btn-sm-red" onclick="App.updateOrderStatus('${o.id}','cancelled')">${S.lang === 'sw' ? 'Futa' : 'Cancel'}</button>` : ''}
-              </td>
-            </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><div class="empty-ic"></div><div class="empty-s">${t('noOrders')}</div></div></td></tr>`}
-          </tbody>
-        </table></div>
-      </div></div>`;
+      <div class="page-title">${t('orders')}</div>
+      ${(orders || []).length === 0
+        ? `<div class="empty"><div class="empty-t">${t('noOrders')}</div></div>`
+        : (orders || []).map(o => {
+            const r = retailerMap[o.retailer_id] || {};
+            const loc = [r.ward, r.street, r.district].filter(Boolean).join(', ');
+            return `
+            <div class="card" style="margin-bottom:.875rem">
+              <div class="cp">
+                <!-- Order header -->
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.875rem">
+                  <div>
+                    <div style="font-weight:800;color:var(--g700);font-size:.95rem">${o.order_ref}</div>
+                    <div style="font-size:.72rem;color:var(--s500);margin-top:.15rem">${o.created_at?.slice(0,16).replace('T',' ')}</div>
+                  </div>
+                  ${statusPill(o.status, S.lang)}
+                </div>
+
+                <!-- Retailer contact card -->
+                <div style="background:var(--b50);border:1px solid var(--b200);border-radius:.75rem;padding:.875rem;margin-bottom:.875rem">
+                  <div style="font-size:.65rem;font-weight:800;color:var(--b700);text-transform:uppercase;letter-spacing:.75px;margin-bottom:.5rem">
+                    ${S.lang === 'sw' ? 'Maelezo ya Mnunuzi' : 'Buyer Details'}
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+                    <div>
+                      <div style="font-weight:800;font-size:.95rem">${r.store_name || o.retailer_name || '—'}</div>
+                      <div style="font-size:.82rem;color:var(--s600);margin-top:.15rem">${r.phone_number || o.retailer_phone || '—'}</div>
+                      ${loc ? `<div style="font-size:.75rem;color:var(--s500);margin-top:.1rem">📍 ${loc}</div>` : ''}
+                    </div>
+                    ${(r.phone_number || o.retailer_phone) ? `
+                    <a href="tel:${r.phone_number || o.retailer_phone}"
+                      style="display:flex;align-items:center;gap:.35rem;background:var(--g600);color:#fff;padding:.55rem 1rem;border-radius:.65rem;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap;flex-shrink:0">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.44 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.96-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                      </svg>
+                      ${S.lang === 'sw' ? 'Piga Simu' : 'Call'}
+                    </a>` : ''}
+                  </div>
+                </div>
+
+                <!-- Order total -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.875rem">
+                  <span style="font-size:.85rem;color:var(--s500)">${S.lang === 'sw' ? 'Jumla' : 'Total'}</span>
+                  <span style="font-size:1.1rem;font-weight:900;color:var(--b700)">${fmt(o.total_price)}</span>
+                </div>
+
+                <!-- Action buttons — delivery flow -->
+                <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+                  ${o.status === 'pending'
+                    ? `<button class="btn-sm btn-sm-blue" onclick="App.updateOrderStatus('${o.id}','confirmed')">
+                        ${S.lang === 'sw' ? 'Thibitisha' : 'Confirm'}
+                      </button>`
+                    : ''}
+                  ${o.status === 'confirmed'
+                    ? `<button class="btn-sm btn-sm-amber" onclick="App.startDelivery('${o.id}')">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        ${S.lang === 'sw' ? 'Ninatoka Sasa' : 'Start Delivery'}
+                      </button>`
+                    : ''}
+                  ${o.status === 'in_transit'
+                    ? `<button class="btn-sm btn-sm-green" onclick="App.completeDelivery('${o.id}')">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        ${S.lang === 'sw' ? 'Nimefika — Thibitisha' : 'Arrived — Confirm'}
+                      </button>`
+                    : ''}
+                  ${o.status === 'delivered'
+                    ? `<button class="btn-sm btn-sm-blue" onclick="App.showReceipt('${o.id}')">
+                        ${t('printReceipt')}
+                      </button>`
+                    : ''}
+                  ${!['cancelled','delivered'].includes(o.status)
+                    ? `<button class="btn-sm btn-sm-red" onclick="App.updateOrderStatus('${o.id}','cancelled')">
+                        ${S.lang === 'sw' ? 'Futa' : 'Cancel'}
+                      </button>`
+                    : ''}
+                </div>
+
+                <!-- In transit info -->
+                ${o.status === 'in_transit' && o.in_transit_at
+                  ? `<div style="margin-top:.65rem;font-size:.75rem;color:var(--a600);font-weight:600">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      ${S.lang === 'sw' ? 'Ilianza' : 'Started'}: ${o.in_transit_at?.slice(0,16).replace('T',' ')}
+                    </div>`
+                  : ''}
+              </div>
+            </div>`;
+          }).join('')}`;
   },
 
-  async updateOrderStatus(orderId, status) {
-    const { error } = await sb.from('orders').update({ status }).eq('id', orderId);
+  // ── Delivery flow ─────────────────────────────────────────
+  async startDelivery(orderId) {
+    // Capture distributor location snapshot
+    const snap = await new Promise(resolve => {
+      if (!navigator.geolocation) return resolve({ lat: null, lng: null });
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        ()  => resolve({ lat: null, lng: null }),
+        { timeout: 8000, maximumAge: 60000 }
+      );
+    });
+
+    const { error } = await sb.from('orders').update({
+      status:          'in_transit',
+      in_transit_at:   new Date().toISOString(),
+      dist_lat:        snap.lat,
+      dist_lng:        snap.lng,
+      dist_snapshot_at: new Date().toISOString(),
+    }).eq('id', orderId);
+
     if (error) return toast('Hitilafu ya kubadilisha hali', 'e');
-    toast(S.lang === 'sw' ? `Hali: ${status}` : `Status: ${status}`, 's');
-    if (status === 'delivered') {
-      const { data: o } = await sb.from('orders').select('*').eq('id', orderId).single();
-      if (o) {
-        await sb.from('receipts').insert([{
-          receipt_ref: genRef('RCP'), order_id: orderId,
-          distributor_id: o.distributor_id, retailer_id: o.retailer_id,
-          amount: o.total_price, payment_method: 'cash',
-        }]);
-        await sb.from('invoices').insert([{
-          invoice_ref: genRef('INV'), order_id: orderId,
-          distributor_id: o.distributor_id, retailer_id: o.retailer_id,
-          amount: o.total_price, status: 'unpaid',
-          due_date: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
-        }]);
-      }
+    toast(S.lang === 'sw' ? 'Safari imeanza! Retailer ataarifu.' : 'Delivery started!', 's');
+    App.pageOrders();
+  },
+
+  async completeDelivery(orderId) {
+    const { error } = await sb.from('orders').update({
+      status:       'delivered',
+      delivered_at: new Date().toISOString(),
+    }).eq('id', orderId);
+
+    if (error) return toast('Hitilafu ya kubadilisha hali', 'e');
+
+    // Auto-create receipt and invoice
+    const { data: o } = await sb.from('orders').select('*').eq('id', orderId).single();
+    if (o) {
+      await sb.from('receipts').insert([{
+        receipt_ref: genRef('RCP'), order_id: orderId,
+        distributor_id: o.distributor_id, retailer_id: o.retailer_id,
+        amount: o.total_price, payment_method: 'cash',
+      }]);
+      await sb.from('invoices').insert([{
+        invoice_ref: genRef('INV'), order_id: orderId,
+        distributor_id: o.distributor_id, retailer_id: o.retailer_id,
+        amount: o.total_price, status: 'unpaid',
+        due_date: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
+      }]);
     }
+
+    toast(S.lang === 'sw' ? 'Delivery imekamilika!' : 'Delivery completed!', 's');
     App.pageOrders();
   },
 
@@ -2470,7 +2715,8 @@ window.App = {
       calc.style.display = '';
       const rev    = sell * qty;
       const profit = (sell - buy) * qty;
-      // FIX: (sell - buy) / sell * 100, NOT / rev
+      // CORRECT margin formula: (sell - buy) / sell * 100
+      // e.g. sell=1000, buy=800 → (200/1000)*100 = 20% ✅
       const margin = sell > 0 ? Math.round((sell - buy) / sell * 100) : 0;
       const mColor = margin >= 25 ? 'var(--g700)' : margin >= 10 ? 'var(--amber)' : 'var(--red)';
       const revEl  = $('calc-rev'), proEl = $('calc-profit'), marEl = $('calc-margin');
@@ -2722,80 +2968,138 @@ window.App = {
 
   // ── DEBTS ─────────────────────────────────────────────────
   async pageDebts() {
-    const { data: debts } = await sb.from('debts').select('*').eq('user_id', S.user.id)
-      .order('created_at', { ascending: false });
+    const isDistributor = S.user.role === 'distributor';
+    // Distributor sees debts where they are the creditor (people who owe them)
+    // Retailer sees their own debts
+    const query = isDistributor
+      ? sb.from('debts').select('*').eq('creditor_id', S.user.id).order('created_at', { ascending: false })
+      : sb.from('debts').select('*').eq('user_id', S.user.id).order('created_at', { ascending: false });
+
+    const { data: debts } = await query;
     const view = $('av');
+    const totalOwed = (debts || []).filter(d => d.status !== 'paid').reduce((s, d) => s + ((d.amount || 0) - (d.amount_paid || 0)), 0);
+
     view.innerHTML = `
+      <div class="page-title">${S.lang === 'sw' ? 'Usimamizi wa Madeni' : 'Debt Management'}</div>
+
+      <!-- Summary -->
+      ${(debts || []).length > 0 ? `
+      <div class="card" style="margin-bottom:1rem;background:${totalOwed > 0 ? 'var(--r50)' : 'var(--g50)'};border-color:${totalOwed > 0 ? 'var(--r100)' : 'var(--g200)'}">
+        <div class="cp" style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:.72rem;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:.5px">
+              ${isDistributor ? (S.lang === 'sw' ? 'Jumla Inayodaiwa' : 'Total Owed to You') : (S.lang === 'sw' ? 'Jumla ya Madeni' : 'Total Debts')}
+            </div>
+            <div style="font-size:1.4rem;font-weight:900;color:${totalOwed > 0 ? 'var(--r600)' : 'var(--g700)'};font-family:Sora,sans-serif">${fmt(totalOwed)}</div>
+          </div>
+          <div style="font-size:.82rem;color:var(--s500)">${(debts||[]).filter(d=>d.status!=='paid').length} ${S.lang==='sw'?'madeni':'debts'}</div>
+        </div>
+      </div>` : ''}
+
+      <!-- Add new debt form -->
       <div class="card" style="margin-bottom:1rem"><div class="cp">
-        <div class="page-title">${S.lang === 'sw' ? 'Rekodi Deni Jipya' : 'Record New Debt'}</div>
+        <div class="page-title" style="margin-bottom:.875rem">${S.lang === 'sw' ? 'Rekodi Deni Jipya' : 'Record New Debt'}</div>
         <div style="display:flex;flex-direction:column;gap:.75rem">
           <div class="fr">
             <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Jina la Mteja' : 'Customer Name'} *</label>
-              <input class="fi" id="d-name" placeholder="${S.lang === 'sw' ? 'Jina la mteja' : 'Customer name'}"/></div>
+              <input class="fi" id="d-name" placeholder="${S.lang === 'sw' ? 'Jina kamili' : 'Full name'}"/></div>
             <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Simu' : 'Phone'}</label>
               <input class="fi" id="d-phone" type="tel" placeholder="07xxxxxxxx"/></div>
           </div>
           <div class="fr">
-            <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Kiasi' : 'Amount'} *</label>
+            <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Kiasi (TZS)' : 'Amount (TZS)'} *</label>
               <input class="fi" id="d-amt" type="number" min="0" placeholder="0"/></div>
             <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Tarehe ya Kulipa' : 'Due Date'}</label>
               <input class="fi" id="d-due" type="date"/></div>
           </div>
           <div class="fg"><label class="fl">${S.lang === 'sw' ? 'Maelezo' : 'Description'}</label>
-            <input class="fi" id="d-desc" placeholder="${S.lang === 'sw' ? 'mfano: Mkopo wa mchele' : 'e.g. Rice credit'}"/></div>
+            <input class="fi" id="d-desc" placeholder="${S.lang === 'sw' ? 'mfano: Mkopo wa unga' : 'e.g. Flour credit'}"/></div>
           <button class="btn btn-primary" onclick="App.addDebt()" style="max-width:200px">
             <span id="add-debt-txt">${S.lang === 'sw' ? 'Rekodi Deni' : 'Record Debt'}</span>
           </button>
         </div>
       </div></div>
+
+      <!-- Debts list -->
       <div id="debts-list">
         ${(debts || []).map(d => {
           const paid = d.amount_paid || 0;
           const remain = d.amount - paid;
           const pct = Math.min(100, Math.round(paid / d.amount * 100));
-          return `<div class="debt-card card">
+          const isOverdue = d.due_date && new Date(d.due_date) < new Date() && d.status !== 'paid';
+          return `
+          <div class="card" style="margin-bottom:.65rem;${isOverdue ? 'border-color:var(--r200);' : ''}">
             <div class="cp">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
-                <div><div style="font-weight:800">${d.customer_name}</div><div style="font-size:.75rem;color:var(--s500)">${d.customer_phone || ''}</div></div>
-                <span class="pill ${d.status === 'paid' ? 'p-paid' : d.status === 'partial' ? 'p-par' : 'p-unp'}">${d.status}</span>
+                <div>
+                  <div style="font-weight:800">${d.customer_name}</div>
+                  ${d.customer_phone ? `
+                  <a href="tel:${d.customer_phone}" style="font-size:.75rem;color:var(--b600);text-decoration:none;display:flex;align-items:center;gap:.2rem;margin-top:.1rem">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.44 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.96-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    ${d.customer_phone}
+                  </a>` : ''}
+                  ${d.due_date ? `<div style="font-size:.72rem;color:${isOverdue ? 'var(--r600)' : 'var(--s500)'};margin-top:.1rem">${isOverdue ? '⚠ ' : ''}${S.lang === 'sw' ? 'Kulipa:' : 'Due:'} ${d.due_date}</div>` : ''}
+                </div>
+                <span class="pill ${d.status === 'paid' ? 'pill-green' : d.status === 'partial' ? 'pill-amber' : 'pill-red'}">
+                  ${d.status === 'paid' ? (S.lang === 'sw' ? 'Imelipwa' : 'Paid') : d.status === 'partial' ? (S.lang === 'sw' ? 'Sehemu' : 'Partial') : (S.lang === 'sw' ? 'Haijalipiwa' : 'Unpaid')}
+                </span>
               </div>
+              ${d.description ? `<div style="font-size:.78rem;color:var(--s500);margin-bottom:.5rem">${d.description}</div>` : ''}
               <div class="debt-progress"><div class="debt-bar" style="width:${pct}%"></div></div>
-              <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.5rem">
-                <span style="color:var(--s500)">${S.lang === 'sw' ? 'Kilicholipwa' : 'Paid'}: <strong style="color:var(--g700)">${fmt(paid)}</strong></span>
-                <span style="color:var(--s500)">${S.lang === 'sw' ? 'Kinachobaki' : 'Remaining'}: <strong style="color:var(--red)">${fmt(remain)}</strong></span>
+              <div style="display:flex;justify-content:space-between;font-size:.8rem;margin:.35rem 0 .65rem">
+                <span>${S.lang === 'sw' ? 'Kilicholipwa' : 'Paid'}: <strong style="color:var(--g700)">${fmt(paid)}</strong></span>
+                <span>${S.lang === 'sw' ? 'Kinachobaki' : 'Remaining'}: <strong style="color:var(--r600)">${fmt(remain)}</strong></span>
               </div>
-              ${d.status !== 'paid' ? `<div style="display:flex;gap:.4rem;flex-wrap:wrap">
-                <input class="fi" id="dp-${d.id}" type="number" min="0" placeholder="${S.lang === 'sw' ? 'Kiasi' : 'Amount'}" style="max-width:120px;padding:.4rem .6rem;font-size:.85rem"/>
-                <button class="btn-sm btn-sm-green" onclick="App.payDebt('${d.id}')">${S.lang === 'sw' ? 'Rekodi Malipo' : 'Record Payment'}</button>
-                <button class="btn-sm btn-sm-red" onclick="App.deleteDebt('${d.id}')">${S.lang === 'sw' ? 'Futa' : 'Delete'}</button>
+              ${d.status !== 'paid' ? `
+              <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+                <input class="fi" id="dp-${d.id}" type="number" min="0"
+                  placeholder="${S.lang === 'sw' ? 'Kiasi cha malipo' : 'Payment amount'}"
+                  style="max-width:140px;padding:.4rem .6rem;font-size:.85rem"/>
+                <button class="btn-sm btn-sm-green" onclick="App.payDebt('${d.id}')">
+                  ${S.lang === 'sw' ? 'Rekodi Malipo' : 'Record Payment'}
+                </button>
+                <button class="btn-sm btn-sm-red" onclick="App.deleteDebt('${d.id}')">
+                  ${S.lang === 'sw' ? 'Futa' : 'Delete'}
+                </button>
               </div>` : ''}
             </div>
           </div>`;
-        }).join('') || `<div class="empty"><div class="empty-ic"></div><div class="empty-t">${S.lang === 'sw' ? 'Hakuna madeni' : 'No debts'}</div></div>`}
+        }).join('') || `<div class="empty"><div class="empty-t">${S.lang === 'sw' ? 'Hakuna madeni' : 'No debts recorded'}</div><div class="empty-s">${S.lang === 'sw' ? 'Anza kurekodi madeni ya wateja wako' : 'Start tracking customer debts'}</div></div>`}
       </div>`;
   },
 
   async addDebt() {
-    const name = $('d-name')?.value.trim(), phone = $('d-phone')?.value,
-      amt = parseFloat($('d-amt')?.value || '0'), due = $('d-due')?.value, desc = $('d-desc')?.value;
+    const name  = $('d-name')?.value.trim();
+    const phone = $('d-phone')?.value.trim();
+    const amt   = parseFloat($('d-amt')?.value || '0');
+    const due   = $('d-due')?.value;
+    const desc  = $('d-desc')?.value.trim();
     if (!name || !amt) return toast(S.lang === 'sw' ? 'Jaza jina na kiasi' : 'Fill name and amount', 'e');
     setBusy('add-debt-txt', true);
     const { error } = await sb.from('debts').insert([{
-      user_id: S.user.id, customer_name: name, customer_phone: phone,
-      amount: amt, due_date: due || null, description: desc, status: 'unpaid',
+      user_id:        S.user.id,
+      creditor_id:    S.user.role === 'distributor' ? S.user.id : null,
+      customer_name:  name,
+      customer_phone: phone || null,
+      amount:         amt,
+      amount_paid:    0,
+      due_date:       due || null,
+      description:    desc || null,
+      status:         'unpaid',
+      debt_type:      'manual',
     }]);
     setBusy('add-debt-txt', false, S.lang === 'sw' ? 'Rekodi Deni' : 'Record Debt');
-    if (error) return toast('Hitilafu', 'e');
+    if (error) return toast('Hitilafu: ' + error.message, 'e');
     toast(S.lang === 'sw' ? 'Deni limerekodiwa!' : 'Debt recorded!', 's');
     App.pageDebts();
   },
 
   async payDebt(id) {
     const extra = parseFloat($(`dp-${id}`)?.value || '0');
-    if (!extra) return toast(S.lang === 'sw' ? 'Weka kiasi' : 'Enter amount', 'e');
+    if (!extra || extra <= 0) return toast(S.lang === 'sw' ? 'Weka kiasi sahihi' : 'Enter valid amount', 'e');
     const { data: debt } = await sb.from('debts').select('amount,amount_paid').eq('id', id).single();
-    const newPaid = (debt.amount_paid || 0) + extra;
-    const status  = newPaid >= debt.amount ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid';
+    const newPaid = Math.min(debt.amount, (debt.amount_paid || 0) + extra);
+    const status  = newPaid >= debt.amount ? 'paid' : 'partial';
     await sb.from('debts').update({ amount_paid: newPaid, status }).eq('id', id);
     toast(S.lang === 'sw' ? 'Malipo yamerekodiwa!' : 'Payment recorded!', 's');
     App.pageDebts();
@@ -2806,6 +3110,177 @@ window.App = {
     await sb.from('debts').delete().eq('id', id);
     toast(S.lang === 'sw' ? 'Deni limefutwa' : 'Debt deleted', 's');
     App.pageDebts();
+  },
+
+  // ══════════════════════════════════════════════════════════
+  //  BOSS MODE — Staff & Business Management
+  //  Owner only — manages staff members of their business
+  // ══════════════════════════════════════════════════════════
+  async pageBoss() {
+    if (S.user.is_staff) {
+      $('av').innerHTML = `<div class="empty"><div class="empty-t">${S.lang === 'sw' ? 'Huna ruhusa' : 'No permission'}</div></div>`;
+      return;
+    }
+
+    const { data: staff } = await sb.from('staff_members')
+      .select('*').eq('business_id', S.user.id).order('created_at');
+
+    const ROLE_LABELS = {
+      manager: { sw: 'Meneja', en: 'Manager', color: 'var(--b700)', bg: 'var(--b100)' },
+      cashier: { sw: 'Cashier', en: 'Cashier', color: 'var(--g700)', bg: 'var(--g100)' },
+      viewer:  { sw: 'Mwangalizi', en: 'Viewer', color: 'var(--s600)', bg: 'var(--s100)' },
+    };
+
+    $('av').innerHTML = `
+      <div class="page-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Boss Mode — ${S.lang === 'sw' ? 'Wasaidizi wa Biashara' : 'Business Staff'}
+      </div>
+
+      <!-- Info banner -->
+      <div class="alert alert-info" style="margin-bottom:1rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        ${S.lang === 'sw'
+          ? 'Wasaidizi wanaingia kwa simu zao wenyewe. OTP inatumwa kwenye simu yao.'
+          : 'Staff login with their own phone. OTP is sent to their phone number.'}
+      </div>
+
+      <!-- Add staff form -->
+      <div class="card" style="margin-bottom:1rem"><div class="cp">
+        <div class="sh"><span class="st">${S.lang === 'sw' ? 'Ongeza Msaidizi' : 'Add Staff Member'}</span></div>
+        <div style="display:flex;flex-direction:column;gap:.75rem">
+          <div class="fr">
+            <div class="fg">
+              <label class="fl">${S.lang === 'sw' ? 'Jina Kamili' : 'Full Name'} *</label>
+              <input class="fi" id="st-name" placeholder="${S.lang === 'sw' ? 'Jina la msaidizi' : 'Staff full name'}"/>
+            </div>
+            <div class="fg">
+              <label class="fl">${S.lang === 'sw' ? 'Namba ya Simu' : 'Phone Number'} *</label>
+              <input class="fi" id="st-phone" type="tel" placeholder="07xxxxxxxx"/>
+            </div>
+          </div>
+          <div class="fg">
+            <label class="fl">${S.lang === 'sw' ? 'Nafasi / Role' : 'Role'} *</label>
+            <select class="fi" id="st-role" style="appearance:none">
+              <option value="manager">${S.lang === 'sw' ? 'Meneja — Ona kila kitu, rekodi mauzo' : 'Manager — Full access except staff management'}</option>
+              <option value="cashier">${S.lang === 'sw' ? 'Cashier — POS na marketplace tu' : 'Cashier — POS and marketplace only'}</option>
+              <option value="viewer">${S.lang === 'sw' ? 'Mwangalizi — Ona ripoti tu, asiweze kurekodi' : 'Viewer — Reports only, read-only access'}</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="App.addStaff()" style="max-width:220px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span id="add-staff-txt">${S.lang === 'sw' ? 'Ongeza Msaidizi' : 'Add Staff'}</span>
+          </button>
+        </div>
+      </div></div>
+
+      <!-- Permissions table -->
+      <div class="card" style="margin-bottom:1rem"><div class="cp">
+        <div class="sh"><span class="st">${S.lang === 'sw' ? 'Jedwali la Ruhusa' : 'Permissions Table'}</span></div>
+        <div class="tw"><table class="dt">
+          <thead><tr>
+            <th>${S.lang === 'sw' ? 'Kipengele' : 'Feature'}</th>
+            <th>Meneja</th><th>Cashier</th><th>Mwangalizi</th>
+          </tr></thead>
+          <tbody>
+            ${[
+              ['POS / Mauzo','✓','✓','✗'],
+              ['Marketplace','✓','✓','✗'],
+              ['Maagizo / Orders','✓','✗','✓'],
+              ['Ripoti / Reports','✓','✗','✓'],
+              ['Madeni / Debts','✓','✗','✗'],
+              ['Boss Mode','✗','✗','✗'],
+            ].map(([f,m,c,v]) => `
+              <tr>
+                <td style="font-weight:600">${f}</td>
+                <td style="color:${m==='✓'?'var(--g600)':'var(--r500)'}; font-weight:700">${m}</td>
+                <td style="color:${c==='✓'?'var(--g600)':'var(--r500)'}; font-weight:700">${c}</td>
+                <td style="color:${v==='✓'?'var(--g600)':'var(--r500)'}; font-weight:700">${v}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div></div>
+
+      <!-- Staff list -->
+      <div class="page-title" style="margin-top:.5rem">${S.lang === 'sw' ? 'Wasaidizi Waliopo' : 'Current Staff'} (${(staff||[]).length})</div>
+      ${(staff || []).length === 0
+        ? `<div class="empty"><div class="empty-t">${S.lang === 'sw' ? 'Bado hujaongeza wasaidizi' : 'No staff added yet'}</div></div>`
+        : (staff || []).map(s => {
+            const rl = ROLE_LABELS[s.role] || ROLE_LABELS.viewer;
+            return `
+            <div class="card" style="margin-bottom:.65rem">
+              <div class="cp" style="display:flex;align-items:center;gap:.875rem">
+                <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--b600),var(--b400));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;flex-shrink:0">
+                  ${s.full_name?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:800">${s.full_name}</div>
+                  <div style="font-size:.78rem;color:var(--s500)">${s.phone_number}</div>
+                  <span style="display:inline-block;margin-top:.2rem;font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:20px;background:${rl.bg};color:${rl.color}">
+                    ${S.lang === 'sw' ? rl.sw : rl.en}
+                  </span>
+                </div>
+                <div style="display:flex;gap:.4rem;flex-shrink:0">
+                  <button class="btn-sm ${s.is_active ? 'btn-sm-amber' : 'btn-sm-green'}" onclick="App.toggleStaff('${s.id}',${!s.is_active})">
+                    ${s.is_active ? (S.lang === 'sw' ? 'Simamisha' : 'Suspend') : (S.lang === 'sw' ? 'Amilisha' : 'Activate')}
+                  </button>
+                  <button class="btn-sm btn-sm-red" onclick="App.removeStaff('${s.id}')">
+                    ${S.lang === 'sw' ? 'Futa' : 'Remove'}
+                  </button>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}`;
+  },
+
+  async addStaff() {
+    const name  = $('st-name')?.value.trim();
+    const phone = $('st-phone')?.value.trim();
+    const role  = $('st-role')?.value;
+    if (!name || !phone) return toast(S.lang === 'sw' ? 'Jaza jina na simu' : 'Fill name and phone', 'e');
+
+    // Normalize phone
+    const norm = phone.replace(/\D/g, '');
+    const normPhone = norm.length === 9 ? `+255${norm}` : norm.length === 10 && norm[0] === '0' ? `+255${norm.slice(1)}` : `+${norm}`;
+
+    setBusy('add-staff-txt', true);
+    const { error } = await sb.from('staff_members').insert([{
+      business_id:  S.user.id,
+      phone_number: normPhone,
+      full_name:    name,
+      role:         role,
+      is_active:    true,
+    }]);
+    setBusy('add-staff-txt', false, S.lang === 'sw' ? 'Ongeza Msaidizi' : 'Add Staff');
+
+    if (error) {
+      if (error.code === '23505') return toast(S.lang === 'sw' ? 'Simu hii tayari imesajiliwa' : 'Phone already registered', 'e');
+      return toast('Error: ' + error.message, 'e');
+    }
+    toast(S.lang === 'sw' ? 'Msaidizi ameongezwa!' : 'Staff added!', 's');
+    if ($('st-name')) $('st-name').value = '';
+    if ($('st-phone')) $('st-phone').value = '';
+    App.pageBoss();
+  },
+
+  async toggleStaff(id, active) {
+    await sb.from('staff_members').update({ is_active: active }).eq('id', id);
+    toast(active ? (S.lang === 'sw' ? 'Msaidizi ameamilishwa' : 'Staff activated') : (S.lang === 'sw' ? 'Msaidizi amesimamishwa' : 'Staff suspended'), 's');
+    App.pageBoss();
+  },
+
+  async removeStaff(id) {
+    if (!confirm(S.lang === 'sw' ? 'Una uhakika wa kumfuta msaidizi huyu?' : 'Remove this staff member?')) return;
+    await sb.from('staff_members').delete().eq('id', id);
+    toast(S.lang === 'sw' ? 'Msaidizi amefutwa' : 'Staff removed', 's');
+    App.pageBoss();
   },
 
   // ── USERS (Admin) ─────────────────────────────────────────
@@ -3012,10 +3487,11 @@ function svgIcon(name) {
 // ── Status helpers ─────────────────────────────────────────────
 function statusPill(status, lang) {
   const map = {
-    pending:   { cls: 'pill-amber', sw: 'Inasubiri',      en: 'Pending' },
-    confirmed: { cls: 'pill-blue',  sw: 'Imethibitishwa', en: 'Confirmed' },
-    delivered: { cls: 'pill-green', sw: 'Imetolewa',      en: 'Delivered' },
-    cancelled: { cls: 'pill-red',   sw: 'Imefutwa',       en: 'Cancelled' },
+    pending:    { cls: 'pill-amber', sw: 'Inasubiri',      en: 'Pending' },
+    confirmed:  { cls: 'pill-blue',  sw: 'Imethibitishwa', en: 'Confirmed' },
+    in_transit: { cls: 'pill-amber', sw: 'Inakuja...',     en: 'In Transit' },
+    delivered:  { cls: 'pill-green', sw: 'Imetolewa',      en: 'Delivered' },
+    cancelled:  { cls: 'pill-red',   sw: 'Imefutwa',       en: 'Cancelled' },
   };
   const s = map[status] || { cls: 'pill-amber', sw: status, en: status };
   return `<span class="pill ${s.cls}">${lang === 'sw' ? s.sw : s.en}</span>`;
