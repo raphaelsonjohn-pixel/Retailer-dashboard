@@ -528,6 +528,58 @@ function renderStoreSwitcher() {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  FAB LISTENER — RELIABLE MOBILE FIX
+//  Uses touchstart (not touchend), cloneNode trick, retry fallback
+//  openCart/closeCart exposed on window for HTML onclick access
+// ══════════════════════════════════════════════════════════════
+function attachFABListener() {
+  const fab = $('cfab');
+  if (!fab) {
+    // Element not ready yet — retry after short delay
+    setTimeout(attachFABListener, 300);
+    return;
+  }
+
+  // cloneNode(true) removes ALL previously attached listeners
+  // This prevents double-firing if showApp() is called more than once
+  const newFab = fab.cloneNode(true);
+  fab.parentNode.replaceChild(newFab, fab);
+
+  const handleTap = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.openCart();
+    return false;
+  };
+
+  // touchstart fires immediately when finger touches screen
+  // (touchend has ~300ms delay on iOS/Android)
+  newFab.addEventListener('touchstart', handleTap, { passive: false });
+  newFab.addEventListener('click', handleTap);
+
+  // Make absolutely sure it's clickable
+  newFab.style.pointerEvents = 'auto';
+  newFab.style.cursor = 'pointer';
+}
+
+// Expose on window so HTML onclick="openCart()" works too
+window.openCart = function() {
+  const panel = $('cpanel');
+  const overlay = $('cart-overlay');
+  if (panel) panel.classList.add('open');
+  if (overlay) { overlay.style.display = 'block'; overlay.classList.add('open'); }
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeCart = function() {
+  const panel = $('cpanel');
+  const overlay = $('cart-overlay');
+  if (panel) panel.classList.remove('open');
+  if (overlay) { overlay.classList.remove('open'); overlay.style.display = 'none'; }
+  document.body.style.overflow = '';
+};
+
+// ══════════════════════════════════════════════════════════════
 //  PUBLIC App OBJECT
 // ══════════════════════════════════════════════════════════════
 window.App = {
@@ -895,29 +947,20 @@ window.App = {
 
   // ── Show App ──────────────────────────────────────────────
   async showApp() {
-    // Remove onboarding from DOM entirely — display:none alone is not
-    // enough on some mobile browsers; the fixed z-index element still
-    // intercepts touch events. Removal guarantees it cannot block anything.
+    // Remove onboarding from DOM entirely so it cannot block any touches
     const ob = $('onboarding');
     if (ob) ob.remove();
 
     const am = $('app-main');
     if (am) am.style.display = 'block';
 
-    // Attach FAB listeners now that app is visible and App object is ready
-    const fab = $('cfab');
-    if (fab && !fab._listenerAttached) {
-      fab._listenerAttached = true;
-      fab.addEventListener('click', (e) => {
-        e.stopPropagation();
-        App.toggleCart();
-      });
-      fab.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        App.toggleCart();
-      }, { passive: false });
-    }
+    // Attach FAB listener using the reliable pattern:
+    // 1. cloneNode removes ALL stale listeners
+    // 2. touchstart fires immediately (touchend has 300ms delay)
+    // 3. pointerEvents explicitly set
+    // 4. retry fallback in case element not ready
+    attachFABListener();
+
     await ensurePrimaryStore();
     await loadStores();
     if (S.user.role === 'retailer' && S.stores.length > 1 && !S.store) {
@@ -1568,7 +1611,11 @@ window.App = {
     if (total) total.textContent = fmt(sum);
   },
 
-  toggleCart() { $('cpanel')?.classList.toggle('open'); },
+  toggleCart() {
+    const panel = $('cpanel');
+    if (!panel) return;
+    panel.classList.contains('open') ? window.closeCart() : window.openCart();
+  },
 
   async placeOrder() {
     if (!S.cart.length) return toast(t('cartEmpty'), 'e');
@@ -3043,5 +3090,14 @@ async function boot() {
 
   if (S.isOnline) setTimeout(syncOfflineData, 3000);
 }
+
+// ── Expose cart functions on window for HTML onclick reliability ───
+// HTML-generated onclick="App.addToCart(...)" works via window.App,
+// but also expose directly so onclick="addToCart(...)" works too.
+window.addToCart   = (p)            => App.addToCart(p);
+window.cartChange  = (id, delta)    => App.cartChange(id, delta);
+window.filterCat   = (cat, btn)     => App.filterCat(cat, btn);
+window.changeDist  = (id)           => App.changeDist(id);
+window.placeOrder  = ()             => App.placeOrder();
 
 boot();
