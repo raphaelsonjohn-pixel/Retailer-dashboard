@@ -300,7 +300,7 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
 .lsw-b.on{background:var(--b600);color:#fff;border-radius:.4rem}
 .lo{display:flex;align-items:center;gap:.4rem;padding:.45rem .8rem;border:1.5px solid var(--s200);border-radius:.5rem;background:none;color:var(--s500);font-size:.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;min-height:38px}
 .lo:hover{background:var(--r50);border-color:var(--r100);color:var(--r600)}
-.sovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99;backdrop-filter:blur(2px)}
+.sovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99}
 .sovl.active{display:block}
 
 /* MAIN CONTENT */
@@ -1238,9 +1238,9 @@ select.fi{appearance:none;cursor:pointer;background-image:url("data:image/svg+xm
   <nav class="bn" id="bn"></nav>
 </div>
 
-<!-- Cart Overlay -->
+<!-- Cart Overlay — no backdrop-filter (creates stacking context that blocks panel) -->
 <div id="cart-overlay"
-  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(2px);z-index:290;"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:290;"
   onclick="window.closeCart()"></div>
 
 <!-- Cart FAB -->
