@@ -1288,6 +1288,7 @@ window.App = {
       'my-orders': svgIcon('pkg'), orders: svgIcon('orders'), products: svgIcon('pkg'),
       pos: svgIcon('pos'), reports: svgIcon('chart'), debts: svgIcon('debt'),
       invoices: svgIcon('invoice'), users: svgIcon('users'), analytics: svgIcon('analytics'),
+      cart: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`,
     };
     if (tbic) tbic.innerHTML = icons[page] || svgIcon('grid');
 
@@ -1296,6 +1297,7 @@ window.App = {
       'my-orders': t('myOrders'), orders: t('orders'), products: t('products'),
       pos: t('pos'), reports: t('reports'), debts: t('debts'),
       invoices: t('invoices'), users: t('users'), analytics: t('analytics'),
+      cart: S.lang === 'sw' ? 'Kikapu Changu' : 'My Cart',
     };
     setText('tbt', pageLabels[page] || page);
     setText('tbs', S.user?.store_name || '');
@@ -1316,6 +1318,7 @@ window.App = {
       analytics:       () => App.pageAnalytics(),
       supervisor:      () => App.pageSupervisor(),
       'supervisor-dash': () => App.pageSupervisorDash(),
+      cart:            () => App.pageCart(),
     };
     await (pages[page] || pages.dashboard)();
   },
@@ -1562,12 +1565,10 @@ window.App = {
   updateCartUI() {
     const count = S.cart.reduce((s, c) => s + c.qty, 0);
     const fab = $('cfab'), cc = $('cc');
-    if (fab) {
-      // Show FAB whenever cart has items, on any screen size
-      fab.style.display = S.cart.length ? 'flex' : 'none';
-    }
-    if (cc) cc.textContent = count;
-    App.renderCartPanel();
+    if (fab) fab.style.display = S.cart.length ? 'flex' : 'none';
+    if (cc)  cc.textContent = count;
+    // If currently on cart page, refresh it
+    if (S.page === 'cart') App.pageCart();
   },
 
   renderCartPanel() {
@@ -1612,9 +1613,142 @@ window.App = {
   },
 
   toggleCart() {
-    const panel = $('cpanel');
-    if (!panel) return;
-    panel.classList.contains('open') ? window.closeCart() : window.openCart();
+    // Navigate to cart page instead of opening slide panel
+    App.navTo('cart');
+  },
+
+  // ── CART PAGE — replaces slide panel ─────────────────────
+  pageCart() {
+    const view = $('av');
+    if (!view) return;
+
+    if (!S.cart.length) {
+      view.innerHTML = `
+        <div class="empty" style="padding:4rem 1rem">
+          <div class="empty-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity=".25">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+          </div>
+          <div class="empty-t">${S.lang === 'sw' ? 'Kikapu chako kiko tupu' : 'Your cart is empty'}</div>
+          <div class="empty-s" style="margin-bottom:1.5rem">${S.lang === 'sw' ? 'Rudi sokoni uchague bidhaa' : 'Go back to marketplace to add products'}</div>
+          <button class="btn btn-primary" style="max-width:220px;margin:0 auto" onclick="App.navTo('marketplace')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            ${S.lang === 'sw' ? 'Rudi Sokoni' : 'Back to Market'}
+          </button>
+        </div>`;
+      return;
+    }
+
+    const sum = S.cart.reduce((s, c) => s + c.qty * c.unit_price, 0);
+    const distId = S.cartDist || S.cart[0]?.distributor_id;
+
+    view.innerHTML = `
+      <!-- Back button -->
+      <div style="margin-bottom:1rem">
+        <button class="btn-ghost" onclick="App.navTo('marketplace')" style="padding:.5rem 0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          ${S.lang === 'sw' ? 'Rudi Sokoni' : 'Back to Market'}
+        </button>
+      </div>
+
+      <!-- Cart items -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="cp">
+          <div class="sh">
+            <span class="st">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+              ${S.lang === 'sw' ? 'Bidhaa Zilizochaguliwa' : 'Selected Items'} (${S.cart.length})
+            </span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.75rem">
+            ${S.cart.map(c => `
+              <div style="display:flex;align-items:center;gap:.875rem;padding:.875rem;background:var(--s50);border:1.5px solid var(--s200);border-radius:.875rem">
+                <div style="width:42px;height:42px;border-radius:12px;background:var(--b100);color:var(--b700);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <path d="M16 10a4 4 0 0 1-8 0"/>
+                  </svg>
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.92rem;font-weight:800;color:var(--s900);margin-bottom:.2rem">${c.product_name}</div>
+                  <div style="font-size:.82rem;font-weight:700;color:var(--b700)">${fmt(c.unit_price)} ${S.lang === 'sw' ? 'kwa kila' : 'each'}</div>
+                  ${c.qty < c.min_order_qty ? `<div style="font-size:.72rem;font-weight:700;color:var(--a600)">⚠ Min: ${c.min_order_qty}</div>` : ''}
+                </div>
+                <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+                  <button class="qb" onclick="App.cartPageChange('${c.product_id}',-1)" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--s200);background:#fff;font-size:1.1rem;font-weight:700;color:var(--b700);display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation">−</button>
+                  <span style="font-size:1rem;font-weight:900;min-width:24px;text-align:center">${c.qty}</span>
+                  <button class="qb" onclick="App.cartPageChange('${c.product_id}',1)" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--s200);background:#fff;font-size:1.1rem;font-weight:700;color:var(--b700);display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation">+</button>
+                </div>
+                <div style="font-size:.92rem;font-weight:900;color:var(--s900);min-width:70px;text-align:right">${fmt(c.qty * c.unit_price)}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Order summary -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="cp">
+          <div class="sh"><span class="st">${S.lang === 'sw' ? 'Muhtasari wa Agizo' : 'Order Summary'}</span></div>
+          <div style="display:flex;flex-direction:column;gap:.65rem">
+            <div style="display:flex;justify-content:space-between;font-size:.9rem">
+              <span style="color:var(--s500);font-weight:600">${S.lang === 'sw' ? 'Bidhaa' : 'Items'}</span>
+              <span style="font-weight:700">${S.cart.reduce((s,c)=>s+c.qty,0)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:.9rem">
+              <span style="color:var(--s500);font-weight:600">${S.lang === 'sw' ? 'Aina za Bidhaa' : 'Product types'}</span>
+              <span style="font-weight:700">${S.cart.length}</span>
+            </div>
+            <div style="height:1px;background:var(--s200)"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:.95rem;font-weight:800;color:var(--s900)">${S.lang === 'sw' ? 'Jumla' : 'Total'}</span>
+              <span style="font-family:'Sora',sans-serif;font-size:1.4rem;font-weight:900;color:var(--b700)">${fmt(sum)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment note -->
+      <div class="alert alert-info" style="margin-bottom:1rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        ${S.lang === 'sw' ? 'Malipo yanafanywa moja kwa moja na Msambazaji baada ya kuthibitishwa.' : 'Payment is arranged directly with the Distributor after confirmation.'}
+      </div>
+
+      <!-- Place order button -->
+      <button class="btn btn-primary" id="po-btn" onclick="App.placeOrder()" style="margin-bottom:1.5rem;font-size:1.05rem;min-height:58px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+        <span id="po-txt">${S.lang === 'sw' ? 'Tuma Agizo' : 'Place Order'}</span>
+      </button>
+
+      <!-- Clear cart -->
+      <button class="btn-ghost" onclick="App.clearCart()" style="color:var(--r600);margin-bottom:2rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        ${S.lang === 'sw' ? 'Futa Kikapu' : 'Clear Cart'}
+      </button>
+    `;
+  },
+
+  // Qty change from cart page — re-renders page
+  cartPageChange(productId, delta) {
+    const item = S.cart.find(c => c.product_id === productId);
+    if (!item) return;
+    item.qty = Math.max(0, item.qty + delta);
+    if (item.qty === 0) S.cart = S.cart.filter(c => c.product_id !== productId);
+    App.updateCartUI();
+    App.pageCart(); // re-render cart page
+  },
+
+  clearCart() {
+    if (!confirm(S.lang === 'sw' ? 'Una uhakika wa kufuta kikapu chote?' : 'Clear entire cart?')) return;
+    S.cart = []; S.cartDist = null;
+    App.updateCartUI();
+    App.navTo('marketplace');
   },
 
   async placeOrder() {
@@ -1680,15 +1814,14 @@ window.App = {
       );
       if (iErr) console.warn('order_items insert warning:', iErr.message);
 
-      // Success — clear cart, close panel, show toast, navigate
+      // Success — clear cart and navigate to my orders
       S.cart = [];
       S.cartDist = null;
-      window.closeCart();
       App.updateCartUI();
 
       const successMsg = S.lang === 'sw'
-        ? `Agizo limetumwa! Namba: ${ref}`
-        : `Order sent! Ref: ${ref}`;
+        ? `✓ Agizo limetumwa! Namba: ${ref}`
+        : `✓ Order sent! Ref: ${ref}`;
       toast(successMsg, 's');
 
       // Navigate to my orders after short delay so toast is visible
