@@ -1620,48 +1620,87 @@ window.App = {
   async placeOrder() {
     if (!S.cart.length) return toast(t('cartEmpty'), 'e');
 
-    // Guard: reject dev-user sessions before hitting Supabase
+    // Guard: reject dev-user sessions
     if (!S.user?.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(S.user.id)) {
-      toast(S.lang === 'sw' ? 'Tafadhali ingia tena — session yako imekwisha' : 'Please log in again — session expired', 'e');
+      toast(S.lang === 'sw' ? 'Tafadhali ingia tena' : 'Please log in again', 'e');
       setTimeout(() => App.logout(), 1500);
       return;
     }
 
+    // MOQ check
     const moqFail = S.cart.filter(c => c.qty < c.min_order_qty);
     if (moqFail.length) {
       toast(`${S.lang === 'sw' ? 'Kiwango cha chini hafikiwi:' : 'MOQ not met:'} ${moqFail.map(c => c.product_name).join(', ')}`, 'e');
       return;
     }
+
+    // Minimum delivery check
     const distId = S.cartDist || S.cart[0]?.distributor_id;
-    const { data: dist } = await sb.from('profiles').select('min_delivery_amount').eq('id', distId).single();
+    if (!distId) return toast(S.lang === 'sw' ? 'Hakuna msambazaji' : 'No distributor selected', 'e');
+
     const total = S.cart.reduce((s, c) => s + c.qty * c.unit_price, 0);
+    const { data: dist } = await sb.from('profiles').select('min_delivery_amount').eq('id', distId).single();
     if (dist?.min_delivery_amount && total < dist.min_delivery_amount) {
-      toast(`${S.lang === 'sw' ? 'Agizo lako ni ndogo. Kiwango cha chini:' : 'Order below minimum:'} ${fmt(dist.min_delivery_amount)}`, 'e');
+      toast(`${S.lang === 'sw' ? 'Agizo dogo. Kiwango cha chini:' : 'Below minimum:'} ${fmt(dist.min_delivery_amount)}`, 'e');
       return;
     }
-    setBusy('po-btn', true);
-    const ref = genRef('ORD');
-    const { data: order, error } = await sb.from('orders').insert([{
-      order_ref: ref, retailer_id: S.user.id, distributor_id: distId,
-      total_price: total, items_count: S.cart.length, status: 'pending',
-    }]).select().single();
-    if (error || !order) {
-      setBusy('po-btn', false, t('placeOrder'));
-      console.error('placeOrder error:', error);
-      return toast(error?.message || 'Hitilafu ya kutuma agizo', 'e');
+
+    // Disable button and show spinner
+    const btn = $('po-btn'), txt = $('po-txt');
+    if (btn) btn.disabled = true;
+    if (txt) txt.innerHTML = '<span class="spin"></span>';
+
+    try {
+      // Step 1: Insert order
+      const ref = genRef('ORD');
+      const { data: order, error: oErr } = await sb.from('orders').insert([{
+        order_ref:      ref,
+        retailer_id:    S.user.id,
+        distributor_id: distId,
+        total_price:    total,
+        items_count:    S.cart.length,
+        status:         'pending',
+      }]).select().single();
+
+      if (oErr || !order) {
+        console.error('orders insert error:', oErr);
+        throw new Error(oErr?.message || (S.lang === 'sw' ? 'Hitilafu ya kutuma agizo' : 'Failed to place order'));
+      }
+
+      // Step 2: Insert order items
+      const { error: iErr } = await sb.from('order_items').insert(
+        S.cart.map(c => ({
+          order_id:     order.id,
+          product_id:   c.product_id,
+          product_name: c.product_name,
+          qty:          c.qty,
+          unit_price:   c.unit_price,
+          subtotal:     c.qty * c.unit_price,
+        }))
+      );
+      if (iErr) console.warn('order_items insert warning:', iErr.message);
+
+      // Success — clear cart, close panel, show toast, navigate
+      S.cart = [];
+      S.cartDist = null;
+      window.closeCart();
+      App.updateCartUI();
+
+      const successMsg = S.lang === 'sw'
+        ? `Agizo limetumwa! Namba: ${ref}`
+        : `Order sent! Ref: ${ref}`;
+      toast(successMsg, 's');
+
+      // Navigate to my orders after short delay so toast is visible
+      setTimeout(() => App.navTo('my-orders'), 800);
+
+    } catch (err) {
+      console.error('placeOrder failed:', err);
+      toast(err.message || (S.lang === 'sw' ? 'Hitilafu — jaribu tena' : 'Error — please try again'), 'e');
+    } finally {
+      if (btn) btn.disabled = false;
+      if (txt) txt.textContent = t('placeOrder');
     }
-    await sb.from('order_items').insert(S.cart.map(c => ({
-      order_id: order.id, product_id: c.product_id,
-      product_name: c.product_name, qty: c.qty,
-      unit_price: c.unit_price, subtotal: c.qty * c.unit_price,
-    })));
-    setBusy('po-btn', false, t('placeOrder'));
-    S.cart = []; S.cartDist = null;
-    // FIX: explicitly close cart panel
-    $('cpanel')?.classList.remove('open');
-    App.updateCartUI();
-    toast(`${t('orderSuccess')} ${ref}`, 's');
-    App.navTo('my-orders');
   },
 
   // ── MY ORDERS (Retailer) ──────────────────────────────────
